@@ -48,10 +48,26 @@ export class DoctorsController {
     return this.doctors.list(query.search)
   }
 
-  // GET /doctors/:id
+  /*
+    GET /doctors/:id
+
+    `doctors.view` shart — lekin shifokor O'ZINI har doim ko'radi.
+
+    NEGA ISTISNO: `doctors.view` boshqa shifokorlarni ko'rish
+    haqida (ro'yxat, kontakt, maosh). Shifokorda u yo'q va
+    bo'lmasligi ham kerak. Lekin uning bosh sahifasi o'z
+    ko'rsatkichlarini shu endpointdan oladi — istisnosiz
+    shifokor o'z sahifasida xato ko'rib turardi.
+
+    Bu ruxsatni butun rolga berish noto'g'ri bo'lardi: u holda
+    shifokor hamkasbining maoshini ham ko'rardi.
+  */
   @Get(':id')
-  @RequirePermission('doctors.view')
   get(@Param() params: IdParamDto) {
+    const { permissions, doctorId } = this.ctx.require()
+    if (params.id !== doctorId && !permissions.includes('doctors.view')) {
+      throw new ForbiddenException('Bu amalga ruxsatingiz yo‘q')
+    }
     return this.doctors.get(params.id)
   }
 

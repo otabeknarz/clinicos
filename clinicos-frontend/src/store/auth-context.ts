@@ -32,9 +32,13 @@ export interface AuthValue {
    */
   impersonating: { tenantId: string; tenantName: string } | null
   /** Klinika paneliga kirish */
-  enterClinic: (tenantId: string, tenantName: string) => void
+  /**
+   * Klinika paneliga kirish. `token` — server bergan qisqa
+   * muddatli kirish tokeni (`startImpersonation` javobida).
+   */
+  enterClinic: (tenantId: string, tenantName: string, token?: string) => Promise<void>
   /** Ortga — platforma paneliga qaytish */
-  exitClinic: () => void
+  exitClinic: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthValue | null>(null)

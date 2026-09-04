@@ -28,5 +28,11 @@ import { JwtStrategy } from './jwt.strategy'
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
+  /*
+    `PlatformModule` klinika paneliga kirish uchun sessiya
+    yasaydi. Token yasashni o'zi takrorlamasin — muddat va
+    ichidagi maydonlar bir joyda tursin.
+  */
+  exports: [AuthService],
 })
 export class AuthModule {}

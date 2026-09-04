@@ -4,7 +4,7 @@ import { PassportStrategy } from '@nestjs/passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 
 import { RequestUser } from '../common/request-context'
-import { resolvePermissions } from '../common/permissions'
+import { IMPERSONATION_PERMISSIONS, resolvePermissions } from '../common/permissions'
 import { PrismaService } from '../prisma/prisma.service'
 
 /** Tokenning ichida nima yotadi */
@@ -79,12 +79,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       impersonationId = log.id
     }
 
+    /*
+      Klinika ichida platforma egasining ruxsatlari ISHLAMAYDI.
+      Uning o'z ro'yxati `platform.*` dan iborat va u klinika
+      endpointlariga to'g'ri kelmaydi — kirgan odam hamma joyda
+      403 olardi. Shuning uchun kirish paytiga alohida, faqat
+      ko'rish ruxsatlari beriladi.
+    */
+    const permissions = impersonationId
+      ? [...IMPERSONATION_PERMISSIONS]
+      : resolvePermissions(user.role, user.extraPermissions)
+
     return {
       userId: user.id,
       clinicId,
       role: user.role,
       doctorId: user.doctorId,
-      permissions: resolvePermissions(user.role, user.extraPermissions),
+      permissions,
       impersonationId,
     }
   }

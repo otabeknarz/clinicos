@@ -409,13 +409,13 @@ function EnterModal({
     try {
       // Avval yozuv qayd etiladi, keyingina panel ochiladi —
       // teskarisi bo'lsa, yozuvsiz kirish imkoni paydo bo'ladi
-      await startImpersonation(
+      const log = await startImpersonation(
         tenant.id,
         session?.user.fullName ?? '',
         reason.trim(),
       )
       toast.success(t('platform.enterStarted'))
-      enterClinic(tenant.id, tenant.name)
+      await enterClinic(tenant.id, tenant.name, log.token)
       onClose()
       setReason('')
       navigate('/')

@@ -36,8 +36,13 @@ export function ImpersonationBar() {
         variant="gray"
         icon={<LogOut size={14} />}
         onClick={() => {
-          exitClinic()
-          navigate('/platform/clinics')
+          /*
+            Chiqish serverga so'rov yuboradi (kirish yozuvini
+            yopadi), shuning uchun tugatilishini kutamiz —
+            aks holda platforma paneli hali eski token bilan
+            ochilib qolardi.
+          */
+          void exitClinic().finally(() => navigate('/platform/clinics'))
         }}
       >
         {t('platform.exitClinic')}

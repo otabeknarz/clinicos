@@ -70,7 +70,14 @@ export class ClinicService {
   }
 }
 
-function toApiClinic(row: {
+/**
+ * Klinika yozuvini interfeys kutgan shaklga keltirish.
+ *
+ * Eksport qilingan, chunki sessiya javobida ham shu klinika
+ * qaytadi (`auth.service.ts`). Ikki joyda alohida yozilsa,
+ * biri ikkinchisidan orqada qolardi.
+ */
+export function toApiClinic(row: {
   id: string
   name: string
   logoUrl: string | null

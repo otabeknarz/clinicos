@@ -685,9 +685,9 @@ function EnterModal({
     setSaving(true)
     try {
       // Avval yozuv qayd etiladi, keyingina panel ochiladi
-      await startImpersonation(tenant.id, session?.user.fullName ?? '', reason.trim())
+      const log = await startImpersonation(tenant.id, session?.user.fullName ?? '', reason.trim())
       toast.success(t('platform.enterStarted'))
-      enterClinic(tenant.id, tenant.name)
+      await enterClinic(tenant.id, tenant.name, log.token)
       onClose()
       setReason('')
       navigate('/')

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import * as authApi from '@/api/auth'
-import { setApiContext, setAuthToken } from '@/api/client'
+import * as platformApi from '@/api/platform'
+import { getAuthToken, setApiContext, setAuthToken, USE_MOCK } from '@/api/client'
 import { can as canCheck, scopedDoctorId } from '@/lib/permissions'
 import { useLocalStorage } from '@/lib/useLocalStorage'
 import { AuthContext } from './auth-context'
@@ -29,6 +30,35 @@ const STORAGE_KEY = 'clinicos.session.userId'
  * paneliga tushib qolmasligi kerak — ish yarim qoladi.
  */
 const IMPERSONATE_KEY = 'clinicos.session.impersonating'
+
+/*
+  Klinika paneliga kirganda platforma tokeni SHU YERDA turadi.
+
+  Kirish paytida joriy token nishon klinikaning qisqa muddatli
+  tokeniga almashadi. Chiqishda eskisini qaytarish kerak — aks
+  holda platforma egasi o'z panelidan ham chiqib ketardi.
+
+  localStorage'da, chunki kirilgan holatda sahifa yangilanishi
+  mumkin va o'shanda ham qaytadigan joy bo'lishi kerak.
+*/
+const PLATFORM_TOKEN_KEY = 'clinicos.session.platformToken'
+
+function readPlatformToken(): string | null {
+  try {
+    return localStorage.getItem(PLATFORM_TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+function writePlatformToken(token: string | null) {
+  try {
+    if (token) localStorage.setItem(PLATFORM_TOKEN_KEY, token)
+    else localStorage.removeItem(PLATFORM_TOKEN_KEY)
+  } catch {
+    /* saqlanmasa ham joriy sessiya ishlaydi */
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [userId, setUserId] = useLocalStorage<string | null>(STORAGE_KEY, null)
@@ -74,8 +104,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
 
-    authApi
-      .me(userId ?? undefined)
+    /*
+      Kirish tokenining muddati 30 daqiqa. Sahifa o'shandan keyin
+      yangilansa `me()` bo'sh qaytadi — bunda platforma tokeniga
+      qaytamiz, aks holda platforma egasi butunlay chiqib ketardi
+      va qaytadan parol terishga majbur bo'lardi.
+    */
+    const restoreSession = async () => {
+      const first = await authApi.me(userId ?? undefined)
+      if (first) return first
+
+      const platformToken = readPlatformToken()
+      if (USE_MOCK || !platformToken) return null
+
+      setAuthToken(platformToken)
+      writePlatformToken(null)
+      setImpersonating(null)
+      return authApi.me(userId ?? undefined)
+    }
+
+    restoreSession()
       .then((restored) => {
         if (cancelled) return
         if (restored) {
@@ -133,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserId(null)
     setImpersonating(null)
     setAuthToken(null)
+    writePlatformToken(null)
   }, [setUserId, setImpersonating])
 
   /**
@@ -141,14 +190,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Yozuv serverda allaqachon qayd etilgan (`startImpersonation`),
    * bu yerda faqat interfeys o'sha klinikaga qaraydi.
    */
+  /**
+   * Klinika paneliga kirish.
+   *
+   * Server bergan QISQA MUDDATLI tokenga almashamiz va sessiyani
+   * qaytadan o'qiymiz — endi u nishon klinikaniki bo'lib keladi,
+   * ruxsatlari esa faqat ko'rish.
+   *
+   * Demo rejimda token tushunchasi yo'q: u yerda mock qatlami
+   * `apiContext()` dagi klinikaga qarab filtrlaydi, shuning uchun
+   * faqat holatni o'zgartiramiz.
+   */
   const enterClinic = useCallback(
-    (tenantId: string, tenantName: string) => {
+    async (tenantId: string, tenantName: string, token?: string) => {
+      if (!USE_MOCK && token) {
+        // Platforma tokenini saqlab qo'yamiz — chiqishda kerak
+        writePlatformToken(getAuthToken())
+        setAuthToken(token)
+
+        const restored = await authApi.me()
+        if (restored) setSession(restored)
+      }
       setImpersonating({ tenantId, tenantName })
     },
     [setImpersonating],
   )
 
-  const exitClinic = useCallback(() => {
+  /**
+   * Klinika panelidan chiqish.
+   *
+   * Avval serverda kirish yozuvi yopiladi (shundan keyin kirish
+   * tokeni yaroqsiz), keyin platforma tokeni qaytariladi.
+   *
+   * Tartib muhim: token avval qaytarilsa, yopish so'rovi platforma
+   * tokeni bilan ketardi va server "siz klinika panelida emassiz"
+   * deb rad etardi — yozuv ochiq qolib ketardi.
+   */
+  const exitClinic = useCallback(async () => {
+    if (!USE_MOCK) {
+      const platformToken = readPlatformToken()
+
+      try {
+        await platformApi.endImpersonation()
+      } catch {
+        /*
+          Yopilmasa ham chiqamiz: token muddati o'tgan bo'lishi
+          mumkin, u holda yozuv baribir ishlatib bo'lmaydigan
+          holatda. Odamni panelda qamab qo'yishdan ma'no yo'q.
+        */
+      }
+
+      if (platformToken) {
+        setAuthToken(platformToken)
+        writePlatformToken(null)
+        const restored = await authApi.me()
+        if (restored) setSession(restored)
+      }
+    }
     setImpersonating(null)
   }, [setImpersonating])
 

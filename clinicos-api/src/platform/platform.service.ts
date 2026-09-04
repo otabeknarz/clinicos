@@ -6,6 +6,7 @@ import {
 import { Plan, Prisma } from '@prisma/client'
 import * as argon2 from 'argon2'
 
+import { AuthService } from '../auth/auth.service'
 import { toApi, toApiDate, toApiDateTime, toDb } from '../common/api-enum'
 import { paginated } from '../common/pagination'
 import { RequestContext } from '../common/request-context'
@@ -42,6 +43,7 @@ export class PlatformService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
+    private readonly auth: AuthService,
   ) {}
 
   /** Klinika filtridan tashqaridagi mijoz — faqat shu modulda */
@@ -300,6 +302,24 @@ export class PlatformService {
       include: { clinic: { select: { name: true } } },
     })
 
+    /*
+      Kirish uchun ALOHIDA token beriladi.
+
+      Ilgari bu yerda faqat yozuv yaratilardi va token berilmasdi.
+      Natijada mijoz tomoni klinikaga "kirdim" deb ko'rsatardi,
+      server esa eski tokendagi o'z klinikasini ko'rib turardi —
+      ya'ni kirish umuman ishlamasdi.
+
+      Yangi tokenda `impersonationId` bor: undan `jwt.strategy.ts`
+      qaysi klinika ekanini va faqat ko'rish ruxsatlarini oladi.
+      Muddati qisqa — `auth.service.ts` da.
+    */
+    const session = await this.auth.buildImpersonatedSession(
+      userId,
+      row.id,
+      row.clinicId,
+    )
+
     return {
       id: row.id,
       tenantId: row.clinicId,
@@ -308,7 +328,41 @@ export class PlatformService {
       reason: row.reason,
       startedAt: toApiDateTime(row.startedAt)!,
       endedAt: null,
+      token: session.token,
     }
+  }
+
+  /**
+   * Klinika panelidan chiqish.
+   *
+   * Kirish yozuvi YOPILADI (`endedAt`), shundan keyin o'sha
+   * token bilan kelgan har qanday so'rov rad etiladi —
+   * `jwt.strategy.ts` yopilgan yozuvni tekshiradi.
+   *
+   * Id so'ralmaydi: odam FAQAT o'zi kirgan sessiyani yopadi,
+   * uni kontekstdan olamiz. Aks holda id yuborib, boshqa
+   * xodimning ishini uzib qo'yish mumkin bo'lardi.
+   */
+  async endImpersonation() {
+    const { impersonationId } = this.ctx.require()
+    if (!impersonationId) {
+      throw new BadRequestException('Siz klinika panelida emassiz')
+    }
+
+    const row = await this.db.impersonationLog.findUnique({
+      where: { id: impersonationId },
+      select: { endedAt: true },
+    })
+
+    // Yopilgan bo'lsa xato bermaymiz: natija baribir bir xil
+    if (row && !row.endedAt) {
+      await this.db.impersonationLog.update({
+        where: { id: impersonationId },
+        data: { endedAt: new Date() },
+      })
+    }
+
+    return { ok: true }
   }
 
   /* ---------------- Ro'yxatlar ---------------- */

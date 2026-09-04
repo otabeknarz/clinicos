@@ -239,6 +239,14 @@ export interface ImpersonationLog {
   reason: string
   startedAt: ISODateTime
   endedAt: ISODateTime | null
+  /**
+   * Kirish uchun QISQA MUDDATLI token (30 daqiqa).
+   *
+   * Faqat kirish so'rovining javobida keladi; jurnal ro'yxatida
+   * bu maydon bo'lmaydi. Shu token bilan yuborilgan so'rovlar
+   * o'sha klinikaga qaraydi va faqat ko'rish ruxsatiga ega.
+   */
+  token?: string
 }
 
 /**

@@ -156,6 +156,11 @@ Path alias `@/` → `src/`, configured in both `vite.config.ts` and `tsconfig.ap
 
 ## Traps
 
+- **Anything role-shaped is invisible in demo mode.** The mock layer answers from a client-side
+  context, so role casing, token handling, and impersonation all "work" until a real backend is
+  connected. `AuthService.buildSession` returned the raw Prisma `Role` (`SUPERADMIN`) against a
+  contract that is lowercase, which silently sent every non-owner role to the wrong home page.
+  Drive each of the four roles against the API before believing a change.
 - **The frontend token lives in `localStorage`, and the session survives a reload only because
   of that.** In mock mode `me()` restores from a stored `userId` with no token, so anything that
   breaks token persistence is invisible until a real backend is connected. Test session restore
@@ -185,8 +190,13 @@ backups, no UI for reading the audit log, the patient-feedback endpoints are del
 until rate limiting exists (phone-number enumeration risk), and penalty rules are stored but
 never applied — the background job doesn't exist.
 
-**Impersonation is half-wired.** `POST /platform/tenants/:id/impersonate` writes the log row but
-returns no token, and `AuthService.buildSession` signs only `{sub, clinicId}` — so the
-`payload.impersonationId` branch in `jwt.strategy.ts` is unreachable. Against a real backend a
-superadmin who "enters" a clinic keeps their own `clinicId` and gets 403 on every clinic route.
-It appears to work in demo mode only because the mock layer trusts the client-side `apiContext()`.
+**Impersonation** issues a separate 30-minute token carrying `impersonationId`; `jwt.strategy.ts`
+resolves the target `clinicId` from the log row and swaps in `IMPERSONATION_PERMISSIONS` (view-only
+— no `manage`, no `chat.use`, no `platform.*`). Exit lives in its own `ImpersonationController`
+because `PlatformController` is blanket-gated on `platform.view`, which an impersonating user does
+not have; it takes no id and closes only the caller's own session. The frontend parks the platform
+token under `clinicos.session.platformToken` and swaps back on exit or when the short token expires.
+
+**`check:permissions` compares permission *names* only**, not the role→permission mapping. A page
+that calls an endpoint its role lacks (as `DoctorHome` did with `GET /doctors/:id`) passes every
+static check and only shows up when you drive the app as that role.

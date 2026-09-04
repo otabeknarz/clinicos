@@ -143,6 +143,18 @@ fayllarni chiqarmasdi. Sababi `tsconfig.json` da yozilgan.
 faqat tugmani ko'rsatish uchun. Haqiqiy cheklov shu yerda.
 Ikkalasi ajralib ketmasligi uchun `npm run check:permissions`.
 
+DIQQAT: u faqat ruxsat NOMLARINI solishtiradi, rol → ruxsat
+taqsimotini emas. Ya'ni "shifokorda `doctors.view` yo'q, lekin
+uning sahifasi shu endpointga uradi" turidagi nomuvofiqlikni
+u ushlamaydi — bunday narsa faqat ilovani rol nomidan bosib
+ko'rganda chiqadi.
+
+**Klinika paneliga kirish.** Platforma egasi kirganda tokenga
+`impersonationId` yoziladi, muddati 30 daqiqa, ruxsatlari esa
+`IMPERSONATION_PERMISSIONS` — faqat ko'rish. Chiqish alohida
+kontrollerda (`impersonation.controller.ts`), chunki kirgan
+odamda `platform.*` ruxsatlari bo'lmaydi.
+
 ---
 
 ## Frontend bilan ulash

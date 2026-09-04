@@ -321,9 +321,9 @@ export async function listImpersonations(
  * bunday kirish ishonchni buzadi, shuning uchun har bir kirish
  * qayd etiladi va klinika egasiga ko'rinadi.
  *
- * DASTURCHIGA: serverda kirish MUDDATLI token bilan berilishi
- * kerak (masalan 30 daqiqa), va o'sha sessiyada yozish amallari
- * cheklanishi maqsadga muvofiq.
+ * Server QISQA MUDDATLI token qaytaradi (30 daqiqa) va o'sha
+ * sessiyada faqat KO'RISH mumkin — yozish ruxsatlari berilmaydi.
+ * Chiqish uchun `endImpersonation()`.
  */
 // POST /platform/tenants/:id/impersonate
 export async function startImpersonation(
@@ -353,6 +353,22 @@ export async function startImpersonation(
 
   db.impersonations.insert(log)
   return delay(log, 260)
+}
+
+/**
+ * Klinika panelidan chiqish.
+ *
+ * Server kirish yozuvini yopadi, shundan keyin kirish tokeni
+ * yaroqsiz bo'ladi. Id yuborilmaydi — server uni tokendan oladi,
+ * ya'ni odam faqat o'zi kirgan sessiyani yopa oladi.
+ */
+// POST /platform/impersonations/end
+export async function endImpersonation(): Promise<void> {
+  if (!USE_MOCK) {
+    await request<void>('POST', '/platform/impersonations/end')
+    return
+  }
+  await delay(null, 120)
 }
 
 /* ------------------------------------------------------------------ */

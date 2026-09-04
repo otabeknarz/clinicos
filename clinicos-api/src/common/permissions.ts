@@ -162,6 +162,48 @@ export const SUPERADMIN_PERMISSIONS: readonly Permission[] = [
   'settings.view',
 ] as const
 
+/**
+ * PLATFORMA EGASI KLINIKA PANELIGA KIRGANDA.
+ *
+ * Faqat KO'RISH. Bu ro'yxatda birorta ham `create`, `edit`,
+ * `manage` yoki `delete` yo'q — va qo'shilmasligi kerak.
+ *
+ * NEGA: platforma xodimi mijoz klinikasining ishchisi emas.
+ * U yordam berish yoki muammoni tekshirish uchun kiradi, ish
+ * qilish uchun emas. Yozish imkoni bo'lsa, klinikadagi har bir
+ * yozuvning "kim qilgani" savoli chalkashadi — egasi o'z
+ * xodimini ayblab, aslida platforma xodimi tegan bo'lib chiqadi.
+ *
+ * `chat.use` ham YO'Q: u xabar yozish demak, ya'ni platforma
+ * xodimi klinika xodimi nomidan gapirgan bo'lardi.
+ *
+ * Platforma ruxsatlari (`platform.*`) ham berilmaydi — kirgan
+ * odam o'sha payt klinika ichida, platforma panelida emas.
+ *
+ * Har bir ochilgan tibbiy yozuv audit jurnalida qoladi
+ * (`audit.service.ts`), va `meta` da kirish yozuvining id'si
+ * bo'ladi — ya'ni bu klinika xodimi emasligi ko'rinib turadi.
+ */
+export const IMPERSONATION_PERMISSIONS: readonly Permission[] = [
+  'dashboard.view',
+  'patients.view',
+  'patients.viewMedical',
+  'appointments.view',
+  'calendar.view',
+  'doctors.view',
+  'services.view',
+  'payments.view',
+  'visits.view',
+  'ward.view',
+  'staff.view',
+  'attendance.view',
+  'feedback.view',
+  'cashcontrol.view',
+  'revenue.view',
+  'analytics.view',
+  'settings.view',
+] as const
+
 export const ROLE_PERMISSIONS: Record<Role, readonly string[]> = {
   SUPERADMIN: SUPERADMIN_PERMISSIONS,
   OWNER: OWNER_PERMISSIONS,
