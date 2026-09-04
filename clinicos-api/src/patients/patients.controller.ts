@@ -10,6 +10,7 @@ import {
   Query,
 } from '@nestjs/common'
 
+import { Audit } from '../common/audit.interceptor'
 import { RequirePermission } from '../common/guards/permissions.guard'
 import {
   CreatePatientDto,
@@ -80,11 +81,12 @@ export class PatientsController {
     u bemorni ro'yxatga oladi va pulini oladi, lekin tashxisini
     ko'rmaydi. Tibbiy sir shifokor bilan bemor o'rtasida qoladi.
 
-    DASTURCHIGA: bu so'rovni AuditLog'ga yozish kerak — kim,
-    qachon, qaysi bemorning tibbiy yozuvini ochgani qolsin.
+    Har bir ochilish AuditLog'ga yoziladi: kim, qachon, qaysi
+    bemorning tibbiy yozuviga qaragani qolsin.
   */
   @Get(':id/visits')
   @RequirePermission('visits.view')
+  @Audit('view_medical', 'Patient')
   visits(@Param() params: IdParamDto) {
     return this.patients.visits(params.id)
   }

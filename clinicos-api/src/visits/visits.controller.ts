@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common'
 
+import { Audit } from '../common/audit.interceptor'
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { IdParamDto } from '../patients/patients.dto'
 import { FollowUpPatchDto, FollowUpsQueryDto, VisitInputDto } from './visits.dto'
@@ -25,6 +26,7 @@ export class VisitsController {
   // GET /visits/:id
   @Get('visits/:id')
   @RequirePermission('visits.view')
+  @Audit('view_medical', 'Visit')
   get(@Param() params: IdParamDto) {
     return this.visits.get(params.id)
   }
@@ -32,6 +34,7 @@ export class VisitsController {
   // GET /appointments/:id/visit  — qabulga biriktirilgan yozuv
   @Get('appointments/:id/visit')
   @RequirePermission('visits.view')
+  @Audit('view_medical', 'Appointment')
   byAppointment(@Param() params: IdParamDto) {
     return this.visits.byAppointment(params.id)
   }

@@ -85,7 +85,8 @@ Bular ataylab qoldirilgan. Ishga tushirishdan oldin kerak:
 
 - **Row Level Security** bazada (`DATABASE.md`, 1-bo'lim)
 - **Zaxira nusxa** — haqiqiy bemor ma'lumoti kirishidan oldin
-- **AuditLog to'ldirish** — tibbiy yozuvni kim ochgani
+- **Audit jurnalini ko'rish** — yozuvlar yig'ilyapti, lekin
+  ularni ko'radigan sahifa yo'q
 - **Bemor fikri havolasini ochish** — so'rov chastotasi cheklovi
   bilan birga, aks holda telefon raqamlarini sinab bemorlar
   bazasini aniqlab olish mumkin

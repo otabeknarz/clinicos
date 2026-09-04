@@ -106,6 +106,14 @@ that injects `clinicId` into every operation on a tenant model. Things to know b
 The `TENANT_MODELS`/`GLOBAL_MODELS` sets are generated from whether the model has a `clinicId`
 column — do not hand-edit them. A model missed here is a model with no tenant filter.
 
+**Audit logging** is declarative: `@Audit(action, entityType)` from
+`src/common/audit.interceptor.ts` on a route, written by `AuditService` (global `AuditModule`).
+The row is written **before** the handler runs, so a failed audit write fails the request and a
+probe for someone else's record is logged even when it 404s — same precedent as the impersonation
+log, which is created before entry. Login is audited separately (`recordLogin`), outside the
+tenant filter, because no request context exists yet on a `@Public()` route; that one never blocks
+the login.
+
 **Permissions are duplicated on purpose** — `clinicos-api/src/common/permissions.ts` (the real
 check, via `@RequirePermission('...')`) and `clinicos-frontend/src/lib/permissions.ts` +
 the `Permission` union in `clinicos-frontend/src/types/models.ts` (button visibility only).
@@ -148,10 +156,10 @@ Path alias `@/` → `src/`, configured in both `vite.config.ts` and `tsconfig.ap
 
 ## Traps
 
-- **`check:permissions` and `check:endpoints` look for the frontend at `../clinicos`, but the
-  directory is `clinicos-frontend`.** Both scripts degrade silently — `check:endpoints` verifies
-  nothing and `check:permissions` prints a warning and skips the frontend comparison. Fix the
-  paths in `clinicos-api/scripts/` or symlink before trusting a green `npm run check`.
+- **The frontend token lives in `localStorage`, and the session survives a reload only because
+  of that.** In mock mode `me()` restores from a stored `userId` with no token, so anything that
+  breaks token persistence is invisible until a real backend is connected. Test session restore
+  against the API, never against demo mode.
 - **Stay on Prisma 7.10.0.** The `latest` tag currently points at a release candidate.
 - **`incremental` is off in `clinicos-api/tsconfig.json` on purpose.** With it on, `tsc --noEmit`
   marks the build as done and the subsequent `nest build` emits nothing.
@@ -173,6 +181,12 @@ Path alias `@/` → `src/`, configured in both `vite.config.ts` and `tsconfig.ap
 ## Known gaps (intentional, needed before production)
 
 Row Level Security in the database (application-layer filtering is the only layer today),
-backups, `AuditLog` is never written to, the patient-feedback endpoints are deliberately closed
+backups, no UI for reading the audit log, the patient-feedback endpoints are deliberately closed
 until rate limiting exists (phone-number enumeration risk), and penalty rules are stored but
 never applied — the background job doesn't exist.
+
+**Impersonation is half-wired.** `POST /platform/tenants/:id/impersonate` writes the log row but
+returns no token, and `AuthService.buildSession` signs only `{sub, clinicId}` — so the
+`payload.impersonationId` branch in `jwt.strategy.ts` is unreachable. Against a real backend a
+superadmin who "enters" a clinic keeps their own `clinicId` and gets 403 on every clinic route.
+It appears to work in demo mode only because the mock layer trusts the client-side `apiContext()`.

@@ -1,6 +1,8 @@
-import { Body, Controller, Get, Post } from '@nestjs/common'
+import { Body, Controller, Get, Post, Req } from '@nestjs/common'
+import { Request } from 'express'
 import { IsEmail, IsString, MinLength } from 'class-validator'
 
+import { clientIp } from '../common/client-ip'
 import { Public } from '../common/guards/jwt-auth.guard'
 import { RequestContext } from '../common/request-context'
 import { AuthService } from './auth.service'
@@ -21,11 +23,19 @@ export class AuthController {
     private readonly ctx: RequestContext,
   ) {}
 
-  // POST /auth/login  →  { user, clinic, permissions, token }
+  /*
+    POST /auth/login  →  { user, clinic, permissions, token }
+
+    Manzil va brauzer audit jurnaliga yoziladi. Proksi orqasida
+    manzil qanday olinishi — `common/client-ip.ts` da.
+  */
   @Public()
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto.email, dto.password)
+  login(@Body() dto: LoginDto, @Req() req: Request) {
+    return this.auth.login(dto.email, dto.password, {
+      ipAddress: clientIp(req),
+      userAgent: req.get('user-agent') ?? null,
+    })
   }
 
   // GET /auth/me  →  sahifa yangilanganda sessiyani tiklash

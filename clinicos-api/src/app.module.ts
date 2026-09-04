@@ -1,6 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
-import { APP_GUARD } from '@nestjs/core'
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core'
 
 import { AnalyticsModule } from './analytics/analytics.module'
 import { AppointmentsModule } from './appointments/appointments.module'
@@ -11,6 +11,8 @@ import { CashControlModule } from './cash-control/cash-control.module'
 import { ChatModule } from './chat/chat.module'
 import { ClinicModule } from './clinic/clinic.module'
 import { DoctorsModule } from './doctors/doctors.module'
+import { AuditInterceptor } from './common/audit.interceptor'
+import { AuditModule } from './common/audit.module'
 import { ContextMiddleware } from './common/context.middleware'
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
 import { PermissionsGuard } from './common/guards/permissions.guard'
@@ -34,6 +36,7 @@ import { ServicesModule } from './services/services.module'
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    AuditModule,
     AuthModule,
     PatientsModule,
     ServicesModule,
@@ -78,6 +81,16 @@ import { ServicesModule } from './services/services.module'
     */
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
+
+    /*
+      Audit jurnali. Interseptorlar qorovullardan KEYIN ishlaydi,
+      shuning uchun bu yerga yetganda foydalanuvchi tekshirilgan
+      va so'rov kontekstiga qo'yilgan bo'ladi.
+
+      Faqat `@Audit(...)` bilan belgilangan marshrutlarga tegadi —
+      qolganlariga qo'shimcha so'rov qo'shmaydi.
+    */
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
   ],
 })
 export class AppModule implements NestModule {

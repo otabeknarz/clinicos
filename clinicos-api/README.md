@@ -3,7 +3,7 @@
 Xususiy klinikalar uchun boshqaruv tizimining backendi.
 NestJS + PostgreSQL + Prisma.
 
-Frontend alohida loyihada: `../clinicos`.
+Frontend alohida loyihada: `../clinicos-frontend`.
 
 ---
 
@@ -108,6 +108,8 @@ src/
     permissions.ts        Rollar va ruxsatlar (frontend bilan mos)
     request-context.ts    Joriy foydalanuvchi (AsyncLocalStorage)
     guards/               Token va ruxsat qorovullari
+    audit.service.ts      Audit jurnaliga yozish
+    audit.interceptor.ts  `@Audit(...)` dekoratori
     api-enum.ts           Baza ↔ interfeys enum o'girgichi
   <modul>/
     *.controller.ts       Marshrutlar va ruxsatlar
@@ -168,8 +170,10 @@ kerak bo'ladi:
 - **Row Level Security** — `docs/DATABASE.md` (frontend loyihasida)
   1-bo'limga qarang. Dastur filtri bor, baza darajasidagi ikkinchi
   qatlam hali yo'q.
-- **AuditLog to'ldirilmaydi** — jadval bor, lekin tibbiy yozuvni
-  kim ochgani hozircha yozilmaydi.
+- **Audit jurnali qisman** — tibbiy yozuv ochilishi va tizimga
+  kirish yoziladi (`src/common/audit.service.ts`). Jurnalni
+  KO'RISH uchun interfeys hali yo'q: hozircha faqat bazadan
+  o'qiladi (`audit_logs` jadvali).
 - **Bemor fikri havolasi yopiq** — SMS orqali yuboriladigan
   sahifa uchun `POST /feedback` va `/feedback/lookup` ochilishi
   kerak. Ochishdan **oldin** so'rov chastotasini cheklang, aks
