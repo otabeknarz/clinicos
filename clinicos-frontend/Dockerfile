@@ -3,8 +3,9 @@
 # Ikki bosqich: yig'ish va tarqatish. Natija — Nginx ichidagi
 # statik fayllar, Node umuman qolmaydi.
 
-FROM node:20-slim AS build
+FROM node:24-slim AS build
 
+# Node 24: lockfile npm 11 bilan yozilgan, npm 10 uni rad etadi.
 WORKDIR /app
 
 COPY package.json package-lock.json ./

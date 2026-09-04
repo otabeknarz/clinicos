@@ -13,7 +13,12 @@
 # bo'lmasdi. Image kattaroq, lekin serverga kirib ish qilish
 # mumkin bo'lib qoladi.
 
-FROM node:20-slim
+FROM node:24-slim
+
+# NEGA 24: `package-lock.json` npm 11 bilan yozilgan. Node 20 da
+# npm 10 keladi va u daraxtni boshqacha yechib, `npm ci` ni
+# "lockfile mos emas" deb to'xtatadi (chokidar, readdirp).
+# Loyiha ham Node 24 da ishlab chiqilgan — bir xil tursin.
 
 # Prisma va HTTPS uchun
 RUN apt-get update \
