@@ -1,0 +1,53 @@
+{
+  "name": "clinicos-api",
+  "version": "0.1.0",
+  "description": "ClinicOS backend",
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main",
+    "typecheck": "tsc --noEmit",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
+    "gen:tenant-models": "python scripts/gen-tenant-models.py",
+    "check": "npm run typecheck && npm run check:permissions && npm run check:endpoints && npm run build",
+    "test:isolation": "ts-node scripts/test-isolation.ts",
+    "check:permissions": "ts-node scripts/check-permissions.ts",
+    "check:endpoints": "ts-node scripts/check-endpoints.ts",
+    "smoke": "ts-node scripts/smoke.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.24",
+    "@types/node": "^26.4.1",
+    "@types/passport-jwt": "^4.0.1",
+    "prisma": "^7.10.0",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.2.3",
+    "@nestjs/config": "^4.0.4",
+    "@nestjs/core": "^11.2.3",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^11.2.3",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "argon2": "^0.45.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "private": true
+}

@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Bog'liqliklar va yig'ilgan fayllar (har bir loyihaning o'z .gitignore si ham bor)
+node_modules
+dist
+
+# Muhit sozlamalari — parollar. .env.example nusxalanadi.
+.env
+.env.local
+.env.*.local
+
+*.log

@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": "./",
+
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "sourceMap": true,
+    /*
+      `incremental` ATAYLAB o'chirilgan.
+
+      U yoqilganda `tsc --noEmit` (tekshiruv) build ma'lumotini
+      "hammasi qurilgan" deb belgilab qo'yardi va keyingi
+      `nest build` fayllarni umuman chiqarmasdi — dist yarim
+      bo'sh qolib, server "modul topilmadi" deb qulardi.
+      Loyiha kichik, to'liq qurish baribir bir necha soniya.
+    */
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "strict": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "declaration": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

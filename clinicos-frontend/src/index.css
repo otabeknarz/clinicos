@@ -1,0 +1,804 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   ClinicOS — dizayn tizimi (Apple HIG uslubida)
+
+   Tamoyillar:
+   1. Ranglar SEMANTIK. Hech qachon `text-gray-500` yozmaymiz —
+      `text-label-secondary` yozamiz. Shu tufayli dark mode bepul keladi.
+   2. Ko'k (systemBlue) = harakat. Binafsha (systemPurple) = brend.
+      Har bir elementni binafsha qilmaymiz.
+   3. Apple sirtlari: qattiq kontur emas, yupqa separator + juda siyrak soya.
+   4. Squircle burchaklar — qo'llab-quvvatlanadigan brauzerda, aks holda
+      oddiy border-radius.
+
+   Manba: Apple Human Interface Guidelines (Color, Typography, Materials).
+   Apple rasmiy hex e'lon qilmaydi — quyidagilar barqaror amaliy qiymatlar.
+   ============================================================ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------ */
+/* 1. Xom palitra — Apple tizim ranglari                              */
+/* ------------------------------------------------------------------ */
+
+:root {
+  /* --- Tizim ranglari (yorug' rejim) --- */
+  --ios-blue: #007aff;
+  --ios-purple: #af52de;
+  --ios-indigo: #5856d6;
+  --ios-green: #34c759;
+  --ios-orange: #ff9500;
+  --ios-red: #ff3b30;
+  --ios-teal: #30b0c7;
+  --ios-yellow: #ffcc00;
+  --ios-pink: #ff2d55;
+
+  /* --- Kulranglar (yorug') --- */
+  --ios-gray: #8e8e93;
+  --ios-gray-2: #aeaeb2;
+  --ios-gray-3: #c7c7cc;
+  --ios-gray-4: #d1d1d6;
+  --ios-gray-5: #e5e5ea;
+  --ios-gray-6: #f2f2f7;
+
+  /* --- Sirtlar --- */
+  /* Guruhlangan fon — sahifa orqasi */
+  --surface-canvas: #f2f2f7;
+  /* Karta / panel */
+  --surface-raised: #ffffff;
+  /* Karta ustidagi ikkinchi qatlam (modal ichidagi blok) */
+  --surface-sunken: #f2f2f7;
+  /* Modal / popover foni */
+  --surface-overlay: #ffffff;
+
+  /* --- Matn (label) --- */
+  --label-primary: #000000;
+  --label-secondary: rgb(60 60 67 / 0.6);
+  --label-tertiary: rgb(60 60 67 / 0.3);
+  --label-quaternary: rgb(60 60 67 / 0.18);
+  /* Rangli fon ustidagi matn */
+  --label-on-accent: #ffffff;
+
+  /* --- Chegara va to'ldirish --- */
+  --separator: rgb(60 60 67 / 0.29);
+  --separator-opaque: #c6c6c8;
+  --fill-primary: rgb(120 120 128 / 0.2);
+  --fill-secondary: rgb(120 120 128 / 0.16);
+  --fill-tertiary: rgb(118 118 128 / 0.12);
+  --fill-quaternary: rgb(116 116 128 / 0.08);
+
+  /* --- Yumshoq rangli fonlar (badge, holat) --- */
+  --tint-blue-soft: rgb(0 122 255 / 0.12);
+  --tint-purple-soft: rgb(175 82 222 / 0.12);
+  --tint-green-soft: rgb(52 199 89 / 0.14);
+  --tint-orange-soft: rgb(255 149 0 / 0.14);
+  --tint-red-soft: rgb(255 59 48 / 0.12);
+  --tint-gray-soft: rgb(120 120 128 / 0.12);
+
+  /* --- Material (shaffof qatlam) --- */
+  --material-thick: rgb(255 255 255 / 0.82);
+  --material-regular: rgb(255 255 255 / 0.72);
+  --material-thin: rgb(255 255 255 / 0.6);
+  --material-blur: 24px;
+  --material-saturate: 180%;
+
+  /* --- Soyalar: Apple'da soya deyarli ko'rinmaydi --- */
+  --elev-xs: 0 0.5px 1px rgb(0 0 0 / 0.04);
+  --elev-sm: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.03);
+  --elev-md: 0 2px 6px rgb(0 0 0 / 0.05), 0 8px 20px -6px rgb(0 0 0 / 0.06);
+  --elev-lg: 0 8px 24px -4px rgb(0 0 0 / 0.08), 0 24px 56px -12px rgb(0 0 0 / 0.12);
+  --elev-popover: 0 0 0 0.5px rgb(0 0 0 / 0.06), 0 12px 32px -8px rgb(0 0 0 / 0.16);
+}
+
+.dark {
+  /* --- Tizim ranglari (qorong'i rejimda yorqinroq variant) --- */
+  --ios-blue: #0a84ff;
+  --ios-purple: #bf5af2;
+  --ios-indigo: #5e5ce6;
+  --ios-green: #30d158;
+  --ios-orange: #ff9f0a;
+  --ios-red: #ff453a;
+  --ios-teal: #40c8e0;
+  --ios-yellow: #ffd60a;
+  --ios-pink: #ff375f;
+
+  /* --- Kulranglar (qorong'i — tartib teskari) --- */
+  --ios-gray: #8e8e93;
+  --ios-gray-2: #636366;
+  --ios-gray-3: #48484a;
+  --ios-gray-4: #3a3a3c;
+  --ios-gray-5: #2c2c2e;
+  --ios-gray-6: #1c1c1e;
+
+  /* --- Sirtlar --- */
+  --surface-canvas: #000000;
+  --surface-raised: #1c1c1e;
+  --surface-sunken: #2c2c2e;
+  --surface-overlay: #1c1c1e;
+
+  /* --- Matn --- */
+  --label-primary: #ffffff;
+  --label-secondary: rgb(235 235 245 / 0.6);
+  --label-tertiary: rgb(235 235 245 / 0.3);
+  --label-quaternary: rgb(235 235 245 / 0.18);
+  --label-on-accent: #ffffff;
+
+  /* --- Chegara va to'ldirish --- */
+  --separator: rgb(84 84 88 / 0.6);
+  --separator-opaque: #38383a;
+  --fill-primary: rgb(120 120 128 / 0.36);
+  --fill-secondary: rgb(120 120 128 / 0.32);
+  --fill-tertiary: rgb(118 118 128 / 0.24);
+  --fill-quaternary: rgb(118 118 128 / 0.18);
+
+  /* --- Yumshoq fonlar --- */
+  --tint-blue-soft: rgb(10 132 255 / 0.2);
+  --tint-purple-soft: rgb(191 90 242 / 0.2);
+  --tint-green-soft: rgb(48 209 88 / 0.2);
+  --tint-orange-soft: rgb(255 159 10 / 0.2);
+  --tint-red-soft: rgb(255 69 58 / 0.2);
+  --tint-gray-soft: rgb(120 120 128 / 0.24);
+
+  /* --- Material --- */
+  --material-thick: rgb(28 28 30 / 0.84);
+  --material-regular: rgb(28 28 30 / 0.72);
+  --material-thin: rgb(28 28 30 / 0.6);
+
+  /* --- Soyalar: qorong'ida soya o'rniga chegara ishlaydi --- */
+  --elev-xs: 0 0.5px 1px rgb(0 0 0 / 0.3);
+  --elev-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --elev-md: 0 4px 12px rgb(0 0 0 / 0.4);
+  --elev-lg: 0 12px 36px rgb(0 0 0 / 0.55);
+  --elev-popover: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 16px 40px rgb(0 0 0 / 0.6);
+}
+
+/* ------------------------------------------------------------------ */
+/* 2. Tailwind tokenlari                                              */
+/*    `inline` — utilitalar CSS o'zgaruvchisiga bevosita murojaat      */
+/*    qiladi, shuning uchun .dark almashganda hammasi o'zi yangilanadi */
+/* ------------------------------------------------------------------ */
+
+@theme inline {
+  /* --- Sirtlar --- */
+  --color-canvas: var(--surface-canvas);
+  --color-raised: var(--surface-raised);
+  --color-sunken: var(--surface-sunken);
+  --color-overlay: var(--surface-overlay);
+
+  /* --- Matn --- */
+  --color-label: var(--label-primary);
+  --color-label-secondary: var(--label-secondary);
+  --color-label-tertiary: var(--label-tertiary);
+  --color-label-quaternary: var(--label-quaternary);
+  --color-on-accent: var(--label-on-accent);
+
+  /* --- Chegaralar --- */
+  --color-separator: var(--separator);
+  --color-separator-opaque: var(--separator-opaque);
+
+  /* --- To'ldirishlar --- */
+  --color-fill: var(--fill-primary);
+  --color-fill-2: var(--fill-secondary);
+  --color-fill-3: var(--fill-tertiary);
+  --color-fill-4: var(--fill-quaternary);
+
+  /* --- Harakat rangi (ko'k) --- */
+  --color-accent: var(--ios-blue);
+  --color-accent-soft: var(--tint-blue-soft);
+
+  /* --- Brend rangi (binafsha) --- */
+  --color-brand: var(--ios-purple);
+  --color-brand-soft: var(--tint-purple-soft);
+
+  /* --- Holat ranglari --- */
+  --color-ok: var(--ios-green);
+  --color-ok-soft: var(--tint-green-soft);
+  --color-warn: var(--ios-orange);
+  --color-warn-soft: var(--tint-orange-soft);
+  --color-bad: var(--ios-red);
+  --color-bad-soft: var(--tint-red-soft);
+  --color-neutral: var(--ios-gray);
+  --color-neutral-soft: var(--tint-gray-soft);
+
+  /* --- Diagramma palitrasi (Apple tizim ranglari) --- */
+  --color-chart-1: var(--ios-blue);
+  --color-chart-2: var(--ios-purple);
+  --color-chart-3: var(--ios-teal);
+  --color-chart-4: var(--ios-orange);
+  --color-chart-5: var(--ios-green);
+  --color-chart-6: var(--ios-pink);
+  --color-chart-7: var(--ios-indigo);
+  --color-chart-8: var(--ios-yellow);
+
+  /* --- Kulrang shkala (kerak bo'lganda) --- */
+  --color-gray-1: var(--ios-gray);
+  --color-gray-2: var(--ios-gray-2);
+  --color-gray-3: var(--ios-gray-3);
+  --color-gray-4: var(--ios-gray-4);
+  --color-gray-5: var(--ios-gray-5);
+  --color-gray-6: var(--ios-gray-6);
+
+  /* --- Shrift --- */
+  /* Mac'da haqiqiy SF Pro chiqadi. Boshqa OS'da Inter — SF'ga eng yaqin
+     bepul shrift. SF Pro litsenziyasi veb'ga ruxsat bermaydi. */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter',
+    'Segoe UI', system-ui, Roboto, sans-serif;
+  --font-mono:
+    'SF Mono', ui-monospace, 'JetBrains Mono', 'Cascadia Code', Menlo, monospace;
+
+  /* --- Tipografik shkala (Apple HIG, veb uchun px'da) --- */
+  --text-large-title: 34px;
+  --text-large-title--line-height: 41px;
+  --text-large-title--letter-spacing: -0.6px;
+  --text-large-title--font-weight: 700;
+
+  --text-title-1: 28px;
+  --text-title-1--line-height: 34px;
+  --text-title-1--letter-spacing: -0.5px;
+  --text-title-1--font-weight: 700;
+
+  --text-title-2: 22px;
+  --text-title-2--line-height: 28px;
+  --text-title-2--letter-spacing: -0.4px;
+  --text-title-2--font-weight: 700;
+
+  --text-title-3: 20px;
+  --text-title-3--line-height: 25px;
+  --text-title-3--letter-spacing: -0.3px;
+  --text-title-3--font-weight: 600;
+
+  --text-headline: 17px;
+  --text-headline--line-height: 22px;
+  --text-headline--letter-spacing: -0.2px;
+  --text-headline--font-weight: 600;
+
+  --text-body: 17px;
+  --text-body--line-height: 24px;
+  --text-body--letter-spacing: -0.2px;
+
+  --text-callout: 16px;
+  --text-callout--line-height: 21px;
+  --text-callout--letter-spacing: -0.2px;
+
+  --text-subhead: 15px;
+  --text-subhead--line-height: 20px;
+  --text-subhead--letter-spacing: -0.1px;
+
+  --text-footnote: 13px;
+  --text-footnote--line-height: 18px;
+  --text-footnote--letter-spacing: 0px;
+
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-caption--letter-spacing: 0px;
+
+  --text-caption-2: 11px;
+  --text-caption-2--line-height: 14px;
+  --text-caption-2--letter-spacing: 0.06px;
+
+  /* --- Burchak radiusi --- */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 22px;
+  --radius-3xl: 28px;
+  --radius-full: 9999px;
+
+  /* --- Soyalar --- */
+  --shadow-xs: var(--elev-xs);
+  --shadow-sm: var(--elev-sm);
+  --shadow-md: var(--elev-md);
+  --shadow-lg: var(--elev-lg);
+  --shadow-popover: var(--elev-popover);
+
+  /* --- Animatsiya --- */
+  /* Apple'ning standart egri chizig'iga yaqin */
+  --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --animate-fade-in: fade-in 0.2s var(--ease-apple);
+  --animate-rise: rise 0.28s var(--ease-out-soft);
+  --animate-scale-in: scale-in 0.22s var(--ease-apple);
+  --animate-pulse-soft: pulse-soft 1.8s ease-in-out infinite;
+
+  /* --- Platforma paneli uchun --- */
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --animate-slide-up: slide-up 0.55s var(--ease-out-soft) both;
+  --animate-grow-bar: grow-bar 0.7s var(--ease-spring) both;
+  --animate-draw-line: draw-line 0.7s var(--ease-out-soft) both;
+  --animate-count-in: count-in 0.5s var(--ease-spring) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+  Platforma paneli animatsiyalari.
+  Ular faqat `.platform-motion` ichida ishlaydi — klinika paneli
+  tinch qoladi (kunlik ish qurolida harakat chalg'itadi).
+*/
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    /* Masofa ataylab sezilarli: 14px ko'zga tashlanmaydi */
+    transform: translateY(26px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Ustunli grafiklar pastdan o'sib chiqadi */
+@keyframes grow-bar {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/* Chiziqlar chapdan o'ngga to'ladi */
+@keyframes draw-line {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Raqamlar biroz pastdan chiqib, joyiga o'tiradi */
+@keyframes count-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -180% 0;
+  }
+  to {
+    background-position: 180% 0;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 3. Bazaviy qatlam                                                  */
+/* ------------------------------------------------------------------ */
+
+@layer base {
+  * {
+    border-color: var(--separator);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--surface-canvas);
+    color: var(--label-primary);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 20px;
+    letter-spacing: -0.1px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Apple'da fokus halqasi — ko'k, yumshoq */
+  :focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--ios-blue) 45%, transparent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Sarlavhalar standart bo'yicha qalin va zich */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+
+  /* Raqamlar jadvalda tekis tursin */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--ios-blue) 22%, transparent);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 4. Komponent utilitalari                                           */
+/* ------------------------------------------------------------------ */
+
+@layer components {
+  /* Sahifa ichki chekkalari — barcha sahifalar shuni ishlatadi */
+  .wrap {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: 20px;
+  }
+
+  @media (min-width: 768px) {
+    .wrap {
+      padding-inline: 28px;
+    }
+  }
+
+  @media (min-width: 1440px) {
+    .wrap {
+      padding-inline: 40px;
+    }
+  }
+
+  /* --- Karta --- */
+  .card {
+    background: var(--surface-raised);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--elev-sm);
+  }
+
+  /* Qorong'i rejimda soya o'rniga yupqa chegara ishlaydi */
+  .dark .card {
+    box-shadow: none;
+    border: 0.5px solid var(--separator);
+  }
+
+  .card-lg {
+    border-radius: var(--radius-2xl);
+  }
+
+  .card-interactive {
+    transition:
+      box-shadow 0.24s var(--ease-apple),
+      transform 0.24s var(--ease-apple),
+      background-color 0.24s var(--ease-apple);
+  }
+
+  .card-interactive:hover {
+    box-shadow: var(--elev-md);
+    transform: translateY(-1px);
+  }
+
+  .dark .card-interactive:hover {
+    background: var(--surface-sunken);
+    transform: translateY(-1px);
+  }
+
+  /* --- Material: shaffof, orqa fonni xiralashtiruvchi qatlam --- */
+  .material {
+    background: var(--material-regular);
+    backdrop-filter: blur(var(--material-blur)) saturate(var(--material-saturate));
+    -webkit-backdrop-filter: blur(var(--material-blur)) saturate(var(--material-saturate));
+  }
+
+  .material-thick {
+    background: var(--material-thick);
+    backdrop-filter: blur(var(--material-blur)) saturate(var(--material-saturate));
+    -webkit-backdrop-filter: blur(var(--material-blur)) saturate(var(--material-saturate));
+  }
+
+  /* backdrop-filter yo'q brauzerda shaffoflik matnni o'qib bo'lmas qiladi */
+  @supports not (backdrop-filter: blur(1px)) {
+    .material,
+    .material-thick {
+      background: var(--surface-raised);
+    }
+  }
+
+  /* --- Yupqa ajratgich (hairline) --- */
+  .hairline {
+    border-bottom: 0.5px solid var(--separator);
+  }
+
+  .hairline-t {
+    border-top: 0.5px solid var(--separator);
+  }
+
+  /* --- Squircle: uzluksiz egrilik, qo'llab-quvvatlansa --- */
+  @supports (corner-shape: squircle) {
+    .squircle {
+      corner-shape: squircle;
+    }
+  }
+
+  /* --- Ro'yxat qatori: Apple uslubidagi bosiladigan qator --- */
+  .row-press {
+    transition: background-color 0.16s var(--ease-apple);
+  }
+
+  .row-press:hover {
+    background: var(--fill-quaternary);
+  }
+
+  .row-press:active {
+    background: var(--fill-tertiary);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 5. Yordamchi utilitalar                                            */
+/* ------------------------------------------------------------------ */
+
+@layer utilities {
+  .scroll-slim {
+    scrollbar-width: thin;
+    scrollbar-color: var(--fill-primary) transparent;
+  }
+
+  .scroll-slim::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scroll-slim::-webkit-scrollbar-thumb {
+    background: var(--fill-primary);
+    border-radius: 999px;
+  }
+
+  .scroll-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scroll-hidden {
+    scrollbar-width: none;
+  }
+
+  .scroll-hidden::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Bir qatorli kesish */
+  .clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 6. Harakatni kamaytirish                                           */
+/* ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ */
+/* Platforma paneli — harakat qatlami                                 */
+/* ------------------------------------------------------------------ */
+
+/*
+  NEGA FAQAT PLATFORMADA: klinika paneli kunlik ish quroli — u yerda
+  registrator kuniga yuzlab marta sahifa ochadi va har safar
+  takrorlanadigan harakat charchatadi.
+
+  Platforma paneli esa boshqacha: u kuniga bir-ikki marta ochiladi va
+  ko'rsatuv vazifasini ham bajaradi (investor, mijoz oldida). Shu
+  yerda harakat foyda beradi.
+
+  KECHIKISHLAR: qadam 70 ms. Bu ko'z ilg'aydigan, lekin sabrni
+  sinamaydigan oraliq — sahifa to'liq ochilishi ~0.9 soniya.
+
+  MUHIM: `.platform-motion` sinfi sahifa ochilgandan keyin ~1.4
+  soniyada OLIB TASHLANADI (`useEntranceMotion`). Aks holda qidiruvga
+  har bir harf yozilganda jadval qatorlari noldan qayta chiqib,
+  ekran o'chib-yonadi.
+*/
+
+.platform-motion .page-head {
+  animation: var(--animate-slide-up);
+  animation-duration: 0.45s;
+}
+
+.platform-motion .card {
+  animation: var(--animate-slide-up);
+}
+
+.platform-motion .card:nth-child(1) {
+  animation-delay: 60ms;
+}
+.platform-motion .card:nth-child(2) {
+  animation-delay: 130ms;
+}
+.platform-motion .card:nth-child(3) {
+  animation-delay: 200ms;
+}
+.platform-motion .card:nth-child(4) {
+  animation-delay: 270ms;
+}
+.platform-motion .card:nth-child(5) {
+  animation-delay: 340ms;
+}
+.platform-motion .card:nth-child(6) {
+  animation-delay: 410ms;
+}
+.platform-motion .card:nth-child(7) {
+  animation-delay: 480ms;
+}
+.platform-motion .card:nth-child(8) {
+  animation-delay: 550ms;
+}
+
+/*
+  Grafik ustunlari chapdan o'ngga navbat bilan o'sadi.
+
+  Kechikish inline `style` orqali beriladi (har bir ustunning
+  o'z tartib raqami bor), shu sababda bu yerda faqat asosi.
+*/
+.platform-motion [data-motion='bar'] {
+  transform-origin: bottom;
+  animation: var(--animate-grow-bar);
+}
+
+/* Progress chiziqlari chapdan to'ladi */
+.platform-motion [data-motion='line'] > span {
+  transform-origin: left;
+  animation: var(--animate-draw-line);
+  animation-delay: 240ms;
+}
+
+/* Jadval qatorlari va ro'yxatlar ketma-ket ochiladi */
+.platform-motion tbody tr,
+.platform-motion .card li {
+  animation: rise 0.4s var(--ease-out-soft) both;
+}
+
+.platform-motion tbody tr:nth-child(1),
+.platform-motion .card li:nth-child(1) {
+  animation-delay: 120ms;
+}
+.platform-motion tbody tr:nth-child(2),
+.platform-motion .card li:nth-child(2) {
+  animation-delay: 165ms;
+}
+.platform-motion tbody tr:nth-child(3),
+.platform-motion .card li:nth-child(3) {
+  animation-delay: 210ms;
+}
+.platform-motion tbody tr:nth-child(4),
+.platform-motion .card li:nth-child(4) {
+  animation-delay: 255ms;
+}
+.platform-motion tbody tr:nth-child(5),
+.platform-motion .card li:nth-child(5) {
+  animation-delay: 300ms;
+}
+.platform-motion tbody tr:nth-child(6),
+.platform-motion .card li:nth-child(6) {
+  animation-delay: 345ms;
+}
+.platform-motion tbody tr:nth-child(7),
+.platform-motion .card li:nth-child(7) {
+  animation-delay: 390ms;
+}
+.platform-motion tbody tr:nth-child(8),
+.platform-motion .card li:nth-child(8) {
+  animation-delay: 435ms;
+}
+.platform-motion tbody tr:nth-child(9),
+.platform-motion .card li:nth-child(9) {
+  animation-delay: 480ms;
+}
+.platform-motion tbody tr:nth-child(10),
+.platform-motion .card li:nth-child(10) {
+  animation-delay: 525ms;
+}
+
+/*
+  DOIMIY qatlam: hover va o'tishlar. Bular animatsiya emas — ular
+  foydalanuvchi harakatiga javob, shuning uchun doim yoqilgan turadi.
+*/
+.platform-surface .card-interactive {
+  transition:
+    transform 0.24s var(--ease-spring),
+    box-shadow 0.24s var(--ease-apple);
+}
+
+.platform-surface .card-interactive:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--elev-lg, 0 12px 32px rgb(0 0 0 / 0.1));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+  Yon tomonga suriladigan qatorlarda chetdagi so'nish.
+
+  "Yana bor" degan ishora: tab yoki filtr ekranga sig'masa, chetda
+  yumshoq so'nib, davomi borligini bildiradi. `useScrollHint` qaysi
+  chetni so'ndirishni hisoblab beradi.
+*/
+.mask-end {
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+}
+
+.mask-start {
+  mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent 100%);
+}
+
+.mask-both {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 28px,
+    #000 calc(100% - 28px),
+    transparent 100%
+  );
+}
