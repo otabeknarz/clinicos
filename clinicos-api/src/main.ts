@@ -30,6 +30,15 @@ async function bootstrap() {
     }),
   )
 
+  /*
+    `X-Powered-By: Express` sarlavhasi olib tashlanadi.
+
+    O'z-o'zidan zaifllik emas, lekin qaysi texnologiya
+    ishlatilayotganini aytib turadi — hujumchi shu yerdan
+    boshlaydi. Bekorga aytmagan ma'qul.
+  */
+  app.getHttpAdapter().getInstance().disable('x-powered-by')
+
   app.enableCors({
     origin: process.env.CORS_ORIGIN?.split(',') ?? true,
     credentials: true,
