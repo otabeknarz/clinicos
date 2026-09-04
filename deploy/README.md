@@ -1,16 +1,93 @@
-# ClinicOS — o'z serveringizga joylashtirish
+# ClinicOS — serverga joylashtirish
 
-Ubuntu 22.04/24.04 uchun. Domen sifatida `clinic-os.uz` olingan —
-o'zingiznikiga almashtiring.
+Ikki yo'l bor. Hozir ishlatilayotgani — **Coolify**.
 
-```
-clinic-os.uz       →  interfeys (statik fayllar)
-api.clinic-os.uz   →  API (NestJS, 127.0.0.1:3000)
-```
+- [Coolify orqali](#coolify-orqali) — amaldagi joylashtirish
+- [Qo'lda, Ubuntu ustiga](#qolda-ubuntu-ustiga) — Coolify siz
 
 ---
 
-## 0. Nima kerak
+## Coolify orqali
+
+Loyihada uchta resurs bor (`ClinicOS` → `production`):
+
+| Resurs | Nima | Manzil |
+|---|---|---|
+| `clinicos-postgres` | PostgreSQL 17 | ichki, tashqariga ochilmagan |
+| `clinicos-api` | NestJS, Dockerfile | `api.clinic-os.uz` |
+| `clinicos-frontend` | React → Nginx, Dockerfile | `clinic-os.uz` |
+
+Ikkala ilova ham shu repodan yig'iladi:
+
+```
+build pack        Dockerfile
+base directory    /clinicos-api  yoki  /clinicos-frontend
+branch            main
+```
+
+### Muhit o'zgaruvchilari
+
+`clinicos-api` — hammasi **runtime**, build-time emas (aks holda
+`JWT_SECRET` image tarixiga tushib qolardi):
+
+```
+DATABASE_URL     Coolify bergan ichki manzil (postgres://…@<db-uuid>:5432/clinicos)
+JWT_SECRET       openssl rand -base64 48
+JWT_EXPIRES_IN   12h
+PORT             3000
+CORS_ORIGIN      https://clinic-os.uz
+```
+
+`clinicos-frontend` — **build-time bo'lishi SHART**:
+
+```
+VITE_API_URL     https://api.clinic-os.uz
+```
+
+Vite uni yig'ish paytida fayllarga kiritadi. Runtime qilib
+qo'yilsa, ilova demo rejimda yig'iladi va serverga bitta ham
+so'rov ketmaydi. Dockerfile buni ushlaydi va build'ni to'xtatadi.
+
+### Yangilash
+
+```bash
+git push origin main
+```
+
+Keyin Coolify'da ikkala ilovani Deploy qiling (yoki webhook
+qo'ying). Migratsiya avtomatik: `docker-entrypoint.sh` har ishga
+tushishda `prisma migrate deploy` bajaradi.
+
+### Yangi klinika qo'shish
+
+Endpoint yo'q — bu ataylab, chunki klinika yaratish tarif va
+obuna bilan bog'liq. Coolify → `clinicos-api` → Terminal:
+
+```bash
+CLINIC_NAME="Shifo Med" \
+CLINIC_PHONE="+998 71 200 00 00" \
+CLINIC_ADDRESS="Toshkent, ..." \
+OWNER_EMAIL=owner@shifomed.uz \
+OWNER_NAME="Ism Familiya" \
+PLAN=STANDARD \
+npm run bootstrap -- clinic
+```
+
+Parol berilmasa skript o'zi yasab, bir marta ekranga chiqaradi.
+Registrator va shifokorlarni klinika egasi panel orqali qo'shadi.
+
+Terminal ochilmasa, xuddi shu buyruqni Scheduled Task sifatida
+`* * * * *` bilan qo'yib, bir marta ishlagach o'chirib tashlang.
+
+> **`npm run db:seed` NI SERVERDA ISHLATMANG.** U bazani AVVAL
+> TOZALAYDI. Demo ma'lumot uchun to'g'ri, ishlayotgan klinikada —
+> falokat.
+
+---
+
+## Qo'lda, Ubuntu ustiga
+
+### 0. Nima kerak
 
 - Ubuntu server, `sudo` huquqi bilan
 - Ikkala domen serverning IP siga qaratilgan (A yozuvi)
@@ -26,7 +103,7 @@ Ubuntu ombori odatda eskiroq versiyani beradi.
 
 ---
 
-## 1. Baza
+### 1. Baza
 
 ```bash
 sudo -u postgres psql
@@ -42,7 +119,7 @@ Parolni hozir o'ylab toping va saqlang: `openssl rand -base64 24`.
 
 ---
 
-## 2. Kod
+### 2. Kod
 
 ```bash
 sudo adduser --system --group --home /srv/clinicos clinicos
@@ -51,7 +128,7 @@ sudo -u clinicos git clone https://github.com/otabeknarz/clinicos.git /srv/clini
 
 ---
 
-## 3. API
+### 3. API
 
 ```bash
 cd /srv/clinicos/clinicos-api
@@ -134,7 +211,7 @@ systemctl status clinicos-api
 
 ---
 
-## 4. Interfeys
+### 4. Interfeys
 
 ```bash
 cd /srv/clinicos/clinicos-frontend
@@ -156,7 +233,7 @@ sudo chown -R www-data:www-data /var/www/clinicos
 
 ---
 
-## 5. Nginx va SSL
+### 5. Nginx va SSL
 
 ```bash
 sudo cp /srv/clinicos/deploy/nginx/clinicos.conf /etc/nginx/sites-available/clinicos
@@ -171,7 +248,7 @@ sudo certbot --nginx -d clinic-os.uz -d www.clinic-os.uz -d api.clinic-os.uz
 
 ---
 
-## 6. Tekshirish
+### 6. Tekshirish
 
 ```bash
 curl -i https://api.clinic-os.uz/patients          # 401 kutiladi
@@ -186,7 +263,7 @@ noto'g'ri.
 
 ---
 
-## Yangilash
+### Yangilash
 
 ```bash
 cd /srv/clinicos
@@ -206,7 +283,7 @@ sudo cp -r dist/. /var/www/clinicos/
 
 ---
 
-## Hali qilinmagan — ishga tushirishdan oldin
+### Hali qilinmagan — ishga tushirishdan oldin
 
 **Zaxira nusxa.** Hozir yo'q. Haqiqiy bemor ma'lumoti kirishidan
 oldin sozlanishi shart. Eng oddiy variant:

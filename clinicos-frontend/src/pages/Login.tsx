@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { Activity, Lock, Mail } from 'lucide-react'
 
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '@/api/auth'
+import { USE_MOCK } from '@/api/client'
 import { Button } from '@/components/ui/Button'
 import { TextInput } from '@/components/ui/Form'
 import { cn } from '@/lib/cn'
@@ -95,7 +96,14 @@ export function LoginPage() {
           </Button>
         </form>
 
-        {/* --- Demo hisoblar --- */}
+        {/*
+          --- Demo hisoblar ---
+
+          FAQAT demo rejimda. Haqiqiy backend ulanganda bu hisoblar
+          mavjud emas: tugma bosilsa kirish rad etiladi, va sahifa
+          o'z-o'zidan hammaga ko'rinadigan parolni yozib turadi.
+        */}
+        {USE_MOCK && (
         <div className="mt-6">
           <p className="text-center text-caption font-medium text-label-tertiary">
             {t('auth.demoTitle')}
@@ -131,6 +139,7 @@ export function LoginPage() {
             ))}
           </div>
         </div>
+        )}
       </div>
     </div>
   )
