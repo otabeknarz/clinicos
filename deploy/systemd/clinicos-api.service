@@ -1,0 +1,61 @@
+# ClinicOS API — systemd xizmati.
+#
+# Joylashtirish:
+#   sudo cp clinicos-api.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now clinicos-api
+#
+# Holat va jurnal:
+#   systemctl status clinicos-api
+#   journalctl -u clinicos-api -f
+
+[Unit]
+Description=ClinicOS API (NestJS)
+Documentation=https://github.com/otabeknarz/clinicos
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=clinicos
+Group=clinicos
+WorkingDirectory=/srv/clinicos/clinicos-api
+
+#
+# `.env` ni EnvironmentFile bilan bermaymiz.
+#
+# NEGA: dastur `.env` ni o'zi o'qiydi (`main.ts` da `dotenv/config`),
+# va dotenv qo'shtirnoqlarni yechadi. systemd esa yechmaydi — parolda
+# qo'shtirnoq qolib, bazaga ulanish sinardi. Ikki joyda o'qilsa
+# chalkashlik ham chiqadi.
+#
+# Shart: `.env` WorkingDirectory ichida turishi kerak.
+#
+ExecStart=/usr/bin/node dist/main
+
+Restart=always
+RestartSec=5
+
+# Qulab tushib qayta ko'tarilaverishning oldini olish
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=clinicos-api
+
+# --- Cheklovlar ---
+# Tibbiy ma'lumot bilan ishlaydigan jarayon, shuning uchun
+# imkoniyatlari kerakligicha qisqartirilgan.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+# Kod va `.env` faqat o'qish uchun ochiq; yozadigan joyi yo'q
+ReadOnlyPaths=/srv/clinicos
+
+[Install]
+WantedBy=multi-user.target

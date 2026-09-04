@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
+    "bootstrap": "ts-node -r tsconfig-paths/register scripts/bootstrap.ts",
     "gen:tenant-models": "python scripts/gen-tenant-models.py",
     "check": "npm run typecheck && npm run check:permissions && npm run check:endpoints && npm run build",
     "test:isolation": "ts-node scripts/test-isolation.ts",

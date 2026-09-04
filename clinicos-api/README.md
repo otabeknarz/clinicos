@@ -42,7 +42,8 @@ Ikkinchi klinika: `@salomat.uz` bilan xuddi shunday uchta hisob.
 | `npm run dev` | Ishlab chiqish serveri (o'zgarishda qayta yuklanadi) |
 | `npm run build` | `dist/` ga yig'adi |
 | `npm run typecheck` | Faqat tip tekshiruvi |
-| `npm run db:seed` | Bazani tozalab, demo ma'lumot yozadi |
+| `npm run db:seed` | **Bazani TOZALAB**, demo ma'lumot yozadi |
+| `npm run bootstrap` | Ishlab chiqarish uchun boshlang'ich yozuvlar (hech narsa o'chirmaydi) |
 | `npm run test:isolation` | **Klinika ajratish sinovi** — eng muhimi |
 | `npm run smoke` | Barcha endpointni har bir rol nomidan bosib chiqadi |
 | `npm run check:permissions` | Ruxsat nomlari frontend bilan mos keladimi |

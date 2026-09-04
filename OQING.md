@@ -42,6 +42,7 @@ ajratilganini sinab bo'lmaydi.
 | `clinicos-frontend/docs/DATABASE.md` | Jadvallar, bog'lanishlar, qarorlar sabablari |
 | `clinicos-frontend/src/types/models.ts` | So'rov/javob JSON tuzilishi |
 | `clinicos-api/src/common/permissions.ts` | Rollar va ruxsatlar |
+| `deploy/README.md` | Serverga joylashtirish — qadamma-qadam |
 
 ---
 
