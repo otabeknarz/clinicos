@@ -23,9 +23,23 @@ const API_ROOT = path.resolve(__dirname, '..')
   Frontendda `Permission` turi `types/models.ts` da e'lon qilingan
   (`lib/permissions.ts` da emas) — u yerda faqat rollar taqsimoti.
 */
-const FRONTEND_PERMISSIONS = path.resolve(
-  API_ROOT, '..', 'clinicos', 'src', 'types', 'models.ts',
+const FRONTEND_PERMISSIONS = path.join(
+  frontendRoot(), 'src', 'types', 'models.ts',
 )
+
+/*
+  Frontend papkasi. Nomi o'zgargan bo'lishi mumkin (`clinicos` →
+  `clinicos-frontend`), shuning uchun bir nechta nom sinaladi.
+  Topilmasa — birinchisi qaytadi va chaqiruvchi ogohlantiradi.
+*/
+function frontendRoot(): string {
+  const candidates = ['clinicos-frontend', 'clinicos']
+  for (const name of candidates) {
+    const dir = path.resolve(API_ROOT, '..', name)
+    if (fs.existsSync(dir)) return dir
+  }
+  return path.resolve(API_ROOT, '..', candidates[0])
+}
 
 function readPermissionUnion(source: string): Set<string> {
   const match = /export type Permission\s*=([\s\S]*?)(?:\n\n|\nexport )/.exec(source)

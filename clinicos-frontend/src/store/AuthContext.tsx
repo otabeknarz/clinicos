@@ -44,10 +44,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sessiya o'zgarganda api qatlamiga kontekstni uzatamiz:
   // qaysi klinika va (shifokor bo'lsa) qaysi shifokorning ma'lumoti.
   useEffect(() => {
-    if (!session) {
-      setAuthToken(null)
-      return
-    }
+    /*
+      Sessiya yo'q bo'lsa tokenni O'CHIRMAYMIZ. Ilova endigina
+      ochilganda `session` hali null bo'ladi — bu yerda tozalasak,
+      saqlangan token quyidagi `restore()` ishga tushgunicha yo'q
+      bo'lib ketardi va har yangilashda kirish sahifasi chiqardi.
+      Token faqat chiqishda tozalanadi (`logout`).
+    */
+    if (!session) return
     setAuthToken(session.token)
 
     /*

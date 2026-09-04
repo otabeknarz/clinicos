@@ -21,7 +21,19 @@ import * as path from 'node:path'
  */
 
 const API_ROOT = path.resolve(__dirname, '..')
-const FRONTEND_API = path.resolve(API_ROOT, '..', 'clinicos', 'src', 'api')
+const FRONTEND_API = frontendApiDir()
+
+/*
+  Frontend papkasi. Nomi o'zgargan bo'lishi mumkin (`clinicos` →
+  `clinicos-frontend`), shuning uchun bir nechta nom sinaladi.
+*/
+function frontendApiDir(): string {
+  for (const name of ['clinicos-frontend', 'clinicos']) {
+    const dir = path.resolve(API_ROOT, '..', name, 'src', 'api')
+    if (fs.existsSync(dir)) return dir
+  }
+  return path.resolve(API_ROOT, '..', 'clinicos-frontend', 'src', 'api')
+}
 
 interface Route {
   method: string

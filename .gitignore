@@ -11,3 +11,8 @@ dist
 .env.*.local
 
 *.log
+
+# Har qanday .env fayl — nomi qanday bo'lishidan qat'i nazar.
+# `server.env` kabi fayllar ham tushib qolmasin.
+*.env
+!.env.example

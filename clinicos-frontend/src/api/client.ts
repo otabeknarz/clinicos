@@ -52,11 +52,41 @@ export class ApiError extends Error {
 /* Sessiya (token)                                                     */
 /* ------------------------------------------------------------------ */
 
-let authToken: string | null = null
+const TOKEN_KEY = 'clinicos.session.token'
+
+/*
+  Token brauzerda SAQLANADI, aks holda sahifa yangilanganda yo'qoladi
+  va foydalanuvchi har F5 da kirish sahifasiga tushib qolardi.
+
+  Mock rejimda bu bilinmasdi: u yerda `me()` tokensiz, localStorage'dagi
+  `userId` bo'yicha ishlaydi. Xato faqat haqiqiy backend ulanganda
+  chiqadi — ya'ni aynan ishga tushirishda.
+
+  XAVFSIZLIK: localStorage XSS ga ochiq. Ishonchliroq yo'l — serverdan
+  HttpOnly cookie: u holda tokenni bu yerda umuman saqlamaslik kerak,
+  `credentials: 'include'` esa allaqachon yozilgan. Backend cookie
+  bergan kunda shu blokni o'chiring.
+*/
+function readStoredToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY)
+  } catch {
+    // Brauzer saqlashni bloklagan bo'lishi mumkin (maxfiy oyna)
+    return null
+  }
+}
+
+let authToken: string | null = readStoredToken()
 
 /** AuthContext kirish/chiqishda chaqiradi */
 export function setAuthToken(token: string | null) {
   authToken = token
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token)
+    else localStorage.removeItem(TOKEN_KEY)
+  } catch {
+    // Saqlanmasa ham joriy sessiya ishlaydi — faqat yangilashda uziladi
+  }
 }
 
 export function getAuthToken(): string | null {
