@@ -90,6 +90,17 @@ export const OWNER_PERMISSIONS: readonly Permission[] = [
   'services.view',
   'services.manage',
   'payments.view',
+  /*
+    Qaytarish FAQAT egasida.
+
+    Registratorda ATAYLAB yo'q: pulni olgan odam uni o'zi
+    "qaytardim" deb yozib, naqd kamomadni yopib qo'yishi mumkin
+    bo'lardi. Xato bo'lsa registrator egasiga aytadi.
+
+    Pul yozuvi baribir o'zgarmaydi — qaytarish YANGI yozuv
+    bo'lib qo'shiladi, eskisi joyida qoladi.
+  */
+  'payments.refund',
   'visits.view',
   'ward.view',
   'ward.manage',

@@ -91,6 +91,14 @@ async function login() {
 
 const today = new Date().toISOString().slice(0, 10)
 
+/*
+  Sinov ma'lumoti HAR SAFAR noyob bo'lishi kerak: telefon va email
+  bazada takrorlanmaydi, shuning uchun skriptni ikkinchi marta
+  ishga tushirish 409 bilan tugardi. Seed'siz ham qayta ishlatsa
+  bo'lsin.
+*/
+const RUN = String(Date.now()).slice(-7)
+
 async function main() {
   await login()
   const { owner, reception, doctor } = tokens
@@ -98,8 +106,8 @@ async function main() {
   /* ---------------- Bemor ---------------- */
   console.log('\nBemor (registrator)')
   const created = await call('POST', '/patients', reception, {
-    fullName: 'CRUD Sinov',
-    phone: '+998900009911',
+    fullName: `CRUD Sinov ${RUN}`,
+    phone: `+99890${RUN}`,
     birthDate: '1990-01-01',
     gender: 'male',
   })
@@ -113,7 +121,7 @@ async function main() {
     check('qisman tahrir (faqat izoh)', patched.status === 200, short(patched.data))
     check(
       '  ism o‘zgarmadi',
-      patched.data?.fullName === 'CRUD Sinov',
+      patched.data?.fullName === `CRUD Sinov ${RUN}`,
       `ism: ${patched.data?.fullName}`,
     )
   }
@@ -147,8 +155,8 @@ async function main() {
   const doc = await call('POST', '/doctors', owner, {
     fullName: 'CRUD Shifokor',
     specialty: 'therapist',
-    phone: '+998900009922',
-    email: `crud.${Date.now()}@shifomed.uz`,
+    phone: `+99891${RUN}`,
+    email: `crud.${RUN}@shifomed.uz`,
     consultationFee: 150_000,
     workdays: [1, 2, 3],
     shiftStart: '09:00',
@@ -175,7 +183,7 @@ async function main() {
   console.log('\nXodim (egasi)')
   const staff = await call('POST', '/staff', owner, {
     fullName: 'CRUD Xodim',
-    phone: '+998900009933',
+    phone: `+99892${RUN}`,
     position: 'nurse',
     positionTitle: 'Hamshira',
     workdays: [1, 2, 3],
@@ -203,7 +211,7 @@ async function main() {
   /* ---------------- Palata ---------------- */
   console.log('\nPalata (egasi)')
   const room = await call('POST', '/ward/rooms', owner, {
-    number: `C${Date.now() % 10000}`,
+    number: `C${RUN.slice(-4)}`,
     floor: 2,
     category: 'standard',
     dailyRate: 300_000,
@@ -269,28 +277,27 @@ async function main() {
     })
     check('to‘lov yozildi', pay.status < 300, short(pay.data))
     /*
-      QAYTARISH — OCHIQ SAVOL.
+      QAYTARISH — FAQAT EGASIDA.
 
-      `payments.refund` ruxsati HECH BIR rolda yo'q, ya'ni endpoint
-      bor, lekin unga hech kim yeta olmaydi. Tizimning "pul yozuvi
-      o'zgarmaydi, xato bo'lsa qaytarish yoziladi" qoidasi esa
-      aynan shunga tayanadi.
-
-      Kimga berish kerakligi — firibgarlikka aloqador qaror:
-      registratorda bo'lsa, u o'zi olgan pulni o'zi qaytarib,
-      kamomadni yopib qo'yishi mumkin. Qaror qabul qilingach,
-      bu blok oddiy tekshiruvga aylantiriladi.
+      Registratorda `payments.refund` ATAYLAB yo'q: pulni olgan
+      odam uni o'zi qaytarib, naqd kamomadni yopib qo'yishi mumkin
+      bo'lardi. Shuning uchun ikkala tomon ham sinaladi.
     */
     const paymentId: string | undefined = pay.data?.id
     if (paymentId) {
-      const refund = await call('POST', `/payments/${paymentId}/refund`, reception, {
+      const byReception = await call('POST', `/payments/${paymentId}/refund`, reception, {
+        reason: 'sinov',
+      })
+      check(
+        'registrator qaytara olmaydi',
+        byReception.status === 403,
+        `${byReception.status}`,
+      )
+
+      const byOwner = await call('POST', `/payments/${paymentId}/refund`, owner, {
         reason: 'sinov qaytarish',
       })
-      if (refund.status === 403) {
-        console.log('  OCHIQ qaytarish: `payments.refund` hech bir rolda yo‘q')
-      } else {
-        check('qaytarish yozildi', refund.status < 300, short(refund.data))
-      }
+      check('egasi qaytardi', byOwner.status < 300, short(byOwner.data))
     }
   }
 

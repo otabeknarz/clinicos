@@ -60,6 +60,8 @@ const OWNER_PERMISSIONS: Permission[] = [
   'services.view',
   'services.manage',
   'payments.view',
+  // Qaytarish faqat egasida — registrator o'z kamomadini yopa olmasin
+  'payments.refund',
   'revenue.view',
   'analytics.view',
   'visits.view',
