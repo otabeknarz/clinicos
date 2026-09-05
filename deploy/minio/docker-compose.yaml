@@ -1,0 +1,52 @@
+# ClinicOS fayl xotirasi — MinIO.
+#
+# NEGA COMPOSE, ODDIY DOCKERFILE EMAS:
+#
+# Ilova Dockerfile bilan qo'yilganda hajm (volume) e'lon qilib
+# bo'lmadi. Coolify'ning `custom_docker_run_options` dagi `-v`
+# e'tiborga olinmadi, xotira API'si esa hujjatsiz — `type`
+# maydoniga hech qanday qiymat to'g'ri kelmadi.
+#
+# Natijada Dockerfile'dagi `VOLUME /data` har safar ANONIM hajm
+# yaratardi: konteyner qayta yaratilishi bilan yangi bo'sh hajm
+# ulanardi va BARCHA FAYL YO'QOLARDI. Har redeploy'da bucket ham
+# qaytadan yaratilardi.
+#
+# Bu yerda hajm nomi bilan e'lon qilingan, ya'ni konteyner
+# almashsa ham o'sha hajm qayta ulanadi.
+
+services:
+  minio:
+    image: 'minio/minio:RELEASE.2025-09-07T16-13-09Z'
+
+    # Kichik buyruqsiz MinIO yordam matnini chiqarib to'xtaydi
+    command: server /data
+
+    environment:
+      # Coolify shu belgidan domenni tanadi (s3.clinic-os.uz → 9000)
+      - SERVICE_FQDN_MINIO_9000
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      # Veb-konsol o'chiq: bizga faqat S3 API kerak, konsol
+      # ortiqcha hujum yuzasi
+      - MINIO_BROWSER=off
+
+    volumes:
+      # ENG MUHIM QATOR. Nomlangan hajm — redeploy'da saqlanadi.
+      - 'clinicos-minio-data:/data'
+
+    healthcheck:
+      test:
+        - CMD
+        - mc
+        - ready
+        - local
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  clinicos-minio-data:
+    # `external: false` — Coolify hajmni o'zi yaratadi va
+    # loyihaga bog'lab qo'yadi.
+    driver: local
