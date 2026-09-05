@@ -187,6 +187,45 @@ export async function request<T>(
   return payload as T
 }
 
+/**
+ * Fayl yuborish (`multipart/form-data`).
+ *
+ * `request()` dan alohida, chunki u tanani JSON qilib yuboradi va
+ * `Content-Type` ni o'zi qo'yadi. Multipart'da esa chegara belgisini
+ * brauzer o'zi hisoblaydi — sarlavhani QO'LDA qo'yish kerak emas va
+ * qo'yilsa so'rov buziladi.
+ */
+export async function upload<T>(path: string, file: Blob, filename = 'file'): Promise<T> {
+  const form = new FormData()
+  form.append('file', file, filename)
+
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (authToken) headers.Authorization = `Bearer ${authToken}`
+
+  let response: Response
+  try {
+    response = await fetch(new URL(path.replace(/^\//, ''), `${API_URL}/`).toString(), {
+      method: 'POST',
+      headers,
+      body: form,
+      credentials: 'include',
+    })
+  } catch {
+    throw new ApiError('Serverga ulanib bo‘lmadi', 0)
+  }
+
+  const text = await response.text()
+  const payload: unknown = text ? safeJson(text) : null
+
+  if (!response.ok) {
+    const err = payload as { message?: string | string[] } | null
+    const message = Array.isArray(err?.message) ? err.message[0] : err?.message
+    throw new ApiError(message ?? `Fayl yuklanmadi (${response.status})`, response.status)
+  }
+
+  return payload as T
+}
+
 function safeJson(text: string): unknown {
   try {
     return JSON.parse(text)

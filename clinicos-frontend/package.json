@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "lint": "oxlint",
-    "docs:api": "python scripts/gen-api-docs.py",
+    "docs:api": "python3 scripts/gen-api-docs.py",
     "check": "npm run typecheck && npm run lint && npm run build"
   },
   "dependencies": {

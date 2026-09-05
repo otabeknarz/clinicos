@@ -1,4 +1,6 @@
-import { IsOptional, IsString, MaxLength, MinLength, ValidateIf } from 'class-validator'
+import { IsOptional, IsString, Matches, MaxLength, MinLength, ValidateIf } from 'class-validator'
+
+import { STORAGE_KEY_MESSAGE, STORAGE_KEY_PATTERN } from '../storage/storage-key'
 
 export class ProfileInputDto {
   @IsOptional() @IsString() @MinLength(2) @MaxLength(120)
@@ -7,7 +9,18 @@ export class ProfileInputDto {
   @IsOptional() @IsString() @MinLength(7) @MaxLength(30)
   phone?: string
 
-  @IsOptional() @ValidateIf((_, v) => v !== null) @IsString() @MaxLength(500)
+  /*
+    Yuklangan faylning KALITI, rasmning o'zi emas. `null` —
+    rasmni olib tashlash.
+
+    Ilgari bu yerga interfeys base64 data URL yuborardi va
+    500 belgilik chegaraga urilib, har bir profil tahriri 400
+    olardi. Shakli — `storage/storage-key.ts` da.
+  */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @Matches(STORAGE_KEY_PATTERN, { message: STORAGE_KEY_MESSAGE })
   avatarUrl?: string | null
 
   /*

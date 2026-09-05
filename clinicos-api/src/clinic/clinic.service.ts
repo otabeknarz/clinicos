@@ -3,6 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { toApiDateTime } from '../common/api-enum'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
+import { StorageService } from '../storage/storage.service'
 import { ClinicInputDto } from './clinic.dto'
 
 /**
@@ -16,6 +17,7 @@ export class ClinicService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
+    private readonly storage: StorageService,
   ) {}
 
   async get() {
@@ -37,6 +39,9 @@ export class ClinicService {
 
   async update(dto: ClinicInputDto) {
     const { clinicId } = this.ctx.require()
+
+    // Begona klinikaning fayl kalitini biriktirib bo'lmaydi
+    this.storage.assertOwnKey(dto.logoUrl)
     const db = this.prisma.acrossAllClinics()
 
     const row = await db.$transaction(async (tx) => {
@@ -61,6 +66,12 @@ export class ClinicService {
           phone: dto.phone?.trim(),
           address: dto.address?.trim(),
           slotMinutes: dto.slotMinutes,
+          /*
+            `undefined` — tegilmaydi, `null` — logo olib tashlanadi.
+            Shuning uchun `?? undefined` EMAS: u `null` ni ham
+            yutib yuborardi va logoni o'chirib bo'lmasdi.
+          */
+          logoUrl: dto.logoUrl,
         },
         include: { workingHours: { orderBy: { weekday: 'asc' } } },
       })

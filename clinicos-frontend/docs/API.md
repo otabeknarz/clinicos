@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**134 ta endpoint.**
+**136 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -561,7 +561,7 @@ pageSize?: number
 listAppointments(query: AppointmentQuery = {}): Promise<Paginated<AppointmentExpanded>>
 ```
 
-### `GET /appointments?from=&to=&doctorId=`
+### `GET /appointments/range?from=&to=&doctorId=`
 
 Kalendar uchun — sahifalashsiz, bir kunlik yoki haftalik oraliq
 
@@ -2796,6 +2796,29 @@ listNotifications(): Promise<AppNotification[]>
 globalSearch(query: string): Promise<SearchHit[]>
 ```
 
+## Fayl yuklash
+
+`src/api/uploads.ts`
+
+> Fayl yuklash.
+> 
+> IKKI QADAM: avval fayl serverga yuboriladi va KALIT qaytadi,
+> keyin o'sha kalit tegishli yozuvga yoziladi
+> (`PATCH /profile` ga `{ avatarUrl: kalit }`).
+> 
+> NEGA BIR SO'ROVDA EMAS: forma bekor qilinsa ham fayl yozilib
+> ketardi va uni kim tozalashi noma'lum bo'lib qolardi.
+> 
+> Bazada HAVOLA emas, kalit yotadi. Server o'qishda qisqa
+> muddatli imzolangan havola qaytaradi — bucket yopiq, havolasiz
+> faylni ochib bo'lmaydi.
+
+### `POST /uploads/:kind`
+
+```ts
+uploadImage(kind: UploadKind, file: Blob, /** Demo rejimda saqlanadigan qiymat — data URL */ fallback: string): Promise<UploadedFile>
+```
+
 ## Platforma paneli (super-admin)
 
 `src/api/platform.ts`
@@ -2971,12 +2994,24 @@ platforma egasi klinikaning butun panelini ko'radi. Yozuvsiz
 bunday kirish ishonchni buzadi, shuning uchun har bir kirish
 qayd etiladi va klinika egasiga ko'rinadi.
 
-DASTURCHIGA: serverda kirish MUDDATLI token bilan berilishi
-kerak (masalan 30 daqiqa), va o'sha sessiyada yozish amallari
-cheklanishi maqsadga muvofiq.
+Server QISQA MUDDATLI token qaytaradi (30 daqiqa) va o'sha
+sessiyada faqat KO'RISH mumkin — yozish ruxsatlari berilmaydi.
+Chiqish uchun `endImpersonation()`.
 
 ```ts
 startImpersonation(tenantId: ID, adminName: string, reason: string): Promise<ImpersonationLog>
+```
+
+### `POST /platform/impersonations/end`
+
+Klinika panelidan chiqish.
+
+Server kirish yozuvini yopadi, shundan keyin kirish tokeni
+yaroqsiz bo'ladi. Id yuborilmaydi — server uni tokendan oladi,
+ya'ni odam faqat o'zi kirgan sessiyani yopa oladi.
+
+```ts
+endImpersonation(): Promise<void>
 ```
 
 ### `GET /platform/stats`

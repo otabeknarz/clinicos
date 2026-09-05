@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Camera, Trash2, Upload } from 'lucide-react'
 
 import { updateProfile } from '@/api/auth'
+import { uploadImage } from '@/api/uploads'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { PhoneInput, TextInput } from '@/components/ui/Form'
@@ -19,6 +20,14 @@ import { useToast } from '@/store/toast-context'
  *
  * Rasm brauzerda 256px gacha kichraytiriladi va JPEG'ga o'giriladi —
  * telefondan olingan 5 MB lik rasmni o'sha holicha saqlash noto'g'ri.
+ *
+ * Keyin u DARHOL serverga yuklanadi va bazaga faqat KALIT yoziladi.
+ * Ilgari bu yerdan base64 data URL yuborilardi va server uni rad
+ * etardi — profil tahriri umuman ishlamas edi.
+ *
+ * Ko'rsatish va saqlash — ikki xil qiymat: ekranda darhol tanlangan
+ * rasm turadi (`preview`), bazaga esa yuklash tugagach kelgan kalit
+ * yoziladi (`avatarUrl`).
  */
 export function ProfileTab() {
   const { t } = useI18n()
@@ -31,6 +40,9 @@ export function ProfileTab() {
   const [phone, setPhone] = useState('+998 ')
   const [email, setEmail] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  /** Ekranda ko'rinadigan rasm: yangi tanlangani yoki serverdagisi */
+  const [preview, setPreview] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [imageError, setImageError] = useState<ImageError | null>(null)
   const [touched, setTouched] = useState(false)
 
@@ -40,6 +52,7 @@ export function ProfileTab() {
     setPhone(session.user.phone)
     setEmail(session.user.email)
     setAvatarUrl(session.user.avatarUrl)
+    setPreview(session.user.avatarUrl)
   }, [session])
 
   const save = useAction(async () => {
@@ -57,11 +70,24 @@ export function ProfileTab() {
     setImageError(null)
 
     const result = await prepareAvatar(file)
-    if (!result.ok) {
+    if (!result.ok || !result.blob) {
       setImageError(result.error ?? 'decode')
       return
     }
-    setAvatarUrl(result.dataUrl)
+
+    // Kutmasdan ko'rsatamiz — yuklash bir necha soniya olishi mumkin
+    setPreview(result.dataUrl)
+
+    setUploading(true)
+    try {
+      const stored = await uploadImage('avatars', result.blob, result.dataUrl)
+      setAvatarUrl(stored.key)
+    } catch {
+      setImageError('decode')
+      setPreview(session?.user.avatarUrl ?? null)
+    } finally {
+      setUploading(false)
+    }
   }
 
   const errors = {
@@ -101,7 +127,7 @@ export function ProfileTab() {
             className="group relative shrink-0 rounded-full"
             aria-label={t('profile.upload')}
           >
-            <Avatar name={fullName || session.user.fullName} src={avatarUrl} size="xl" />
+            <Avatar name={fullName || session.user.fullName} src={preview} size="xl" />
             <span
               className={cn(
                 'absolute inset-0 flex items-center justify-center rounded-full',
@@ -119,17 +145,21 @@ export function ProfileTab() {
                 variant="tinted"
                 size="sm"
                 icon={<Upload size={14} />}
+                loading={uploading}
                 onClick={() => fileRef.current?.click()}
               >
-                {avatarUrl ? t('profile.change') : t('profile.upload')}
+                {preview ? t('profile.change') : t('profile.upload')}
               </Button>
 
-              {avatarUrl ? (
+              {preview ? (
                 <Button
                   variant="gray"
                   size="sm"
                   icon={<Trash2 size={14} />}
-                  onClick={() => setAvatarUrl(null)}
+                  onClick={() => {
+                    setAvatarUrl(null)
+                    setPreview(null)
+                  }}
                 >
                   {t('profile.remove')}
                 </Button>

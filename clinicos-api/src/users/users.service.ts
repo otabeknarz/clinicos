@@ -3,6 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { toApi, toApiDateTime } from '../common/api-enum'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
+import { StorageService } from '../storage/storage.service'
 import { ProfileInputDto } from './users.dto'
 
 @Injectable()
@@ -10,6 +11,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
+    private readonly storage: StorageService,
   ) {}
 
   private get db() {
@@ -64,6 +66,9 @@ export class UsersService {
    */
   async updateProfile(dto: ProfileInputDto) {
     const { userId } = this.ctx.require()
+
+    // Begona klinikaning fayl kalitini biriktirib bo'lmaydi
+    this.storage.assertOwnKey(dto.avatarUrl)
 
     const found = await this.db.user.findFirst({
       where: { id: userId },

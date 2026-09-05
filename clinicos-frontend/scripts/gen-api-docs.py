@@ -16,7 +16,8 @@ ORDER = [
     ('feedback.ts', 'Bemor fikri'), ('chat.ts', 'Ichki chat'),
     ('reception.ts', 'Registratura paneli'), ('analytics.ts', 'Tahlil'),
     ('forecast.ts', 'Prognoz'), ('notifications.ts', 'Bildirishnomalar'),
-    ('search.ts', 'Qidiruv'), ('platform.ts', 'Platforma paneli (super-admin)'),
+    ('search.ts', 'Qidiruv'), ('uploads.ts', 'Fayl yuklash'),
+    ('platform.ts', 'Platforma paneli (super-admin)'),
 ]
 
 def clean_doc(block):

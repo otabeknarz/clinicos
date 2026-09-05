@@ -6,6 +6,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  ValidateIf,
   Matches,
   Max,
   MaxLength,
@@ -13,6 +14,8 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator'
+
+import { STORAGE_KEY_MESSAGE, STORAGE_KEY_PATTERN } from '../storage/storage-key'
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 
@@ -41,6 +44,20 @@ export class ClinicInputDto {
   @MinLength(2)
   @MaxLength(150)
   name?: string
+
+  /*
+    Klinika logosining KALITI.
+
+    Bu maydon ilgari DTO da UMUMAN YO'Q edi. `whitelist: true`
+    e'lon qilinmagan maydonni jimgina tashlab yuboradi, ya'ni
+    logo yuborilardi, so'rov 200 qaytarardi, logo esa hech
+    qachon saqlanmasdi. Xato ko'rinmasligi bilan yomon edi.
+  */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @Matches(STORAGE_KEY_PATTERN, { message: STORAGE_KEY_MESSAGE })
+  logoUrl?: string | null
 
   @IsOptional()
   @IsString()

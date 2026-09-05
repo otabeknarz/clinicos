@@ -7,9 +7,10 @@
  * Bu yerda rasm brauzerda kichraytiriladi va JPEG'ga o'giriladi. Natijada
  * ~20-40 KB qoladi.
  *
- * BACKEND BILAN: fayl `multipart/form-data` orqali yuboriladi va S3 kabi
- * obyekt xotirasida saqlanadi. Bazaga faqat havola yoziladi. Bu yerdagi
- * data URL faqat demo rejim uchun.
+ * BACKEND BILAN: `blob` `multipart/form-data` orqali `POST /uploads/avatars`
+ * ga yuboriladi, server uni S3 ga yozib KALIT qaytaradi, bazaga o'sha kalit
+ * yoziladi. `dataUrl` esa faqat DARHOL ko'rsatish uchun — yuklash tugagunicha
+ * foydalanuvchi rasmni ko'rib tursin. Demo rejimda saqlanadigan ham o'sha.
  */
 
 /** Avatar uchun eng katta o'lcham */
@@ -23,7 +24,10 @@ export type ImageError = 'type' | 'size' | 'decode'
 
 export interface ImageResult {
   ok: boolean
+  /** Darhol ko'rsatish uchun (va demo rejimda saqlash uchun) */
   dataUrl: string
+  /** Serverga yuboriladigan fayl. Xato bo'lsa `null`. */
+  blob: Blob | null
   error?: ImageError
 }
 
@@ -35,10 +39,10 @@ export interface ImageResult {
  */
 export async function prepareAvatar(file: File): Promise<ImageResult> {
   if (!file.type.startsWith('image/')) {
-    return { ok: false, dataUrl: '', error: 'type' }
+    return { ok: false, dataUrl: '', blob: null, error: 'type' }
   }
   if (file.size > MAX_FILE_BYTES) {
-    return { ok: false, dataUrl: '', error: 'size' }
+    return { ok: false, dataUrl: '', blob: null, error: 'size' }
   }
 
   try {
@@ -55,14 +59,25 @@ export async function prepareAvatar(file: File): Promise<ImageResult> {
     canvas.height = size
 
     const ctx = canvas.getContext('2d')
-    if (!ctx) return { ok: false, dataUrl: '', error: 'decode' }
+    if (!ctx) return { ok: false, dataUrl: '', blob: null, error: 'decode' }
 
     ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size)
     bitmap.close()
 
-    return { ok: true, dataUrl: canvas.toDataURL('image/jpeg', QUALITY) }
+    /*
+      Canvas orqali o'tgani uchun natijada EXIF qolmaydi —
+      telefon rasmidagi joylashuv ma'lumoti ham shu yerda
+      tushib qoladi. Bu yaxshi: uni serverga yuborishning
+      hojati yo'q.
+    */
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', QUALITY),
+    )
+    if (!blob) return { ok: false, dataUrl: '', blob: null, error: 'decode' }
+
+    return { ok: true, dataUrl: canvas.toDataURL('image/jpeg', QUALITY), blob }
   } catch {
-    return { ok: false, dataUrl: '', error: 'decode' }
+    return { ok: false, dataUrl: '', blob: null, error: 'decode' }
   }
 }

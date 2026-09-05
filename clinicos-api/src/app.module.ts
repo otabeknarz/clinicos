@@ -31,12 +31,15 @@ import { UsersModule } from './users/users.module'
 import { VisitsModule } from './visits/visits.module'
 import { WardModule } from './ward/ward.module'
 import { ServicesModule } from './services/services.module'
+import { SignedUrlInterceptor } from './storage/signed-url.interceptor'
+import { StorageModule } from './storage/storage.module'
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     AuditModule,
+    StorageModule,
     AuthModule,
     PatientsModule,
     ServicesModule,
@@ -91,6 +94,13 @@ import { ServicesModule } from './services/services.module'
       qolganlariga qo'shimcha so'rov qo'shmaydi.
     */
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+
+    /*
+      Fayl kalitlarini imzolangan havolaga o'giradi. Audit'dan
+      KEYIN turadi: audit so'rov boshida yozilishi kerak, bu esa
+      javob qaytayotganda ishlaydi.
+    */
+    { provide: APP_INTERCEPTOR, useClass: SignedUrlInterceptor },
   ],
 })
 export class AppModule implements NestModule {
