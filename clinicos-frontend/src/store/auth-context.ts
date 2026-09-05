@@ -20,6 +20,15 @@ export interface AuthValue {
   logout: () => Promise<void>
   /** Profil o'zgargach sessiyani qayta o'qiydi */
   refresh: () => Promise<void>
+  /**
+   * Server bergan yangi sessiyani o'rniga qo'yadi.
+   *
+   * Parol almashtirilganda kerak: serverda eski tokenlar darhol
+   * yaroqsiz bo'ladi, shu jumladan hozir ishlatilayotgani ham.
+   * Yangisi qo'yilmasa, foydalanuvchi o'z parolini almashtirib,
+   * o'zi tizimdan chiqib qolardi.
+   */
+  applySession: (session: Session) => void
   can: (permission: Permission) => boolean
 
   /* --- Klinika paneliga kirish (faqat platforma egasi) --- */

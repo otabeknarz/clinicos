@@ -168,6 +168,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [setUserId],
   )
 
+  /**
+   * Server bergan yangi sessiyani o'rniga qo'yish.
+   *
+   * `refresh()` dan farqi: bu yerda so'rov yuborilmaydi. Parol
+   * almashtirilgach eski token allaqachon yaroqsiz, ya'ni
+   * `/auth/me` ni chaqirish 401 bilan tugardi.
+   */
+  const applySession = useCallback((next: Session) => {
+    setSession(next)
+  }, [])
+
   /** Sessiyani serverdan qayta o'qish — profil tahrirlangandan keyin */
   const refresh = useCallback(async () => {
     if (!userId) return
@@ -259,6 +270,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       refresh,
+      applySession,
       can: (permission: Permission) => canCheck(session, permission),
       impersonating,
       enterClinic,
@@ -272,6 +284,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       refresh,
+      applySession,
       impersonating,
       enterClinic,
       exitClinic,

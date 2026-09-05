@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Camera, Trash2, Upload } from 'lucide-react'
 
-import { updateProfile } from '@/api/auth'
+import { changePassword, updateProfile } from '@/api/auth'
 import { uploadImage } from '@/api/uploads'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
@@ -225,6 +225,115 @@ export function ProfileTab() {
 
       <Button onClick={submit} loading={save.pending}>
         {t('action.save')}
+      </Button>
+
+      <PasswordSection />
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Parol                                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * O'Z PAROLINI ALMASHTIRISH.
+ *
+ * Joriy parol so'raladi: token borligi "bu o'sha odam" degani
+ * emas. Qarovsiz qolgan ochiq sessiya yonidan o'tgan odam
+ * hisobni o'zlashtirib ololmasin.
+ *
+ * Server almashtirilgach YANGI sessiya qaytaradi va eski
+ * tokenlarni yaroqsiz qiladi. Uni darhol o'rniga qo'yamiz —
+ * aks holda foydalanuvchi o'z parolini almashtirib, o'zi
+ * tizimdan chiqib qolardi.
+ */
+function PasswordSection() {
+  const { t } = useI18n()
+  const toast = useToast()
+  const { session, applySession } = useAuth()
+
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [repeat, setRepeat] = useState('')
+  const [touched, setTouched] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const errors = {
+    next: next.length > 0 && next.length < 8 ? t('password.hint') : undefined,
+    repeat: repeat.length > 0 && repeat !== next ? t('password.mismatch') : undefined,
+  }
+  const valid =
+    current.length > 0 && next.length >= 8 && repeat === next && next !== current
+
+  async function submit() {
+    setTouched(true)
+    if (!valid) {
+      if (next === current && next.length >= 8) toast.error(t('password.same'))
+      return
+    }
+
+    setSaving(true)
+    try {
+      const fresh = await changePassword(current, next)
+      applySession(fresh)
+      setCurrent('')
+      setNext('')
+      setRepeat('')
+      setTouched(false)
+      toast.success(t('password.changed'))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('toast.error'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="hairline-t space-y-4 pt-6">
+      <p className="text-footnote font-medium text-label-secondary">
+        {t('password.title')}
+      </p>
+
+      {session?.user.mustChangePassword ? (
+        <p className="rounded-[10px] bg-warn-soft px-3 py-2.5 text-caption text-warn">
+          {t('password.mustChange')}
+        </p>
+      ) : null}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextInput
+          label={t('password.current')}
+          type="password"
+          autoComplete="current-password"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+        />
+        <div className="hidden sm:block" />
+
+        <TextInput
+          label={t('password.new')}
+          type="password"
+          autoComplete="new-password"
+          hint={t('password.hint')}
+          value={next}
+          error={touched ? errors.next : undefined}
+          onChange={(e) => setNext(e.target.value)}
+        />
+        <TextInput
+          label={t('password.repeat')}
+          type="password"
+          autoComplete="new-password"
+          value={repeat}
+          error={touched ? errors.repeat : undefined}
+          onChange={(e) => setRepeat(e.target.value)}
+        />
+      </div>
+
+      <p className="text-caption text-label-tertiary">{t('password.note')}</p>
+
+      <Button variant="tinted" loading={saving} disabled={!valid} onClick={submit}>
+        {t('password.change')}
       </Button>
     </div>
   )

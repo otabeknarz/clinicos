@@ -231,6 +231,43 @@ iga ishonilmaydi. SVG ataylab qabul qilinmaydi.
 
 ---
 
+## Parol
+
+Har bir foydalanuvchi o'z parolini almashtiradi:
+
+```
+POST /auth/password   { currentPassword, newPassword }
+```
+
+**Joriy parol majburiy.** Token borligi "bu o'sha odam" degani
+emas — qarovsiz qolgan ochiq sessiya yonidan o'tgan odam hisobni
+o'zlashtirib ololmasin.
+
+Almashtirilgach **eski tokenlar darhol yaroqsiz** bo'ladi.
+Tokenda `pwd` belgisi bor va u bazadagi `passwordChangedAt` bilan
+solishtiriladi. Vaqt bo'yicha emas, aniq taqqoslash: `iat` butun
+soniyalarda va parol almashtirilgan soniyada berilgan eski token
+o'tib ketardi (buni `test:crud` ushladi).
+
+Javobda **yangi sessiya** qaytadi — aks holda almashtirgan odam
+o'zi chiqib qolardi.
+
+Egasi xodim parolini qayta belgilaydi:
+
+```
+POST /staff/:id/password   { password, mustChangePassword }
+```
+
+Bu ham xodimning eski sessiyalarini uzadi. `mustChangePassword`
+ilgari qabul qilinardi, lekin hech qayerga yozilmasdi — sxemada
+bunday ustun yo'q edi.
+
+**Parolni tiklash (unutgan bo'lsa) yo'q** — buning uchun pochta
+xizmati kerak. Klinika egasi parolini unutsa, hozircha faqat
+bazadan tiklash mumkin.
+
+---
+
 ## Klinika boshqaruvi
 
 Platforma admini uchun:

@@ -330,9 +330,24 @@ export class StaffService {
       throw new BadRequestException('Bu xodimda tizimga kirish yo‘q')
     }
 
+    /*
+      `passwordChangedAt` — xodimning qo'lidagi eski token darhol
+      yaroqsiz bo'lsin. Egasi parolni odatda BEJIZ almashtirmaydi:
+      xodim ishdan bo'shadi yoki parol sizib chiqdi. Eski sessiya
+      qolib ketsa, qayta belgilashning ma'nosi bo'lmasdi.
+
+      `mustChangePassword` ilgari DTO da qabul qilinardi, lekin
+      hech qayerga yozilmasdi — sxemada bunday ustun yo'q edi.
+      Endi saqlanadi va xodim kirgach interfeys almashtirishni
+      so'raydi.
+    */
     await this.db.user.update({
       where: { id: staff.userId },
-      data: { passwordHash: await argon2.hash(dto.password) },
+      data: {
+        passwordHash: await argon2.hash(dto.password),
+        passwordChangedAt: new Date(),
+        mustChangePassword: dto.mustChangePassword,
+      },
     })
 
     return { ok: true }

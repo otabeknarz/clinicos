@@ -66,6 +66,10 @@ async function call(
   return { status: res.status, data }
 }
 
+function short_(data: unknown): string {
+  return short(data)
+}
+
 function short(data: unknown): string {
   return JSON.stringify(data)?.slice(0, 110) ?? ''
 }
@@ -306,6 +310,70 @@ async function main() {
   for (const [role, token] of Object.entries(tokens)) {
     const r = await call('PATCH', '/profile', token, { phone: '+998900000001' })
     check(`profil tahriri (${role})`, r.status === 200, short(r.data))
+  }
+
+  /* ---------------- Parol ---------------- */
+  console.log('\nParol almashtirish (shifokor)')
+  {
+    /*
+      Shifokor tanlandi: uning tokeni keyingi sinovlarda
+      ishlatilmaydi, ya'ni bekor qilinishi boshqasiga xalal
+      bermaydi. Oxirida parol qaytariladi.
+    */
+    const before = (
+      await call('POST', '/auth/login', undefined, {
+        email: ACCOUNTS.doctor,
+        password: PASSWORD,
+      })
+    ).data.token
+
+    const wrong = await call('POST', '/auth/password', before, {
+      currentPassword: 'notogri',
+      newPassword: 'YangiParol123',
+    })
+    check('joriy parol noto‘g‘ri bo‘lsa rad etiladi', wrong.status === 400, `${wrong.status}`)
+
+    const same = await call('POST', '/auth/password', before, {
+      currentPassword: PASSWORD,
+      newPassword: PASSWORD,
+    })
+    check('eski parolni qayta qo‘yib bo‘lmaydi', same.status === 400, `${same.status}`)
+
+    const short = await call('POST', '/auth/password', before, {
+      currentPassword: PASSWORD,
+      newPassword: 'qisqa',
+    })
+    check('qisqa parol rad etiladi', short.status === 400, `${short.status}`)
+
+    const changed = await call('POST', '/auth/password', before, {
+      currentPassword: PASSWORD,
+      newPassword: 'VaqtinchalikParol9',
+    })
+    check('parol almashtirildi', changed.status < 300, short_(changed.data))
+    check('  yangi sessiya qaytdi', Boolean(changed.data?.token))
+
+    const withNew = await call('GET', '/patients', changed.data?.token)
+    check('  yangi token ishlaydi', withNew.status === 200, `${withNew.status}`)
+
+    const withOld = await call('GET', '/patients', before)
+    check('  ESKI token yaroqsiz', withOld.status === 401, `${withOld.status}`)
+
+    const oldLogin = await call('POST', '/auth/login', undefined, {
+      email: ACCOUNTS.doctor,
+      password: PASSWORD,
+    })
+    check('  eski parol bilan kirib bo‘lmaydi', oldLogin.status === 401, `${oldLogin.status}`)
+
+    /* Keyingi ishga tushirishlar uchun parolni qaytaramiz */
+    await call('POST', '/auth/password', changed.data?.token, {
+      currentPassword: 'VaqtinchalikParol9',
+      newPassword: PASSWORD,
+    })
+    const restored = await call('POST', '/auth/login', undefined, {
+      email: ACCOUNTS.doctor,
+      password: PASSWORD,
+    })
+    check('  parol qaytarildi', restored.status < 300, `${restored.status}`)
   }
 
   /* ---------------- Klinikani to'xtatish ---------------- */

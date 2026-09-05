@@ -668,6 +668,13 @@ export interface User {
   createdAt: ISODateTime
   /** Agar rol = doctor bo'lsa, shifokor profiliga bog'lanish */
   doctorId: ID | null
+  /**
+   * Egasi parolni qayta belgilagan — kirgach almashtirish so'raladi.
+   *
+   * Faqat sessiya javobida keladi (`/auth/login`, `/auth/me`),
+   * foydalanuvchilar ro'yxatida emas.
+   */
+  mustChangePassword?: boolean
 }
 
 /** Kirgan foydalanuvchi sessiyasi. Parol yoki hash HECH QACHON bu yerda bo'lmaydi. */

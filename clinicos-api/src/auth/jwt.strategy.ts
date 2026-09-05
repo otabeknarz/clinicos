@@ -13,6 +13,11 @@ export interface JwtPayload {
   sub: string
   clinicId: string
   impersonationId?: string | null
+  /**
+   * Token berilgan paytdagi `passwordChangedAt` (millisekundlarda).
+   * Hech qachon almashtirmagan foydalanuvchida `0`.
+   */
+  pwd?: number
 }
 
 /**
@@ -49,6 +54,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         doctorId: true,
         isActive: true,
         extraPermissions: true,
+        passwordChangedAt: true,
         clinic: {
           select: {
             isActive: true,
@@ -60,6 +66,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Sessiya yaroqsiz')
+    }
+
+    /*
+      Parol almashtirilgandan OLDIN berilgan token yaroqsiz.
+
+      NEGA: parol odatda sizib chiqqani uchun almashtiriladi. Uni
+      bilgan odamning ochiq sessiyasi qolib ketsa, almashtirishning
+      ma'nosi bo'lmasdi — u yana 12 soat ishlab yurardi.
+
+      Taqqoslash ANIQ, vaqt bo'yicha emas: token o'zi bilan
+      berilgan paytdagi qiymatni olib yuradi. Ilgari `iat` bilan
+      solishtirilardi, lekin u butun soniyalarda — parol
+      almashtirilgan soniyada berilgan eski token o'tib ketardi.
+    */
+    const currentPwd = user.passwordChangedAt?.getTime() ?? 0
+    if ((payload.pwd ?? 0) !== currentPwd) {
+      throw new UnauthorizedException('Parol o‘zgardi — qaytadan kiring')
     }
 
     /*

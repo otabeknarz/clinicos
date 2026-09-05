@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**139 ta endpoint.**
+**140 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -121,6 +121,24 @@ me(userId?: string): Promise<Session | null>
 
 ```ts
 updateProfile(userId: ID, input: ProfileInput): Promise<User>
+```
+
+### `POST /auth/password`
+
+PAROLNI ALMASHTIRISH.
+
+Joriy parol majburiy: token borligi "bu o'sha odam" degani emas.
+Qarovsiz qolgan ochiq sessiya yonidan o'tgan odam hisobni
+o'zlashtirib ololmasin.
+
+Javobda YANGI sessiya qaytadi. Serverda almashtirilgach eski
+tokenlar yaroqsiz bo'ladi — shu jumladan chaqiruvchining o'zi
+ishlatayotgani ham. Shuning uchun `AuthContext` yangi tokenni
+darhol o'rniga qo'yishi kerak, aks holda foydalanuvchi o'z
+parolini almashtirib, o'zi chiqib qolardi.
+
+```ts
+changePassword(currentPassword: string, newPassword: string): Promise<Session>
 ```
 
 ### `GET /users`

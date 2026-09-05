@@ -89,6 +89,17 @@ model User {
   phone        String
   /// bcrypt yoki argon2id xeshi. Parolning o'zi HECH QAYERDA saqlanmaydi.
   passwordHash String  @map("password_hash")
+
+  /// Parol oxirgi marta qachon o'zgargani.
+  ///
+  /// Bu vaqtdan OLDIN berilgan tokenlar yaroqsiz hisoblanadi
+  /// (`jwt.strategy.ts`). Ya'ni parol almashtirilsa, uni bilgan
+  /// odamning qo'lidagi eski token ham darhol ishlamay qoladi —
+  /// aks holda parolni o'zgartirishning ma'nosi qolmasdi.
+  passwordChangedAt DateTime? @map("password_changed_at")
+
+  /// Egasi parolni qayta belgilagan bo'lsa — kirgach almashtirish so'raladi
+  mustChangePassword Boolean @default(false) @map("must_change_password")
   role         Role
   avatarUrl    String? @map("avatar_url")
   isActive     Boolean @default(true) @map("is_active")

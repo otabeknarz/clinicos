@@ -129,6 +129,12 @@ service would flip back to `active` when only `price` was sent). `npm run check:
 every `<X>InputDto` has an `Update<X>Dto` with the same fields, no required fields and no defaults;
 a deliberate omission is declared with `ATAYLAB YO'Q: <field>` in the doc comment.
 
+**Password change** (`POST /auth/password`) requires the current password and returns a *fresh
+session*. Tokens carry a `pwd` claim (the `passwordChangedAt` epoch at issue time) which
+`jwt.strategy.ts` compares exactly against the DB — not against `iat`, which is whole-second and
+let a token issued in the same second as the change slip through. `POST /staff/:id/password`
+revokes the target's sessions the same way. There is no forgot-password flow (no mail service).
+
 **Suspension is enforced in two places** (`common/clinic-access.ts`): at login and in
 `jwt.strategy.ts` on every request, so an already-issued 12h token stops working immediately.
 `PAST_DUE` deliberately does not block. Superadmins are exempt — their "clinic" is the platform
@@ -206,8 +212,8 @@ Path alias `@/` → `src/`, configured in both `vite.config.ts` and `tsconfig.ap
 ## Known gaps (intentional, needed before production)
 
 Row Level Security in the database (application-layer filtering is the only layer today),
-backups, no UI for reading the audit log, no self-service password change (a platform admin
-cannot change their own password through the app), the patient-feedback endpoints are deliberately closed
+backups, no UI for reading the audit log, no password *recovery* (change works; a forgotten
+password needs DB access because there is no mail service), the patient-feedback endpoints are deliberately closed
 until rate limiting exists (phone-number enumeration risk), and penalty rules are stored but
 never applied — the background job doesn't exist.
 

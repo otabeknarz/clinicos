@@ -10,7 +10,7 @@
  *    foydalanuvchi id'si saqlanadi, token yo'q.
  */
 
-import { delay, request, USE_MOCK } from './client'
+import { ApiError, delay, request, USE_MOCK } from './client'
 import { getDb } from '@/mock/db'
 import { MAIN_CLINIC_ID } from '@/mock/seed'
 import { resolvePermissions } from '@/lib/permissions'
@@ -134,6 +134,42 @@ export async function updateProfile(userId: ID, input: ProfileInput): Promise<Us
   }
 
   return delay(updated, 320)
+}
+
+/**
+ * PAROLNI ALMASHTIRISH.
+ *
+ * Joriy parol majburiy: token borligi "bu o'sha odam" degani emas.
+ * Qarovsiz qolgan ochiq sessiya yonidan o'tgan odam hisobni
+ * o'zlashtirib ololmasin.
+ *
+ * Javobda YANGI sessiya qaytadi. Serverda almashtirilgach eski
+ * tokenlar yaroqsiz bo'ladi — shu jumladan chaqiruvchining o'zi
+ * ishlatayotgani ham. Shuning uchun `AuthContext` yangi tokenni
+ * darhol o'rniga qo'yishi kerak, aks holda foydalanuvchi o'z
+ * parolini almashtirib, o'zi chiqib qolardi.
+ */
+// POST /auth/password
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<Session> {
+  if (!USE_MOCK) {
+    return request<Session>('POST', '/auth/password', {
+      body: { currentPassword, newPassword },
+    })
+  }
+
+  /*
+    Demo rejimda parol umuman tekshirilmaydi — mock qatlamida
+    parol saqlanmaydi. Faqat shakl to'g'riligi ko'riladi.
+  */
+  if (currentPassword !== DEMO_PASSWORD) {
+    throw new ApiError('Joriy parol noto‘g‘ri', 400)
+  }
+  const session = await me(getDb().users.all(MAIN_CLINIC_ID)[0]?.id)
+  if (!session) throw new ApiError('Sessiya topilmadi', 400)
+  return delay(session, 320)
 }
 
 // GET /users  →  sozlamalardagi foydalanuvchilar ro'yxati
