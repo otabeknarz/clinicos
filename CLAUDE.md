@@ -35,6 +35,8 @@ npm run dev              # nest start --watch
 |---|---|
 | `npm run check` | typecheck → check:permissions → check:endpoints → build. Run before shipping. |
 | `npm run test:isolation` | **The most important test.** Cross-tenant leak check. Needs a seeded DB. |
+| `npm run test:crud` | Write-path regression: every PATCH is sent with one field and the rest must survive. Needs a running, seeded server. |
+| `npm run check:dto` | Create/update DTO pairs must not drift. Static. |
 | `npm run smoke` | Hits every GET route as each of the 4 roles, looking for 500s. Server must be running. |
 | `npm run gen:tenant-models` | Regenerates `src/prisma/tenant-models.ts` from the schema (Python). |
 
@@ -114,6 +116,24 @@ log, which is created before entry. Login is audited separately (`recordLogin`),
 tenant filter, because no request context exists yet on a `@Public()` route; that one never blocks
 the login.
 
+**File storage** (`src/storage/`) is S3/MinIO with a **private bucket**. The DB stores a *key*
+(`clinics/<clinicId>/<kind>/<uuid>.<ext>`), never a URL — the clinicId comes from the token, so
+tenant isolation extends to files. `SignedUrlInterceptor` rewrites any `*Url` field whose value
+looks like a key into a 15-minute signed URL on the way out; it checks the field *name* too,
+because `POST /uploads` must return the raw `key`. Upload is server-side and sniffs magic bytes
+(SVG rejected). With `S3_*` unset, uploads return 503 and everything else still works.
+
+**Partial-update DTOs are hand-written, not `PartialType`.** Class field initializers survive
+`plainToInstance`, so a create-DTO reused on PATCH silently resets defaulted fields (an archived
+service would flip back to `active` when only `price` was sent). `npm run check:dto` enforces that
+every `<X>InputDto` has an `Update<X>Dto` with the same fields, no required fields and no defaults;
+a deliberate omission is declared with `ATAYLAB YO'Q: <field>` in the doc comment.
+
+**Suspension is enforced in two places** (`common/clinic-access.ts`): at login and in
+`jwt.strategy.ts` on every request, so an already-issued 12h token stops working immediately.
+`PAST_DUE` deliberately does not block. Superadmins are exempt — their "clinic" is the platform
+record and has no subscription.
+
 **Permissions are duplicated on purpose** — `clinicos-api/src/common/permissions.ts` (the real
 check, via `@RequirePermission('...')`) and `clinicos-frontend/src/lib/permissions.ts` +
 the `Permission` union in `clinicos-frontend/src/types/models.ts` (button visibility only).
@@ -186,7 +206,8 @@ Path alias `@/` → `src/`, configured in both `vite.config.ts` and `tsconfig.ap
 ## Known gaps (intentional, needed before production)
 
 Row Level Security in the database (application-layer filtering is the only layer today),
-backups, no UI for reading the audit log, the patient-feedback endpoints are deliberately closed
+backups, no UI for reading the audit log, no self-service password change (a platform admin
+cannot change their own password through the app), the patient-feedback endpoints are deliberately closed
 until rate limiting exists (phone-number enumeration risk), and penalty rules are stored but
 never applied — the background job doesn't exist.
 

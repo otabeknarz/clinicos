@@ -197,3 +197,56 @@ kerak bo'ladi:
   hali yo'q.
 - **Zaxira nusxa** — haqiqiy bemor ma'lumoti kirishidan oldin
   sozlanishi shart.
+
+---
+
+## Fayl saqlash (S3 / MinIO)
+
+Avatar, klinika logosi va kelajakda hujjatlar S3 mos xotirada
+saqlanadi. **Bucket yopiq**: fayl to'g'ridan-to'g'ri o'qilmaydi.
+
+Bazada havola emas, **kalit** yotadi:
+
+```
+clinics/<clinicId>/<tur>/<uuid>.<kengaytma>
+```
+
+`clinicId` faqat tokendan olinadi — klinika ajratish fayllarga
+ham tarqaydi. O'qishda `SignedUrlInterceptor` kalitni 15 daqiqalik
+imzolangan havolaga o'giradi, ya'ni frontend shartnomasi
+(`avatarUrl: string`) o'zgarmaydi.
+
+Yuklash ikki qadam:
+
+```
+POST /uploads/avatars   (multipart)  →  { key }
+PATCH /profile          { avatarUrl: key }
+```
+
+Fayl turi **magic baytdan** aniqlanadi — mijozning `Content-Type`
+iga ishonilmaydi. SVG ataylab qabul qilinmaydi.
+
+`.env` da `S3_*` bo'sh qoldirilsa yuklash o'chiq bo'ladi va
+`POST /uploads` 503 qaytaradi; qolgan hamma narsa ishlayveradi.
+
+---
+
+## Klinika boshqaruvi
+
+Platforma admini uchun:
+
+| Endpoint | Nima |
+|---|---|
+| `POST /platform/tenants` | Klinika + egasi + obuna, bitta tranzaksiyada |
+| `PATCH /platform/tenants/:id` | Nom, telefon, manzil, shahar |
+| `POST /platform/tenants/:id/suspend` | Vaqtincha to'xtatish |
+| `POST /platform/tenants/:id/archive` | Arxivlash (`CANCELLED`) |
+| `POST /platform/tenants/:id/activate` | Qaytarish |
+
+**`DELETE` yo'q va bo'lmasligi kerak.** Tibbiy yozuvni o'chirish
+odatda qonun bilan taqiqlanadi. Arxivlangan klinikaning ma'lumoti
+joyida qoladi, faqat kirish yopiladi.
+
+To'xtatilgan yoki arxivlangan klinika xodimi **kira olmaydi va
+qo'lidagi eski token ham darhol yaroqsiz bo'ladi** — tekshiruv
+`common/clinic-access.ts` da, kirishda ham, har bir so'rovda ham.
