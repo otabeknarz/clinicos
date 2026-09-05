@@ -144,19 +144,33 @@ export class StorageService implements OnModuleInit {
    * Faylni joriy klinika papkasiga yozadi va KALITNI qaytaradi.
    *
    * `kind` — `avatars`, `logos` kabi papka nomi.
+   *
+   * Bucket yo'q bo'lsa yaratib, QAYTA URINADI. Nega: bucket
+   * ilova ishga tushganda bir marta tekshiriladi, lekin S3
+   * keyinroq ham qayta tiklanishi mumkin (xotira almashtirildi,
+   * bucket qo'lda o'chirildi). U holda ilovani qayta ishga
+   * tushirmagunicha har bir yuklash sinardi — aynan shunday
+   * bo'ldi ham.
    */
   async put(kind: string, buffer: Buffer, type: { mime: string; ext: string }): Promise<StoredFile> {
     const { clinicId } = this.ctx.require()
     const key = `${KEY_PREFIX}${clinicId}/${kind}/${randomUUID()}.${type.ext}`
 
-    await this.client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        Body: buffer,
-        ContentType: type.mime,
-      }),
-    )
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      Body: buffer,
+      ContentType: type.mime,
+    })
+
+    try {
+      await this.client.send(command)
+    } catch (error) {
+      if (!isMissingBucket(error)) throw error
+      this.logger.warn(`Bucket yo‘q edi, qayta yaratilmoqda: ${this.bucket}`)
+      await this.client.send(new CreateBucketCommand({ Bucket: this.bucket }))
+      await this.client.send(command)
+    }
 
     return { key, mime: type.mime, size: buffer.length }
   }
@@ -211,6 +225,12 @@ export class StorageService implements OnModuleInit {
       this.logger.warn(`Fayl o‘chmadi: ${key} — ${(error as Error).message}`)
     }
   }
+}
+
+/** S3 xatosi "bunday bucket yo'q" deganimi */
+function isMissingBucket(error: unknown): boolean {
+  const name = (error as { name?: string })?.name
+  return name === 'NoSuchBucket' || name === 'NotFound'
 }
 
 /** Qiymat saqlangan kalitmi (havola yoki data URL emas) */

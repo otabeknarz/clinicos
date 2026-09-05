@@ -14,6 +14,7 @@ Loyihada uchta resurs bor (`ClinicOS` → `production`):
 | Resurs | Nima | Manzil |
 |---|---|---|
 | `clinicos-postgres` | PostgreSQL 17 | ichki, tashqariga ochilmagan |
+| `clinicos-s3` | MinIO (fayl xotirasi) | `s3.clinic-os.uz` |
 | `clinicos-api` | NestJS, Dockerfile | `api.clinic-os.uz` |
 | `clinicos-frontend` | React → Nginx, Dockerfile | `clinic-os.uz` |
 
@@ -24,6 +25,26 @@ build pack        Dockerfile
 base directory    /clinicos-api  yoki  /clinicos-frontend
 branch            main
 ```
+
+### MinIO — hajm haqida
+
+`clinicos-s3` **docker-compose bilan** qo'yilgan (`deploy/minio/`),
+oddiy Dockerfile bilan emas. Sabab jiddiy:
+
+Dockerfile'dagi `VOLUME /data` har konteynerda ANONIM hajm
+yaratadi. Redeploy — yangi konteyner — yangi bo'sh hajm, ya'ni
+**barcha fayl yo'qoladi**. Bir marta shunday bo'ldi ham.
+
+Coolify'ning `custom_docker_run_options` dagi `-v` e'tiborga
+olinmaydi (ilovalar compose orqali ko'tariladi), xotira API'si
+esa hujjatsiz. Shuning uchun hajm compose faylida, nomi bilan
+e'lon qilingan.
+
+**Build pack'ni Dockerfile'ga qaytarmang** — fayllar yana
+yo'qoladi.
+
+Tekshirish: fayl yuklab, `clinicos-s3` ni redeploy qilib,
+faylning joyidaligiga ishonch hosil qiling.
 
 ### Muhit o'zgaruvchilari
 

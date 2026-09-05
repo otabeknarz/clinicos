@@ -116,6 +116,12 @@ log, which is created before entry. Login is audited separately (`recordLogin`),
 tenant filter, because no request context exists yet on a `@Public()` route; that one never blocks
 the login.
 
+**MinIO is deployed from `deploy/minio/docker-compose.yaml`, not a Dockerfile** — and it must
+stay that way. A Dockerfile `VOLUME /data` creates an *anonymous* volume per container, so every
+redeploy started with empty storage and silently lost every uploaded file (this happened once).
+Coolify ignores `-v` in `custom_docker_run_options` for applications, and its storages API rejects
+every `type` value we could find, so the named volume lives in the compose file.
+
 **File storage** (`src/storage/`) is S3/MinIO with a **private bucket**. The DB stores a *key*
 (`clinics/<clinicId>/<kind>/<uuid>.<ext>`), never a URL — the clinicId comes from the token, so
 tenant isolation extends to files. `SignedUrlInterceptor` rewrites any `*Url` field whose value
