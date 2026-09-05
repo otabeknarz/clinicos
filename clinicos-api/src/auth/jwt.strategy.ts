@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import { PassportStrategy } from '@nestjs/passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 
+import { checkClinicAccess } from '../common/clinic-access'
 import { RequestUser } from '../common/request-context'
 import { IMPERSONATION_PERMISSIONS, resolvePermissions } from '../common/permissions'
 import { PrismaService } from '../prisma/prisma.service'
@@ -48,12 +49,30 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         doctorId: true,
         isActive: true,
         extraPermissions: true,
+        clinic: {
+          select: {
+            isActive: true,
+            subscription: { select: { status: true } },
+          },
+        },
       },
     })
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Sessiya yaroqsiz')
     }
+
+    /*
+      Klinika to'xtatilgan bo'lsa, qo'ldagi eski token ham
+      ishlamaydi. Faqat kirishda tekshirilsa, to'xtatilgan
+      klinika xodimi yana 12 soat ishlab yurardi.
+    */
+    const access = checkClinicAccess({
+      role: user.role,
+      clinicIsActive: user.clinic.isActive,
+      subscriptionStatus: user.clinic.subscription?.status ?? null,
+    })
+    if (!access.ok) throw new UnauthorizedException(access.reason)
 
     /*
       Platforma egasi klinika paneliga kirgan bo'lsa, tokendagi

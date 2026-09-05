@@ -15,6 +15,7 @@ import { RequestContext } from '../common/request-context'
 import { IdParamDto } from '../patients/patients.dto'
 import {
   DoctorInputDto,
+  UpdateDoctorDto,
   DoctorListQueryDto,
   DoctorRangeQueryDto,
   EarningsQueryDto,
@@ -106,7 +107,7 @@ export class DoctorsController {
   // PATCH /doctors/:id
   @Patch(':id')
   @RequirePermission('doctors.manage')
-  update(@Param() params: IdParamDto, @Body() dto: DoctorInputDto) {
+  update(@Param() params: IdParamDto, @Body() dto: UpdateDoctorDto) {
     return this.doctors.update(params.id, dto)
   }
 

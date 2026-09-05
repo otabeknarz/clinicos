@@ -17,6 +17,7 @@ import {
   ImpersonationQueryDto,
   InvoiceQueryDto,
   MemberInputDto,
+  UpdateMemberDto,
   PlanInputDto,
   PlatformDoctorQueryDto,
   PlatformPatientQueryDto,
@@ -117,7 +118,7 @@ export class PlatformController {
 
   @Patch('team/:id')
   @RequirePermission('platform.manage')
-  updateMember(@Param() params: IdParamDto, @Body() dto: MemberInputDto) {
+  updateMember(@Param() params: IdParamDto, @Body() dto: UpdateMemberDto) {
     return this.platform.updateMember(params.id, dto)
   }
 

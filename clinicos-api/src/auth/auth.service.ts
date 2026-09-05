@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt'
 import * as argon2 from 'argon2'
 
 import { toApi } from '../common/api-enum'
+import { checkClinicAccess } from '../common/clinic-access'
 import { AuditService } from '../common/audit.service'
 import { toApiClinic } from '../clinic/clinic.service'
 import { RequestContext } from '../common/request-context'
@@ -38,7 +39,16 @@ export class AuthService {
   async login(email: string, password: string, meta: LoginMeta = {}) {
     const user = await this.db.acrossAllClinics().user.findFirst({
       where: { email: email.trim().toLowerCase(), isActive: true },
-      include: { clinic: { select: { id: true, name: true, isActive: true } } },
+      include: {
+        clinic: {
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
+            subscription: { select: { status: true } },
+          },
+        },
+      },
     })
 
     const hash = user?.passwordHash ?? DUMMY_HASH
@@ -48,9 +58,16 @@ export class AuthService {
       // Bir xil xabar: qaysi biri noto'g'ri ekanini aytmaymiz
       throw new UnauthorizedException('Email yoki parol noto‘g‘ri')
     }
-    if (!user.clinic.isActive) {
-      throw new UnauthorizedException('Klinika hisobi to‘xtatilgan')
-    }
+    /*
+      Klinika ishlashga yaroqlimi — obuna holati bilan birga.
+      Batafsil: `common/clinic-access.ts`.
+    */
+    const access = checkClinicAccess({
+      role: user.role,
+      clinicIsActive: user.clinic.isActive,
+      subscriptionStatus: user.clinic.subscription?.status ?? null,
+    })
+    if (!access.ok) throw new UnauthorizedException(access.reason)
 
     await this.db
       .acrossAllClinics()

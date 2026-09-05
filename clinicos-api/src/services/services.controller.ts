@@ -11,7 +11,8 @@ import {
 
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { IdParamDto } from '../patients/patients.dto'
-import { PriceQueryDto, ServiceInputDto, ServiceListQueryDto } from './services.dto'
+import { PriceQueryDto, ServiceInputDto,
+  UpdateServiceDto, ServiceListQueryDto } from './services.dto'
 import { ServicesService } from './services.service'
 
 /**
@@ -54,7 +55,7 @@ export class ServicesController {
   // PATCH /services/:id
   @Patch(':id')
   @RequirePermission('services.manage')
-  update(@Param() params: IdParamDto, @Body() dto: ServiceInputDto) {
+  update(@Param() params: IdParamDto, @Body() dto: UpdateServiceDto) {
     return this.services.update(params.id, dto)
   }
 

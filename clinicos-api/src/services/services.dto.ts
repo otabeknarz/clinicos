@@ -98,3 +98,52 @@ export class PriceQueryDto {
   @IsUUID()
   patientId?: string
 }
+
+/**
+ * Xizmatni TAHRIRLASH.
+ *
+ * NEGA ALOHIDA KLASS, `ServiceInputDto` emas:
+ *
+ *   1. Unda maydonlar MAJBURIY. Interfeys esa faqat o'zgargan
+ *      maydonni yuboradi (`Partial<ServiceInput>`), natijada
+ *      har qanday tahrir 400 olardi.
+ *
+ *   2. Sukut qiymatlar (`status = 'active'`) bu yerda BO'LMASLIGI
+ *      kerak. `class-transformer` klass maydonining boshlang'ich
+ *      qiymatini so'rovda kelmagan bo'lsa ham qo'yadi — ya'ni
+ *      faqat narxni yuborgan so'rov arxivlangan xizmatni jimgina
+ *      qayta faollashtirib yuborardi.
+ *
+ * Yangi maydon qo'shsangiz shu yerga ham qo'shing —
+ * `npm run check:dto` ikkalasini solishtiradi.
+ */
+export class UpdateServiceDto {
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(150)
+  name?: string
+
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(60)
+  category?: string
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Narx butun son bo‘lishi kerak' })
+  @Min(1, { message: 'Narx noldan katta bo‘lishi kerak' })
+  @Max(1_000_000_000)
+  price?: number
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(5) @Max(600)
+  durationMinutes?: number
+
+  @IsOptional() @IsIn(['prepaid', 'postpaid'])
+  paymentTiming?: 'prepaid' | 'postpaid'
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10, { message: 'Chegirma pog‘onalari 10 tadan oshmasin' })
+  @ValidateNested({ each: true })
+  @Type(() => LoyaltyTierDto)
+  loyaltyTiers?: LoyaltyTierDto[]
+
+  @IsOptional() @IsIn(['active', 'archived'])
+  status?: 'active' | 'archived'
+}

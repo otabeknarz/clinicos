@@ -166,3 +166,36 @@ export class PlatformSearchDto {
   @IsOptional() @IsIn(['all', 'clinic', 'doctor', 'patient'])
   scope: 'all' | 'clinic' | 'doctor' | 'patient' = 'all'
 }
+
+/**
+ * Platforma xodimini TAHRIRLASH.
+ *
+ * `password` bu yerda IXTIYORIY: yaratishda majburiy, tahrirda
+ * esa faqat almashtirmoqchi bo'lganda yuboriladi. Majburiy
+ * qolsa, ismni o'zgartirish uchun ham parol terish kerak bo'lardi.
+ */
+export class UpdateMemberDto {
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(120)
+  fullName?: string
+
+  @IsOptional() @IsEmail()
+  email?: string
+
+  @IsOptional() @IsString() @MinLength(7) @MaxLength(30)
+  phone?: string
+
+  @IsOptional() @IsString() @MaxLength(100)
+  position?: string
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsIn(PLATFORM_PERMISSIONS, { each: true })
+  permissions?: (typeof PLATFORM_PERMISSIONS)[number][]
+
+  @IsOptional() @IsBoolean()
+  isActive?: boolean
+
+  @IsOptional() @IsString() @MinLength(8, { message: 'Parol kamida 8 belgi' }) @MaxLength(200)
+  password?: string
+}

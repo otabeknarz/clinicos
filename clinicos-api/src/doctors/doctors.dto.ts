@@ -93,3 +93,47 @@ export class EarningsQueryDto {
   @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, { message: 'Davr "2026-09" ko‘rinishida' })
   period!: string
 }
+
+/**
+ * Shifokorni TAHRIRLASH.
+ *
+ * Sabablari `services.dto.ts` dagi bilan bir xil: interfeys
+ * qisman yuboradi, sukut qiymat esa yubormagan maydonni bosib
+ * yozardi (`status` — ta'tildagi shifokorni qayta faollashtirib).
+ */
+export class UpdateDoctorDto {
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(120)
+  fullName?: string
+
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(60)
+  specialty?: string
+
+  @IsOptional() @IsString() @MinLength(7) @MaxLength(30)
+  phone?: string
+
+  @IsOptional() @IsEmail({}, { message: 'Email formati noto‘g‘ri' })
+  email?: string
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1_000_000_000)
+  consultationFee?: number
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(7)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  workdays?: number[]
+
+  @IsOptional() @Matches(TIME, { message: 'Vaqt "09:00" ko‘rinishida bo‘lsin' })
+  shiftStart?: string
+
+  @IsOptional() @Matches(TIME, { message: 'Vaqt "18:00" ko‘rinishida bo‘lsin' })
+  shiftEnd?: string
+
+  @IsOptional() @IsIn(['active', 'on_leave', 'inactive'])
+  status?: 'active' | 'on_leave' | 'inactive'
+
+  @IsOptional() @IsDateString()
+  hiredAt?: string
+}

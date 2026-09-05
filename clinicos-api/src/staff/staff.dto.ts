@@ -124,3 +124,75 @@ export class MonthQueryDto {
   @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, { message: 'Oy "2026-09" ko‘rinishida' })
   month!: string
 }
+
+/**
+ * Xodimni TAHRIRLASH.
+ *
+ * Sabablari `services.dto.ts` da. Bu yerda xavf kattaroq:
+ * sukut qiymatlar ishlaganda faqat lavozimni o'zgartirgan
+ * so'rov maoshni ham nolga, stavkani 100 ga qaytarib,
+ * ishdan bo'shagan xodimni "faol" qilib qo'yardi.
+ */
+export class UpdateStaffDto {
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(120)
+  fullName?: string
+
+  @IsOptional() @IsString() @MinLength(7) @MaxLength(30)
+  phone?: string
+
+  @IsOptional() @IsString() @MaxLength(150)
+  email?: string
+
+  @IsOptional() @IsIn(POSITIONS)
+  position?: (typeof POSITIONS)[number]
+
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(100)
+  positionTitle?: string
+
+  @IsOptional() @IsString() @MaxLength(100)
+  department?: string
+
+  @IsOptional() @IsArray() @ArrayMaxSize(7)
+  @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true })
+  workdays?: number[]
+
+  @IsOptional() @Matches(TIME) shiftStart?: string
+  @IsOptional() @Matches(TIME) shiftEnd?: string
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(200)
+  workRate?: number
+
+  @IsOptional() @IsIn(['salary', 'percent', 'salary_percent'])
+  payType?: 'salary' | 'percent' | 'salary_percent'
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(100)
+  percentRate?: number
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1_000_000_000)
+  salary?: number
+
+  @IsOptional() @IsDateString()
+  hiredAt?: string
+
+  @IsOptional() @IsIn(['active', 'on_leave', 'fired'])
+  status?: 'active' | 'on_leave' | 'fired'
+
+  @IsOptional() @IsBoolean()
+  hasSystemAccess?: boolean
+
+  @IsOptional() @ValidateIf((_, v) => v !== null)
+  @IsIn(['owner', 'receptionist', 'doctor'])
+  role?: 'owner' | 'receptionist' | 'doctor' | null
+
+  @IsOptional() @IsString() @MaxLength(150)
+  login?: string
+
+  @IsOptional() @IsString() @MinLength(8, { message: 'Parol kamida 8 belgi' }) @MaxLength(200)
+  password?: string
+
+  @IsOptional() @IsBoolean()
+  mustChangePassword?: boolean
+
+  @IsOptional() @IsString() @MaxLength(1000)
+  notes?: string
+}

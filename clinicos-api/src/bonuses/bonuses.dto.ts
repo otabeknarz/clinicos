@@ -63,3 +63,33 @@ export class BonusRuleInputDto {
   @IsOptional() @IsBoolean()
   isActive: boolean = true
 }
+
+/**
+ * Bonus qoidasini TAHRIRLASH.
+ *
+ * Sabablari `services.dto.ts` da. `isActive = true` sukut
+ * qiymati eng xavflisi edi: faqat summani o'zgartirgan so'rov
+ * o'chirilgan qoidani qayta yoqib yuborardi.
+ */
+export class UpdateBonusRuleDto {
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(150)
+  name?: string
+
+  @IsOptional() @IsArray() @ArrayMaxSize(11) @IsIn(POSITIONS, { each: true })
+  positions?: (typeof POSITIONS)[number][]
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(100)
+  minPerformance?: number
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(5)
+  minRating?: number
+
+  @IsOptional() @IsIn(['percent_of_salary', 'fixed'])
+  rewardType?: 'percent_of_salary' | 'fixed'
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(1_000_000_000)
+  rewardValue?: number
+
+  @IsOptional() @IsBoolean()
+  isActive?: boolean
+}

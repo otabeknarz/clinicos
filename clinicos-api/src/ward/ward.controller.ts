@@ -6,6 +6,7 @@ import {
   AdmissionInputDto,
   AdmissionQueryDto,
   RoomInputDto,
+  UpdateRoomDto,
   WardRangeDto,
 } from './ward.dto'
 import { WardService } from './ward.service'
@@ -31,7 +32,7 @@ export class WardController {
   // PATCH /ward/rooms/:id
   @Patch('rooms/:id')
   @RequirePermission('ward.manage')
-  updateRoom(@Param() params: IdParamDto, @Body() dto: RoomInputDto) {
+  updateRoom(@Param() params: IdParamDto, @Body() dto: UpdateRoomDto) {
     return this.ward.updateRoom(params.id, dto)
   }
 

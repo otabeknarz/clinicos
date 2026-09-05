@@ -105,3 +105,32 @@ export class WardRangeDto {
   @IsDateString()
   to!: string
 }
+
+/**
+ * Palatani TAHRIRLASH.
+ *
+ * ATAYLAB YO'Q: bedCount
+ *
+ * U faqat yaratishda ishlatiladi. Tahrirda kelsa, mavjud joylar
+ * qayta yaratilib, ularda yotgan bemorlarning yozuvi uzilib
+ * qolardi.
+ */
+export class UpdateRoomDto {
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(20)
+  number?: string
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(50)
+  floor?: number
+
+  @IsOptional() @IsIn(['luxury', 'standard', 'general'])
+  category?: 'luxury' | 'standard' | 'general'
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1_000_000_000)
+  dailyRate?: number
+
+  @IsOptional() @IsIn(['active', 'maintenance'])
+  status?: 'active' | 'maintenance'
+
+  @IsOptional() @IsString() @MaxLength(500)
+  notes?: string
+}

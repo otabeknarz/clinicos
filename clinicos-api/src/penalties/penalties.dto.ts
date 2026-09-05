@@ -50,3 +50,33 @@ export class WaiveDto {
   @IsString() @MinLength(3, { message: 'Kechirish sababini yozing' }) @MaxLength(500)
   note!: string
 }
+
+/**
+ * Jarima qoidasini TAHRIRLASH.
+ *
+ * Sabablari `services.dto.ts` da. Bu yerda ham `isActive`
+ * sukut qiymati o'chirilgan qoidani qayta yoqib yuborardi —
+ * jarima qoidasida bu ayniqsa qimmat.
+ */
+export class UpdatePenaltyRuleDto {
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(150)
+  name?: string
+
+  @IsOptional() @IsIn(TRIGGERS)
+  trigger?: (typeof TRIGGERS)[number]
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1_000_000_000)
+  threshold?: number
+
+  @IsOptional() @IsIn(['fixed', 'percent_of_shortfall', 'percent_of_daily_salary'])
+  amountType?: 'fixed' | 'percent_of_shortfall' | 'percent_of_daily_salary'
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(1_000_000_000)
+  amountValue?: number
+
+  @IsOptional() @IsArray() @ArrayMaxSize(11) @IsIn(POSITIONS, { each: true })
+  positions?: (typeof POSITIONS)[number][]
+
+  @IsOptional() @IsBoolean()
+  isActive?: boolean
+}

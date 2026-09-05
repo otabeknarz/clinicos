@@ -5,7 +5,8 @@ import {
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { IdParamDto } from '../patients/patients.dto'
 import {
-  BonusInputDto, BonusRuleInputDto, PeriodQueryDto, RequiredPeriodDto,
+  BonusInputDto, BonusRuleInputDto,
+  UpdateBonusRuleDto, PeriodQueryDto, RequiredPeriodDto,
 } from './bonuses.dto'
 import { BonusesService } from './bonuses.service'
 
@@ -71,7 +72,7 @@ export class BonusesController {
   // PATCH /bonus-rules/:id
   @Patch('bonus-rules/:id')
   @RequirePermission('bonus.manage')
-  updateRule(@Param() params: IdParamDto, @Body() dto: BonusRuleInputDto) {
+  updateRule(@Param() params: IdParamDto, @Body() dto: UpdateBonusRuleDto) {
     return this.bonuses.updateRule(params.id, dto)
   }
 

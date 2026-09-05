@@ -4,7 +4,8 @@ import {
 
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { IdParamDto } from '../patients/patients.dto'
-import { PenaltyRuleInputDto, PeriodDto, WaiveDto } from './penalties.dto'
+import { PenaltyRuleInputDto,
+  UpdatePenaltyRuleDto, PeriodDto, WaiveDto } from './penalties.dto'
 import { PenaltiesService } from './penalties.service'
 
 @Controller()
@@ -28,7 +29,7 @@ export class PenaltiesController {
   // PATCH /penalty-rules/:id
   @Patch('penalty-rules/:id')
   @RequirePermission('staff.manage')
-  updateRule(@Param() params: IdParamDto, @Body() dto: PenaltyRuleInputDto) {
+  updateRule(@Param() params: IdParamDto, @Body() dto: UpdatePenaltyRuleDto) {
     return this.penalties.updateRule(params.id, dto)
   }
 

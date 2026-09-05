@@ -5,7 +5,8 @@ import {
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { IdParamDto } from '../patients/patients.dto'
 import {
-  MonthQueryDto, ResetPasswordDto, StaffInputDto, StaffQueryDto,
+  MonthQueryDto, ResetPasswordDto, StaffInputDto,
+  UpdateStaffDto, StaffQueryDto,
 } from './staff.dto'
 import { StaffService } from './staff.service'
 
@@ -73,7 +74,7 @@ export class StaffController {
   // PATCH /staff/:id
   @Patch('staff/:id')
   @RequirePermission('staff.manage')
-  update(@Param() params: IdParamDto, @Body() dto: StaffInputDto) {
+  update(@Param() params: IdParamDto, @Body() dto: UpdateStaffDto) {
     return this.staff.update(params.id, dto)
   }
 
