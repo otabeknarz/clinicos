@@ -199,3 +199,83 @@ export class UpdateMemberDto {
   @IsOptional() @IsString() @MinLength(8, { message: 'Parol kamida 8 belgi' }) @MaxLength(200)
   password?: string
 }
+
+/**
+ * YANGI KLINIKA.
+ *
+ * Klinika, uning egasi va obuna BIRGA yaratiladi. Uchtasi bitta
+ * tranzaksiyada: obunasiz klinika platforma ro'yxatida ko'rinmaydi,
+ * egasiz klinikaga esa hech kim kira olmaydi. Yarim yaratilgan
+ * klinika hech kimga kerak emas.
+ *
+ * Ilgari klinika faqat `prisma/seed.ts` va `npm run bootstrap`
+ * orqali paydo bo'lardi — ya'ni mijozni tizimga qo'shish uchun
+ * serverga kirish kerak edi.
+ */
+export class TenantCreateDto {
+  @IsString() @MinLength(2) @MaxLength(150)
+  name!: string
+
+  @IsString() @MinLength(7) @MaxLength(30)
+  phone!: string
+
+  @IsString() @MinLength(2) @MaxLength(300)
+  address!: string
+
+  @IsOptional() @IsString() @MaxLength(100)
+  city?: string
+
+  @IsUUID()
+  planId!: string
+
+  /* --- Klinika egasi --- */
+
+  @IsString() @MinLength(2) @MaxLength(120)
+  ownerName!: string
+
+  @IsEmail({}, { message: 'Email formati noto‘g‘ri' })
+  ownerEmail!: string
+
+  @IsString() @MinLength(7) @MaxLength(30)
+  ownerPhone!: string
+
+  /*
+    Parol IXTIYORIY. Berilmasa server kuchli parol yasaydi va
+    javobda BIR MARTA qaytaradi — bazada faqat xeshi qoladi.
+  */
+  @IsOptional() @IsString() @MinLength(8, { message: 'Parol kamida 8 belgi' }) @MaxLength(200)
+  ownerPassword?: string
+}
+
+/**
+ * Klinika ma'lumotlarini tahrirlash.
+ *
+ * Egasi va tarif bu yerdan o'zgarmaydi: tarif uchun alohida
+ * endpoint bor (`/plan`), egasini almashtirish esa xodimlar
+ * bo'limining ishi.
+ */
+export class TenantUpdateDto {
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(150)
+  name?: string
+
+  @IsOptional() @IsString() @MinLength(7) @MaxLength(30)
+  phone?: string
+
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(300)
+  address?: string
+
+  @IsOptional() @IsString() @MaxLength(100)
+  city?: string
+}
+
+/**
+ * Arxivlash sababi.
+ *
+ * ATAYLAB majburiy: arxivlangan klinika xodimlari tizimga kira
+ * olmaydi va bu ular uchun kutilmagan bo'ladi. Sabab yozilmasa,
+ * bir oydan keyin nima uchun yopilgani hech kimga ma'lum bo'lmaydi.
+ */
+export class ArchiveDto {
+  @IsString() @MinLength(5, { message: 'Sababni yozing' }) @MaxLength(500)
+  reason!: string
+}

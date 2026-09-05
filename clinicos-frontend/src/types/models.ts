@@ -250,6 +250,44 @@ export interface ImpersonationLog {
 }
 
 /**
+ * Yangi klinika ochish uchun kerakli ma'lumot.
+ *
+ * Klinika, egasi va obuna birga yaratiladi — serverda bitta
+ * tranzaksiyada. Yarim yaratilgan klinika hech kimga kerak emas.
+ */
+export interface TenantCreateInput {
+  name: string
+  phone: string
+  address: string
+  city?: string
+  planId: ID
+  ownerName: string
+  ownerEmail: string
+  ownerPhone: string
+  /** Berilmasa server kuchli parol yasaydi va bir marta qaytaradi */
+  ownerPassword?: string
+}
+
+/** Klinika ma'lumotlarini tahrirlash. Tarif va egasi alohida. */
+export interface TenantUpdateInput {
+  name?: string
+  phone?: string
+  address?: string
+  city?: string
+}
+
+/**
+ * Yangi klinika yaratilgandagi javob.
+ *
+ * `ownerPassword` FAQAT shu javobda keladi va boshqa hech qachon
+ * ko'rsatilmaydi — bazada uning xeshi saqlanadi. Interfeys uni
+ * bir marta ko'rsatishi va admin nusxalab olishini kutishi kerak.
+ */
+export interface TenantCreated extends Tenant {
+  ownerPassword?: string
+}
+
+/**
  * Klinikadagi shifokor — platforma ro'yxati uchun.
  *
  * NEGA KONTAKT BOR: klinikalar tarmog'ini qurishda shifokorlar

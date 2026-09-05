@@ -12,6 +12,7 @@ import {
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { IdParamDto } from '../patients/patients.dto'
 import {
+  ArchiveDto,
   ChangePlanDto,
   ImpersonateDto,
   ImpersonationQueryDto,
@@ -23,7 +24,9 @@ import {
   PlatformPatientQueryDto,
   PlatformSearchDto,
   SuspendDto,
+  TenantCreateDto,
   TenantQueryDto,
+  TenantUpdateDto,
 } from './platform.dto'
 import { PlatformService } from './platform.service'
 
@@ -138,6 +141,42 @@ export class PlatformController {
   @Get('tenants/:id')
   getTenant(@Param() params: IdParamDto) {
     return this.platform.getTenant(params.id)
+  }
+
+  /*
+    POST /platform/tenants
+
+    Yangi klinika: klinika + egasi + obuna birga yaratiladi.
+    Javobda egasining boshlang'ich paroli BIR MARTA qaytadi
+    (agar admin o'zi bermagan bo'lsa).
+  */
+  @Post('tenants')
+  @RequirePermission('platform.manage')
+  createTenant(@Body() dto: TenantCreateDto) {
+    return this.platform.createTenant(dto)
+  }
+
+  // PATCH /platform/tenants/:id
+  @Patch('tenants/:id')
+  @RequirePermission('platform.manage')
+  updateTenant(@Param() params: IdParamDto, @Body() dto: TenantUpdateDto) {
+    return this.platform.updateTenant(params.id, dto)
+  }
+
+  /*
+    POST /platform/tenants/:id/archive
+
+    O'CHIRISH EMAS, arxivlash. Ma'lumot joyida qoladi, kirish
+    yopiladi. Qaytarish uchun `/activate`.
+
+    DELETE endpointi ATAYLAB YO'Q: tibbiy yozuvni o'chirish
+    odatda qonun bilan taqiqlanadi va tasodifiy bosishning
+    narxi qaytarib bo'lmas.
+  */
+  @Post('tenants/:id/archive')
+  @RequirePermission('platform.manage')
+  archiveTenant(@Param() params: IdParamDto, @Body() dto: ArchiveDto) {
+    return this.platform.archiveTenant(params.id, dto)
   }
 
   @Post('tenants/:id/suspend')

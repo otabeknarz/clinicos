@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**136 ta endpoint.**
+**139 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -2855,15 +2855,41 @@ listTenants(query: TenantQuery = {}): Promise<Paginated<Tenant>>
 getTenant(id: ID): Promise<Tenant | null>
 ```
 
+### `POST /platform/tenants`
+
+Yangi klinika ochish.
+
+Klinika, egasi va obuna serverda BITTA tranzaksiyada
+yaratiladi. Javobda egasining boshlang'ich paroli qaytadi —
+FAQAT SHU YERDA. Bazada uning xeshi saqlanadi, ya'ni keyin
+ko'rsatib bo'lmaydi.
+
+```ts
+createTenant(input: TenantCreateInput): Promise<TenantCreated>
+```
+
+### `PATCH /platform/tenants/:id`
+
+```ts
+updateTenant(id: ID, patch: TenantUpdateInput): Promise<Tenant>
+```
+
+### `POST /platform/tenants/:id/archive`
+
+Arxivlash — O'CHIRISH EMAS.
+
+Bemor, tashrif, to'lov va audit jurnali joyida qoladi, faqat
+kirish yopiladi. Tibbiy yozuvni o'chirish odatda qonun bilan
+taqiqlanadi, tasodifiy bosishning narxi esa qaytarib bo'lmas.
+
+Serverda `DELETE /platform/tenants/:id` ATAYLAB yo'q.
+Qaytarish — `activateTenant()`.
+
+```ts
+archiveTenant(id: ID, reason: string): Promise<Tenant>
+```
+
 ### `POST /platform/tenants/:id/suspend`
-
-Klinikaning kirishini to'xtatish.
-
-MA'LUMOT O'CHIRILMAYDI. To'xtatilgan klinika tizimga kira olmaydi,
-lekin bemorlari, tashriflari, hisobotlari joyida qoladi — to'lov
-tiklansa, ish o'sha joydan davom etadi.
-
-Sabab MAJBURIY: klinika egasi nima uchun yopilganini bilishi kerak.
 
 ```ts
 suspendTenant(id: ID, reason: string): Promise<Tenant>

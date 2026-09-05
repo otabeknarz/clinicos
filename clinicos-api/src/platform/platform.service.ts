@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { Plan, Prisma } from '@prisma/client'
+import { randomBytes } from 'node:crypto'
 import * as argon2 from 'argon2'
 
 import { AuthService } from '../auth/auth.service'
@@ -12,6 +13,7 @@ import { paginated } from '../common/pagination'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
 import {
+  ArchiveDto,
   ImpersonateDto,
   InvoiceQueryDto,
   MemberInputDto,
@@ -20,7 +22,9 @@ import {
   PlatformPatientQueryDto,
   PlatformSearchDto,
   SuspendDto,
+  TenantCreateDto,
   TenantQueryDto,
+  TenantUpdateDto,
 } from './platform.dto'
 
 /**
@@ -34,6 +38,17 @@ import {
  * bilan yopilgan va klinika xodimlarida bu ruxsatlar YO'Q.
  * Bitta xato bu yerda butun tizimni ochib yuboradi.
  */
+
+/**
+ * Klinika egasi uchun boshlang'ich parol.
+ *
+ * O'qishda adashtiradigan belgilar (0/O, 1/l/I) yo'q — admin uni
+ * telefonda aytib berishi mumkin.
+ */
+function generatePassword(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
+  return Array.from(randomBytes(18), (b) => alphabet[b % alphabet.length]).join('')
+}
 
 /** Ish haqi fondi taxminan aylanmaning yarmi */
 const PAYROLL_SHARE = 0.5
@@ -133,6 +148,136 @@ export class PlatformService {
     for (const r of appointments) out[r.clinicId].appointmentsThisMonth = r._count._all
 
     return out
+  }
+
+  /**
+   * YANGI KLINIKA.
+   *
+   * Klinika + egasi + obuna BITTA TRANZAKSIYADA. Uchtasidan
+   * birortasi yaratilmasa hammasi bekor qilinadi: obunasiz
+   * klinika ro'yxatda ko'rinmaydi, egasiz klinikaga esa hech kim
+   * kira olmaydi — yarim yaratilgan yozuv faqat chalkashlik
+   * keltiradi.
+   */
+  async createTenant(dto: TenantCreateDto) {
+    const plan = await this.db.plan.findUnique({ where: { id: dto.planId } })
+    if (!plan) throw new NotFoundException('Tarif topilmadi')
+
+    const password = dto.ownerPassword?.trim() || generatePassword()
+    const passwordHash = await argon2.hash(password)
+    const email = dto.ownerEmail.trim().toLowerCase()
+
+    const now = new Date()
+    const nextMonth = new Date(now)
+    nextMonth.setMonth(nextMonth.getMonth() + 1)
+
+    const sub = await this.db.$transaction(async (tx) => {
+      const clinic = await tx.clinic.create({
+        data: {
+          name: dto.name.trim(),
+          phone: dto.phone.trim(),
+          address: dto.address.trim(),
+          /* Dushanbadan shanbagacha 09:00-18:00. Egasi keyin o'zgartiradi. */
+          workingHours: {
+            create: [1, 2, 3, 4, 5, 6].map((weekday) => ({
+              weekday,
+              open: '09:00',
+              close: '18:00',
+            })),
+          },
+        },
+      })
+
+      await tx.user.create({
+        data: {
+          clinicId: clinic.id,
+          fullName: dto.ownerName.trim(),
+          email,
+          phone: dto.ownerPhone.trim(),
+          passwordHash,
+          role: 'OWNER',
+        },
+      })
+
+      return tx.subscription.create({
+        data: {
+          clinicId: clinic.id,
+          status: 'ACTIVE',
+          planId: plan.id,
+          /*
+            Narx obuna paytida MUZLATILADI — tarif keyin
+            qimmatlashsa, mavjud mijozning hisobi o'z-o'zidan
+            oshib ketmasin.
+          */
+          pricePerMonth: plan.pricePerMonth,
+          subscribedAt: now,
+          nextInvoiceAt: nextMonth,
+          ownerName: dto.ownerName.trim(),
+          ownerEmail: email,
+          ownerPhone: dto.ownerPhone.trim(),
+          city: dto.city?.trim() ?? '',
+        },
+        include: { clinic: true, plan: true },
+      })
+    })
+
+    const usage = await this.usageFor([sub.clinicId])
+    return {
+      ...toApiTenant(sub, usage[sub.clinicId]),
+      /*
+        Parol FAQAT SHU JAVOBDA. Bazada xeshi saqlanadi, ya'ni
+        keyin ko'rsatib bo'lmaydi. Interfeys uni bir marta
+        ko'rsatib, admin nusxalab olishini kutadi.
+      */
+      ownerPassword: dto.ownerPassword ? undefined : password,
+    }
+  }
+
+  /** Klinika ma'lumotlarini tahrirlash */
+  async updateTenant(id: string, dto: TenantUpdateDto) {
+    const sub = await this.requireSubscription(id)
+
+    const row = await this.db.$transaction(async (tx) => {
+      await tx.clinic.update({
+        where: { id: sub.clinicId },
+        data: {
+          name: dto.name?.trim(),
+          phone: dto.phone?.trim(),
+          address: dto.address?.trim(),
+        },
+      })
+      return tx.subscription.update({
+        where: { id: sub.id },
+        data: { city: dto.city?.trim() },
+        include: { clinic: true, plan: true },
+      })
+    })
+
+    const usage = await this.usageFor([row.clinicId])
+    return toApiTenant(row, usage[row.clinicId])
+  }
+
+  /**
+   * ARXIVLASH.
+   *
+   * Klinika O'CHIRILMAYDI — bemor, tashrif, to'lov va audit
+   * jurnali joyida qoladi. Tibbiy yozuvni o'chirish odatda
+   * qonun bilan taqiqlanadi, tasodifiy bosishning narxi esa
+   * qaytarib bo'lmas.
+   *
+   * Arxivdagi klinika xodimlari tizimga kira olmaydi
+   * (`common/clinic-access.ts`), ro'yxatda "Ketgan" filtrida
+   * ko'rinadi va `activate` bilan qaytariladi.
+   */
+  async archiveTenant(id: string, dto: ArchiveDto) {
+    const sub = await this.requireSubscription(id)
+    const row = await this.db.subscription.update({
+      where: { id: sub.id },
+      data: { status: 'CANCELLED', suspendReason: dto.reason.trim() },
+      include: { clinic: true, plan: true },
+    })
+    const usage = await this.usageFor([row.clinicId])
+    return toApiTenant(row, usage[row.clinicId])
   }
 
   async suspend(id: string, dto: SuspendDto) {

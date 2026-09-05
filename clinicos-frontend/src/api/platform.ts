@@ -32,8 +32,11 @@ import type {
   Plan,
   PlatformStats,
   Tenant,
+  TenantCreated,
+  TenantCreateInput,
   TenantInvoice,
   TenantStatus,
+  TenantUpdateInput,
   UZS,
   PlatformDataStats,
   TenantDoctor,
@@ -126,6 +129,82 @@ export async function getTenant(id: ID): Promise<Tenant | null> {
  *
  * Sabab MAJBURIY: klinika egasi nima uchun yopilganini bilishi kerak.
  */
+/**
+ * Yangi klinika ochish.
+ *
+ * Klinika, egasi va obuna serverda BITTA tranzaksiyada
+ * yaratiladi. Javobda egasining boshlang'ich paroli qaytadi —
+ * FAQAT SHU YERDA. Bazada uning xeshi saqlanadi, ya'ni keyin
+ * ko'rsatib bo'lmaydi.
+ */
+// POST /platform/tenants
+export async function createTenant(input: TenantCreateInput): Promise<TenantCreated> {
+  if (!USE_MOCK) {
+    return request<TenantCreated>('POST', '/platform/tenants', { body: input })
+  }
+
+  const db = getDb()
+  const plan = db.plans.all().find((p) => p.id === input.planId)
+  const tenant: Tenant = {
+    id: db.tenants.nextId('clinic'),
+    name: input.name,
+    logoUrl: null,
+    city: input.city ?? '',
+    phone: input.phone,
+    ownerName: input.ownerName,
+    ownerEmail: input.ownerEmail,
+    ownerPhone: input.ownerPhone,
+    status: 'active',
+    planId: input.planId,
+    planName: plan?.name ?? '',
+    pricePerMonth: plan?.pricePerMonth ?? 0,
+    trialEndsAt: null,
+    subscribedAt: toISODate(new Date()),
+    nextInvoiceAt: toISODate(addDays(new Date(), 30)),
+    suspendReason: '',
+    usage: { doctors: 0, staff: 0, patients: 0, users: 1, appointmentsThisMonth: 0 },
+    lastActiveAt: null,
+    createdAt: new Date().toISOString(),
+  }
+  db.tenants.insert(tenant)
+  return delay({ ...tenant, ownerPassword: 'demo1234' }, 320)
+}
+
+// PATCH /platform/tenants/:id
+export async function updateTenant(id: ID, patch: TenantUpdateInput): Promise<Tenant> {
+  if (!USE_MOCK) {
+    return request<Tenant>('PATCH', `/platform/tenants/${id}`, { body: patch })
+  }
+
+  const updated = getDb().tenants.updateAcrossTenants(id, patch)
+  if (!updated) throw new Error('Klinika topilmadi')
+  return delay(updated, 260)
+}
+
+/**
+ * Arxivlash — O'CHIRISH EMAS.
+ *
+ * Bemor, tashrif, to'lov va audit jurnali joyida qoladi, faqat
+ * kirish yopiladi. Tibbiy yozuvni o'chirish odatda qonun bilan
+ * taqiqlanadi, tasodifiy bosishning narxi esa qaytarib bo'lmas.
+ *
+ * Serverda `DELETE /platform/tenants/:id` ATAYLAB yo'q.
+ * Qaytarish — `activateTenant()`.
+ */
+// POST /platform/tenants/:id/archive
+export async function archiveTenant(id: ID, reason: string): Promise<Tenant> {
+  if (!USE_MOCK) {
+    return request<Tenant>('POST', `/platform/tenants/${id}/archive`, { body: { reason } })
+  }
+
+  const updated = getDb().tenants.updateAcrossTenants(id, {
+    status: 'cancelled',
+    suspendReason: reason,
+  })
+  if (!updated) throw new Error('Klinika topilmadi')
+  return delay(updated, 300)
+}
+
 // POST /platform/tenants/:id/suspend
 export async function suspendTenant(id: ID, reason: string): Promise<Tenant> {
   if (!USE_MOCK) {

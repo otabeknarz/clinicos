@@ -1,32 +1,35 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Building2, LogIn, Pause, Play } from 'lucide-react'
+import { Archive, Building2, LogIn, Pause, Pencil, Play, Plus } from 'lucide-react'
 
 import {
   activateTenant,
+  archiveTenant,
+  createTenant,
   listPlans,
   listTenants,
   startImpersonation,
   suspendTenant,
+  updateTenant,
 } from '@/api/platform'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { SearchInput, Select, TextArea } from '@/components/ui/Form'
+import { PhoneInput, SearchInput, Select, TextArea, TextInput } from '@/components/ui/Form'
 import { Modal } from '@/components/ui/Modal'
 import { EmptyState, ErrorState } from '@/components/ui/States'
 import { DataTable, Pagination } from '@/components/ui/Table'
 import { FilterPills } from '@/components/ui/Tabs'
 import { TENANT_TONE } from './tone'
 import { cn } from '@/lib/cn'
-import { dateRelative, groupDigits, moneyShort } from '@/lib/format'
+import { dateRelative, groupDigits, moneyShort, phoneToE164 } from '@/lib/format'
 import { useAsync, useDebounced } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
 import { useToast } from '@/store/toast-context'
-import type { Tenant, TenantStatus } from '@/types/models'
+import type { Tenant, TenantCreated, TenantStatus } from '@/types/models'
 import { UNLIMITED } from '@/types/models'
 
 const STATUSES: (TenantStatus | 'all')[] = [
@@ -67,6 +70,9 @@ export function PlatformClinicsPage() {
 
   const [suspending, setSuspending] = useState<Tenant | null>(null)
   const [entering, setEntering] = useState<Tenant | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<Tenant | null>(null)
+  const [archiving, setArchiving] = useState<Tenant | null>(null)
 
   function setFilter(key: string, value: string) {
     const next = new URLSearchParams(searchParams)
@@ -147,6 +153,16 @@ export function PlatformClinicsPage() {
       render: (row: Tenant) => (
         <div className="flex justify-end gap-1">
           <IconButton
+            label={t('platform.editClinic')}
+            onClick={(e) => {
+              e.stopPropagation()
+              setEditing(row)
+            }}
+          >
+            <Pencil size={15} />
+          </IconButton>
+
+          <IconButton
             label={t('platform.enter')}
             disabled={row.status === 'cancelled'}
             onClick={(e) => {
@@ -182,6 +198,19 @@ export function PlatformClinicsPage() {
               <Pause size={15} />
             </IconButton>
           )}
+
+          {row.status === 'cancelled' ? null : (
+            <IconButton
+              label={t('platform.archive')}
+              className="hover:text-bad"
+              onClick={(e) => {
+                e.stopPropagation()
+                setArchiving(row)
+              }}
+            >
+              <Archive size={15} />
+            </IconButton>
+          )}
         </div>
       ),
     },
@@ -193,6 +222,11 @@ export function PlatformClinicsPage() {
         title={t('platform.clinics')}
         subtitle={
           data ? t('platform.clinicCount', { count: data.total }) : t('common.loading')
+        }
+        actions={
+          <Button icon={<Plus size={15} />} onClick={() => setCreating(true)}>
+            {t('platform.newClinic')}
+          </Button>
         }
       />
 
@@ -263,6 +297,24 @@ export function PlatformClinicsPage() {
 
       <EnterModal tenant={entering} onClose={() => setEntering(null)} />
 
+      <NewClinicModal
+        open={creating}
+        plans={plans ?? []}
+        onClose={() => setCreating(false)}
+        onDone={() => setVersion((v) => v + 1)}
+      />
+
+      <EditClinicModal
+        tenant={editing}
+        onClose={() => setEditing(null)}
+        onDone={() => setVersion((v) => v + 1)}
+      />
+
+      <ArchiveModal
+        tenant={archiving}
+        onClose={() => setArchiving(null)}
+        onDone={() => setVersion((v) => v + 1)}
+      />
     </>
   )
 }
@@ -465,6 +517,365 @@ function EnterModal({
           <LogIn size={14} className="mt-0.5 shrink-0" />
           {t('platform.enterWarning')}
         </p>
+      </div>
+    </Modal>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Yangi klinika                                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * YANGI KLINIKA OCHISH.
+ *
+ * Klinika, egasi va obuna serverda BITTA tranzaksiyada yaratiladi.
+ * Ilgari bu forma umuman yo'q edi: klinika faqat `seed.ts` yoki
+ * serverdagi `npm run bootstrap` orqali paydo bo'lardi, ya'ni
+ * mijozni tizimga qo'shish uchun serverga kirish kerak edi.
+ *
+ * Yaratilgach egasining boshlang'ich paroli BIR MARTA ko'rsatiladi —
+ * bazada uning xeshi saqlanadi, keyin qayta ko'rsatib bo'lmaydi.
+ */
+function NewClinicModal({
+  open,
+  plans,
+  onClose,
+  onDone,
+}: {
+  open: boolean
+  plans: { id: string; name: string }[]
+  onClose: () => void
+  onDone: () => void
+}) {
+  const { t } = useI18n()
+  const toast = useToast()
+
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('+998 ')
+  const [address, setAddress] = useState('')
+  const [city, setCity] = useState('')
+  const [planId, setPlanId] = useState('')
+  const [ownerName, setOwnerName] = useState('')
+  const [ownerEmail, setOwnerEmail] = useState('')
+  const [ownerPhone, setOwnerPhone] = useState('+998 ')
+  const [saving, setSaving] = useState(false)
+  const [created, setCreated] = useState<TenantCreated | null>(null)
+
+  const chosenPlan = planId || plans[0]?.id || ''
+  const valid =
+    name.trim().length > 1 &&
+    address.trim().length > 1 &&
+    ownerName.trim().length > 1 &&
+    /.+@.+\..+/.test(ownerEmail) &&
+    chosenPlan
+
+  function reset() {
+    setName('')
+    setPhone('+998 ')
+    setAddress('')
+    setCity('')
+    setPlanId('')
+    setOwnerName('')
+    setOwnerEmail('')
+    setOwnerPhone('+998 ')
+    setCreated(null)
+  }
+
+  async function submit() {
+    if (!valid) return
+    setSaving(true)
+    try {
+      const result = await createTenant({
+        name: name.trim(),
+        phone: phoneToE164(phone),
+        address: address.trim(),
+        city: city.trim(),
+        planId: chosenPlan,
+        ownerName: ownerName.trim(),
+        ownerEmail: ownerEmail.trim().toLowerCase(),
+        ownerPhone: phoneToE164(ownerPhone),
+      })
+      setCreated(result)
+      onDone()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('toast.error'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /* Yaratilgandan keyin — faqat parol ko'rsatiladi */
+  if (created) {
+    return (
+      <Modal
+        open
+        onClose={() => {
+          reset()
+          onClose()
+        }}
+        title={t('platform.created')}
+        footer={
+          <Button
+            onClick={() => {
+              reset()
+              onClose()
+            }}
+          >
+            {t('action.close')}
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-subhead text-label">{created.name}</p>
+
+          <div className="rounded-[12px] bg-fill-4 p-4">
+            <p className="text-caption text-label-tertiary">{t('platform.ownerEmailLabel')}</p>
+            <p className="mt-0.5 text-callout font-medium text-label">{created.ownerEmail}</p>
+
+            <p className="mt-3 text-caption text-label-tertiary">
+              {t('platform.passwordOnce')}
+            </p>
+            <div className="mt-0.5 flex items-center gap-2">
+              <code className="text-callout font-semibold tnum text-label">
+                {created.ownerPassword}
+              </code>
+              <Button
+                size="sm"
+                variant="gray"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(created.ownerPassword ?? '')
+                  toast.success(t('platform.copied'))
+                }}
+              >
+                {t('action.copy')}
+              </Button>
+            </div>
+          </div>
+
+          <p className="text-caption text-bad">{t('platform.passwordOnceHint')}</p>
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t('platform.newClinicTitle')}
+      footer={
+        <>
+          <Button variant="gray" onClick={onClose}>
+            {t('action.cancel')}
+          </Button>
+          <Button loading={saving} disabled={!valid} onClick={submit}>
+            {t('action.create')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <p className="text-caption text-label-tertiary">{t('platform.createHint')}</p>
+
+        <p className="text-footnote font-medium text-label-secondary">
+          {t('platform.clinicInfo')}
+        </p>
+        <TextInput label={t('platform.clinic')} value={name} onChange={(e) => setName(e.target.value)} required />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <PhoneInput label={t('common.phone')} value={phone} onChange={setPhone} />
+          <TextInput label={t('platform.cityLabel')} value={city} onChange={(e) => setCity(e.target.value)} />
+        </div>
+        <TextInput
+          label={t('platform.address')}
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          required
+        />
+        <Select
+          label={t('platform.plan')}
+          value={chosenPlan}
+          onChange={(e) => setPlanId(e.target.value)}
+          options={plans.map((p) => ({ value: p.id, label: p.name }))}
+        />
+
+        <p className="pt-2 text-footnote font-medium text-label-secondary">
+          {t('platform.ownerInfo')}
+        </p>
+        <TextInput
+          label={t('platform.ownerNameLabel')}
+          value={ownerName}
+          onChange={(e) => setOwnerName(e.target.value)}
+          required
+        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextInput
+            label={t('platform.ownerEmailLabel')}
+            value={ownerEmail}
+            onChange={(e) => setOwnerEmail(e.target.value)}
+            required
+          />
+          <PhoneInput
+            label={t('platform.ownerPhoneLabel')}
+            value={ownerPhone}
+            onChange={setOwnerPhone}
+          />
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Tahrirlash                                                          */
+/* ------------------------------------------------------------------ */
+
+/** Klinika ma'lumotlari. Tarif va egasi bu yerdan o'zgarmaydi. */
+function EditClinicModal({
+  tenant,
+  onClose,
+  onDone,
+}: {
+  tenant: Tenant | null
+  onClose: () => void
+  onDone: () => void
+}) {
+  const { t } = useI18n()
+  const toast = useToast()
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [city, setCity] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const key = tenant?.id ?? ''
+  const [loadedFor, setLoadedFor] = useState('')
+  if (tenant && loadedFor !== key) {
+    setLoadedFor(key)
+    setName(tenant.name)
+    setPhone(tenant.phone)
+    setCity(tenant.city)
+  }
+
+  async function submit() {
+    if (!tenant || name.trim().length < 2) return
+    setSaving(true)
+    try {
+      await updateTenant(tenant.id, {
+        name: name.trim(),
+        phone: phoneToE164(phone),
+        city: city.trim(),
+      })
+      toast.success(t('toast.saved'))
+      onDone()
+      onClose()
+    } catch {
+      toast.error(t('toast.error'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal
+      open={tenant !== null}
+      onClose={onClose}
+      title={t('platform.editClinicTitle')}
+      footer={
+        <>
+          <Button variant="gray" onClick={onClose}>
+            {t('action.cancel')}
+          </Button>
+          <Button loading={saving} onClick={submit}>
+            {t('action.save')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <TextInput label={t('platform.clinic')} value={name} onChange={(e) => setName(e.target.value)} required />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <PhoneInput label={t('common.phone')} value={phone} onChange={setPhone} />
+          <TextInput label={t('platform.cityLabel')} value={city} onChange={(e) => setCity(e.target.value)} />
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Arxivlash                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ARXIVLASH — O'CHIRISH EMAS.
+ *
+ * Serverda `DELETE` endpointi ATAYLAB yo'q: tibbiy yozuvni
+ * o'chirish odatda qonun bilan taqiqlanadi va tasodifiy
+ * bosishning narxi qaytarib bo'lmas. Klinika "Ketgan" holatiga
+ * o'tadi, ma'lumoti joyida qoladi, keyin qaytarish mumkin.
+ */
+function ArchiveModal({
+  tenant,
+  onClose,
+  onDone,
+}: {
+  tenant: Tenant | null
+  onClose: () => void
+  onDone: () => void
+}) {
+  const { t } = useI18n()
+  const toast = useToast()
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function submit() {
+    if (!tenant || reason.trim().length < 5) return
+    setSaving(true)
+    try {
+      await archiveTenant(tenant.id, reason.trim())
+      toast.success(t('toast.saved'))
+      onDone()
+      onClose()
+      setReason('')
+    } catch {
+      toast.error(t('toast.error'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal
+      open={tenant !== null}
+      onClose={onClose}
+      title={t('platform.archiveTitle')}
+      footer={
+        <>
+          <Button variant="gray" onClick={onClose}>
+            {t('action.cancel')}
+          </Button>
+          <Button
+            variant="danger"
+            loading={saving}
+            disabled={reason.trim().length < 5}
+            onClick={submit}
+          >
+            {t('platform.archive')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <p className="text-subhead text-label">{tenant?.name}</p>
+        <TextArea
+          label={t('platform.archiveReason')}
+          hint={t('platform.archiveReasonHint')}
+          placeholder={t('platform.archivePlaceholder')}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={3}
+        />
+        <p className="text-caption text-label-tertiary">{t('platform.archiveWarning')}</p>
       </div>
     </Modal>
   )
