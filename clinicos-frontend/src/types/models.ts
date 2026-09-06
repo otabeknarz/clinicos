@@ -2277,14 +2277,20 @@ export interface ReceptionSummary {
   attention: {
     /** Tasdiqlanmagan qabullar — qo'ng'iroq qilish kerak */
     unconfirmed: number
-    /** Yakunlangan, lekin to'lanmagan */
-    unpaid: { count: number; amount: UZS }
+    /**
+     * Yakunlangan, lekin to'lanmagan.
+     *
+     * `items` — qabullarning o'zi. Bu ro'yxatsiz "To'lov olish"
+     * tugmasi bo'sh forma ochar, yozilgan to'lov qabulga
+     * bog'lanmas va ogohlantirish o'chmasdi.
+     */
+    unpaid: { count: number; amount: UZS; items: ReceptionQueueItem[] }
     /**
      * Oldindan to'lanadigan xizmatga yozilgan, kelgan, lekin hali
      * to'lamagan bemorlar. Ularni shifokorga yuborishdan oldin pul
      * olinishi kerak - shuning uchun alohida signal.
      */
-    prepaidUnpaid: { count: number; amount: UZS }
+    prepaidUnpaid: { count: number; amount: UZS; items: ReceptionQueueItem[] }
     /**
      * Bugungi davomati belgilanmagan xodimlar soni.
      *

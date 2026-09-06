@@ -157,6 +157,12 @@ attach one to an appointment, `visits.service` rejects the visit because `appoin
 never matches a null `doctorId`, and percent-based pay computes against zero revenue. Migration
 `20260906120000_shifokor_xodimga_yozuv` backfills clinics created before this.
 
+**The clinic owner is also a `Staff` row.** `PlatformService.createTenant` opens one
+(position `MANAGER`, "Klinika egasi") alongside the `User`, because "Mening profilim" and
+"Mening ish jadvalim" read `GET /me/profile` / `GET /me/schedule`, both of which resolve
+`Staff` by `userId` and 404 without it — a brand-new clinic had two dead pages on the owner's
+first login. Migration `20260906180000_egasiga_xodim_yozuvi` backfills.
+
 **Suspension is enforced in two places** (`common/clinic-access.ts`): at login and in
 `jwt.strategy.ts` on every request, so an already-issued 12h token stops working immediately.
 `PAST_DUE` deliberately does not block. Superadmins are exempt — their "clinic" is the platform
@@ -204,6 +210,22 @@ Path alias `@/` → `src/`, configured in both `vite.config.ts` and `tsconfig.ap
 
 ## Traps
 
+- **Day boundaries are the server's local midnight.** `startOfDay`/`endOfDay` use
+  `setHours(0,0,0,0)`, so the reception dashboard's "today", daily attendance, shift closure,
+  cash control and ward day counting all follow the *container's* timezone. The API container
+  therefore sets `TZ=Asia/Tashkent`; without it (the default UTC) the day rolls over at 05:00
+  local and everything between midnight and 05:00 lands on the previous day. There is no
+  per-clinic timezone column — the product is single-country by design. Tests must build dates
+  in local time too: `new Date().toISOString().slice(0,10)` is UTC and disagrees with the server
+  after 19:00 local, which made `test:crud` count 2 ward days instead of 3.
+- **A page can be broken while `smoke` passes.** `smoke` only flags `>= 500`, but the frontend
+  renders its error state for *any* non-OK response — a legitimate-looking 404 (`/me/profile`
+  with no `Staff` row) is a dead page. When a page "just errors", check the status code, not
+  only the logs.
+- **Not every page is wired to the API.** `AttendanceTab` read `getDb()` (the demo store)
+  directly until it was pointed at `GET /attendance?from=&to=`; the tab worked in demo mode and
+  broke against a real backend. Grep for `@/mock/db` outside `src/mock/` and `src/api/` before
+  trusting that a screen is connected.
 - **Anything role-shaped is invisible in demo mode.** The mock layer answers from a client-side
   context, so role casing, token handling, and impersonation all "work" until a real backend is
   connected. `AuthService.buildSession` returned the raw Prisma `Role` (`SUPERADMIN`) against a

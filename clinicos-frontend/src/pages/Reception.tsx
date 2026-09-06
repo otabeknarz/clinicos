@@ -121,7 +121,7 @@ export function ReceptionPage() {
         </div>
       ) : data ? (
         <>
-          <AttentionRow data={data} onPay={() => openPayment(null)} />
+          <AttentionRow data={data} onPay={openPayment} />
 
           <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
             <QueueCard data={data} onReload={reload} onPay={openPayment} />
@@ -350,7 +350,19 @@ function QuickActions({
  * Eng tepada oldindan to'lov olinmaganlar turadi: bemor allaqachon
  * klinikada, shifokorga kirib ketishi mumkin, lekin puli olinmagan.
  */
-function AttentionRow({ data, onPay }: { data: ReceptionSummary; onPay: () => void }) {
+function AttentionRow({
+  data,
+  onPay,
+}: {
+  data: ReceptionSummary
+  /*
+    To'lov ogohlantirishi BO'SH forma ochmasligi kerak. Bo'sh
+    formada yozilgan to'lov qabulga bog'lanmaydi, qabulning
+    to'lov holati o'zgarmaydi va ogohlantirish o'sha joyda
+    turaveradi — pul esa allaqachon kassaga tushgan bo'ladi.
+  */
+  onPay: (item: ReceptionQueueItem | null) => void
+}) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const { attention } = data
@@ -364,7 +376,7 @@ function AttentionRow({ data, onPay }: { data: ReceptionSummary; onPay: () => vo
       hint: t('reception.prepaidUnpaidHint'),
       amount: attention.prepaidUnpaid.amount,
       action: t('reception.takePayment'),
-      onClick: onPay,
+      onClick: () => onPay(attention.prepaidUnpaid.items[0] ?? null),
     },
     attention.unpaid.count > 0 && {
       key: 'unpaid',
@@ -374,7 +386,7 @@ function AttentionRow({ data, onPay }: { data: ReceptionSummary; onPay: () => vo
       hint: '',
       amount: attention.unpaid.amount,
       action: t('reception.unpaidAction'),
-      onClick: onPay,
+      onClick: () => onPay(attention.unpaid.items[0] ?? null),
     },
     attention.unconfirmed > 0 && {
       key: 'unconfirmed',

@@ -31,10 +31,12 @@ export class AttendanceService {
         date: { gte: new Date(query.from), lte: new Date(query.to) },
       },
       orderBy: { date: 'asc' },
-      select: { date: true, status: true, lateMinutes: true },
+      select: { staffId: true, date: true, status: true, lateMinutes: true },
     })
 
     return rows.map((r) => ({
+      // Xodim so'ralganda ham qaytadi — mavjud chaqiruvchilarga xalaqit bermaydi
+      staffId: r.staffId,
       date: toApiDate(r.date)!,
       status: toApi(r.status),
       lateMinutes: r.lateMinutes,

@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { listStaff } from '@/api/staff'
-import { markAttendance } from '@/api/attendance'
-import { getDb } from '@/mock/db'
+import { listAttendanceBoard, markAttendance } from '@/api/attendance'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button, IconButton } from '@/components/ui/Button'
 import { MenuItem, Popover } from '@/components/ui/Popover'
@@ -64,19 +63,10 @@ export function AttendanceTab() {
 
   const canManage = can('attendance.manage')
 
-  /**
-   * Davomat yozuvlarini to'g'ridan-to'g'ri mock bazadan o'qiymiz.
-   *
-   * DASTURCHIGA: haqiqiy backendda bu bitta so'rov bo'ladi —
-   * `GET /attendance?from=&to=` va u xodim id'si bo'yicha guruhlangan
-   * ma'lumot qaytaradi. Bu yerdagi to'g'ridan-to'g'ri murojaat faqat
-   * demo uchun.
-   */
+  /* Butun oyning davomati bitta so'rovda — xodim boshiga emas */
   const attendanceMap = useAsync(
     async () => {
-      const rows = getDb()
-        .attendance.all()
-        .filter((a) => a.date >= dayKeys[0] && a.date <= dayKeys[dayKeys.length - 1])
+      const rows = await listAttendanceBoard(dayKeys[0], dayKeys[dayKeys.length - 1])
 
       const map = new Map<string, { status: AttendanceStatus; lateMinutes: number }>()
       for (const row of rows) {

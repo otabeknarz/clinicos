@@ -155,13 +155,24 @@ export class ReceptionService {
       },
       attention: {
         unconfirmed: appointments.filter((a) => a.status === 'SCHEDULED').length,
+        /*
+          Qabullarning O'ZI ham qaytadi, faqat soni emas.
+
+          Ilgari faqat son kelardi va "To'lov olish" tugmasi
+          BO'SH forma ochardi. Registrator to'lovni qo'lda
+          yozar, to'lov esa hech qaysi qabulga bog'lanmasdi —
+          natijada `appointment.paymentStatus` o'zgarmay,
+          ogohlantirish o'sha joyda turaverardi.
+        */
         unpaid: {
           count: unpaidRows.length,
           amount: unpaidRows.reduce((sum, a) => sum + owed(a), 0),
+          items: unpaidRows.map(toQueueItem),
         },
         prepaidUnpaid: {
           count: prepaidUnpaidRows.length,
           amount: prepaidUnpaidRows.reduce((sum, a) => sum + owed(a), 0),
+          items: prepaidUnpaidRows.map(toQueueItem),
         },
         unmarkedAttendance: Math.max(0, staffTotal - markedToday),
         followUps,

@@ -93,7 +93,22 @@ async function login() {
   }
 }
 
-const today = new Date().toISOString().slice(0, 10)
+/*
+  Sana MAHALLIY vaqtda hisoblanadi.
+
+  `toISOString()` UTC beradi. Server esa kun chegarasini
+  `setHours(0,0,0,0)` bilan, ya'ni O'Z mintaqasida oladi.
+  UTC+5 da kechqurun 19:00 dan keyin ikkalasi bir kunga
+  farq qiladi va sinov "3 kun" o'rniga "2 kun" ko'radi.
+*/
+function localDate(offsetDays = 0): string {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+const today = localDate()
 
 /*
   Sinov ma'lumoti HAR SAFAR noyob bo'lishi kerak: telefon va email
@@ -320,7 +335,7 @@ async function main() {
 
     check('palatada ikkita joy bor', beds.length >= 2, `${beds.length} ta`)
     if (beds.length >= 2) {
-      const plus2 = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10)
+      const plus2 = localDate(2)
 
       /* --- Hozir yotqizish, oldindan to'lov bilan --- */
       const now = await call('POST', '/ward/admissions', reception, {
@@ -341,7 +356,7 @@ async function main() {
 
       /* --- Rejalashtirish: joy bugundan band bo'lmaydi --- */
       const from = new Date(Date.now() + 30 * 86_400_000).toISOString()
-      const to = new Date(Date.now() + 32 * 86_400_000).toISOString().slice(0, 10)
+      const to = localDate(32)
       const planned = await call('POST', '/ward/admissions', reception, {
         patientId,
         doctorId,
@@ -498,6 +513,94 @@ async function main() {
       check('egasi qaytardi', byOwner.status < 300, short(byOwner.data))
     }
   }
+
+  /* ---------------- To'lov ogohlantirishi ---------------- */
+  /*
+    Registrator panelidagi "N ta to'lov olinmagan" yozuvi to'lov
+    yozilgach YO'QOLISHI kerak. Ilgari ogohlantirish faqat sonni
+    bilardi, tugma esa bo'sh forma ochardi: yozilgan to'lov hech
+    qaysi qabulga bog'lanmas, `appointment.paymentStatus`
+    o'zgarmas va yozuv o'sha joyda turaverardi.
+  */
+  console.log('\nTo‘lov ogohlantirishi (registrator paneli)')
+  if (patientId && serviceId) {
+    const me = await call('GET', '/auth/me', doctor)
+    const ownDoctorId = me.data?.user?.doctorId
+
+    // BUGUNGI qabul — panel faqat bugungi kunni ko'rsatadi
+    const soon = new Date(Date.now() + 60_000).toISOString()
+    const todayAppt = await call('POST', '/appointments', reception, {
+      patientId,
+      doctorId: ownDoctorId,
+      serviceId,
+      startsAt: soon,
+    })
+    const todayApptId: string | undefined = todayAppt.data?.id
+    check('bugungi qabul yaratildi', todayAppt.status < 300, short(todayAppt.data))
+
+    if (todayApptId) {
+      await call('POST', '/visits', doctor, {
+        appointmentId: todayApptId,
+        complaint: 'tekshiruv',
+        diagnosis: 'sog‘lom',
+        treatment: 'kuzatuv',
+      })
+
+      const before = await call('GET', '/reception/summary', reception)
+      const listed = (before.data?.attention?.unpaid?.items ?? []).find(
+        (i: { appointmentId: string }) => i.appointmentId === todayApptId,
+      )
+      check('to‘lanmaganlar ro‘yxatida chiqdi', Boolean(listed), short(before.data?.attention?.unpaid))
+      check(
+        '  qabul ma’lumoti ham keldi',
+        listed?.patientId === patientId && Boolean(listed?.serviceId),
+        short(listed),
+      )
+
+      if (listed) {
+        /* Ogohlantirish tugmasi aynan shu ma'lumot bilan forma ochadi */
+        const pay = await call('POST', '/payments', reception, {
+          patientId: listed.patientId,
+          doctorId: listed.doctorId,
+          serviceId: listed.serviceId,
+          appointmentId: listed.appointmentId,
+          amount: listed.price,
+          method: 'cash',
+        })
+        check('  to‘lov yozildi', pay.status < 300, short(pay.data))
+
+        const after = await call('GET', '/reception/summary', reception)
+        const still = (after.data?.attention?.unpaid?.items ?? []).some(
+          (i: { appointmentId: string }) => i.appointmentId === todayApptId,
+        )
+        check('  ogohlantirishdan YO‘QOLDI', !still, short(after.data?.attention?.unpaid))
+      }
+    }
+  }
+
+  /* ---------------- Egasining o'z sahifalari ---------------- */
+  /*
+    "Mening profilim" va "Mening ish jadvalim" xodim yozuviga
+    tayanadi. Yangi klinikada egasiga u ochilmasdi va ikkala
+    sahifa ham 404 bilan qulardi.
+  */
+  console.log('\nEgasining o‘z sahifalari')
+  const ownerProfile = await call('GET', '/me/profile', owner)
+  check('egasining profili ochildi', ownerProfile.status === 200, short(ownerProfile.data))
+  const month = today.slice(0, 7)
+  const ownerSchedule = await call('GET', `/me/schedule?month=${month}`, owner)
+  check('egasining ish jadvali ochildi', ownerSchedule.status === 200, short(ownerSchedule.data))
+
+  /* ---------------- Davomat jadvali ---------------- */
+  console.log('\nDavomat jadvali')
+  const board = await call('GET', `/attendance?from=${today}&to=${today}`, owner)
+  check('butun klinika davomati keldi', board.status === 200, short(board.data))
+  check(
+    '  yozuvlar xodimga bog‘langan',
+    Array.isArray(board.data) &&
+      board.data.every((r: { staffId?: string }) => typeof r.staffId === 'string'),
+    short(board.data),
+  )
 
   /* ---------------- Profil ---------------- */
   console.log('\nProfil')

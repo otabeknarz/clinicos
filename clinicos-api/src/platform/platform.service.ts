@@ -188,7 +188,7 @@ export class PlatformService {
         },
       })
 
-      await tx.user.create({
+      const owner = await tx.user.create({
         data: {
           clinicId: clinic.id,
           fullName: dto.ownerName.trim(),
@@ -196,6 +196,38 @@ export class PlatformService {
           phone: dto.ownerPhone.trim(),
           passwordHash,
           role: 'OWNER',
+        },
+      })
+
+      /*
+        EGASIGA HAM XODIM YOZUVI.
+
+        Egasi klinikaning xodimi: uning profili, ish jadvali,
+        davomati va bonusi `Staff` ga bog'langan. Yozuvsiz
+        "Mening profilim" va "Mening ish jadvalim" sahifalari
+        404 qaytarardi — yangi klinikada egasi kirishi bilan
+        ikkala sahifa ham ochilmasdi.
+
+        Maosh 0: uni egasining o'zi belgilaydi. Klinika egasi
+        ko'pincha o'ziga oylik yozmaydi.
+      */
+      await tx.staff.create({
+        data: {
+          clinicId: clinic.id,
+          userId: owner.id,
+          fullName: dto.ownerName.trim(),
+          phone: dto.ownerPhone.trim(),
+          email,
+          position: 'MANAGER',
+          positionTitle: 'Klinika egasi',
+          department: 'Boshqaruv',
+          workdays: [1, 2, 3, 4, 5, 6],
+          shiftStart: '09:00',
+          shiftEnd: '18:00',
+          payType: 'SALARY',
+          hiredAt: now,
+          status: 'ACTIVE',
+          hasSystemAccess: true,
         },
       })
 

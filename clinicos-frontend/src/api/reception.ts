@@ -164,8 +164,16 @@ export async function getReceptionSummary(userId: string): Promise<ReceptionSumm
     },
     attention: {
       unconfirmed,
-      unpaid: { count: unpaidRows.length, amount: unpaidAmount },
-      prepaidUnpaid: { count: prepaidUnpaidRows.length, amount: prepaidUnpaidAmount },
+      unpaid: {
+        count: unpaidRows.length,
+        amount: unpaidAmount,
+        items: unpaidRows.map(toItem),
+      },
+      prepaidUnpaid: {
+        count: prepaidUnpaidRows.length,
+        amount: prepaidUnpaidAmount,
+        items: prepaidUnpaidRows.map(toItem),
+      },
       unmarkedAttendance,
       followUps,
     },

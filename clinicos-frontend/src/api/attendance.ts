@@ -121,6 +121,38 @@ export async function listAttendance(
 }
 
 /**
+ * Butun klinikaning davomati — Davomat → Jadval uchun.
+ *
+ * Bitta so'rovda barcha xodimning yozuvi keladi. Ilgari bu tab
+ * to'g'ridan-to'g'ri demo bazadan o'qirdi va haqiqiy backend
+ * ulanganda umuman ishlamasdi.
+ */
+// GET /attendance?from=&to=
+export async function listAttendanceBoard(
+  from: string,
+  to: string,
+): Promise<(AttendanceDay & { staffId: ID })[]> {
+  if (!USE_MOCK) {
+    return request<(AttendanceDay & { staffId: ID })[]>('GET', '/attendance', {
+      query: { from, to },
+    })
+  }
+
+  const rows = getDb()
+    .attendance.all(apiContext().clinicId)
+    .filter((a) => a.date >= from && a.date <= to)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((a) => ({
+      staffId: a.staffId,
+      date: a.date,
+      status: a.status,
+      lateMinutes: a.lateMinutes,
+    }))
+
+  return delay(rows, 140)
+}
+
+/**
  * Davomat xulosasi.
  *
  * `disciplineScore` — 0-100 ball:

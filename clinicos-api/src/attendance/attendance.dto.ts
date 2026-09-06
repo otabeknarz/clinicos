@@ -7,7 +7,13 @@ import {
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 
 export class AttendanceRangeDto {
-  @IsUUID() staffId!: string
+  /*
+    Xodim ko'rsatilmasa — BUTUN klinika. Davomat jadvali
+    (Davomat → Jadval) barcha xodimning bir oylik yozuvini
+    bitta so'rovda oladi; xodim boshiga so'rov yuborilsa,
+    20 xodimda 20 ta so'rov bo'lardi.
+  */
+  @IsOptional() @IsUUID() staffId?: string
   @IsDateString() from!: string
   @IsDateString() to!: string
 }
