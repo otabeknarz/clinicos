@@ -134,12 +134,18 @@ export function generateStaff(
   const staff: Staff[] = []
   let seq = 0
 
-  const push = (row: Omit<Staff, 'id' | 'clinicId' | 'createdAt'>) => {
+  const push = (
+    row: Omit<Staff, 'id' | 'clinicId' | 'createdAt' | 'specialty' | 'consultationFee'> &
+      Partial<Pick<Staff, 'specialty' | 'consultationFee'>>,
+  ) => {
     seq++
     staff.push({
       id: `stf_${seq}`,
       clinicId,
       createdAt: iso(addDays(today, -r.int(30, 700))),
+      // Faqat shifokorda to'ladi — qolganida bo'sh
+      specialty: '',
+      consultationFee: 0,
       ...row,
     })
   }
@@ -182,6 +188,8 @@ export function generateStaff(
       email: doctor.email,
       position: 'doctor',
       positionTitle: 'Shifokor',
+      specialty: doctor.specialty,
+      consultationFee: doctor.consultationFee,
       department: 'Tibbiyot',
       workdays: doctor.workdays,
       shiftStart: doctor.shiftStart,

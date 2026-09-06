@@ -59,6 +59,21 @@ export class StaffInputDto {
   @IsString() @MinLength(2) @MaxLength(100)
   positionTitle!: string
 
+  /*
+    Quyidagi ikkitasi FAQAT `position: 'doctor'` bo'lganda
+    ishlatiladi. Shifokor xodim qo'shilganda unga `Doctor`
+    yozuvi ham yaratiladi — qabulga biriktirish, tashrif yozish
+    va tushum hisobi o'sha yozuvga bog'langan. Boshqa lavozimda
+    e'tiborsiz qoldiriladi.
+  */
+
+  /** Kalit sifatida saqlanadi ("therapist"), interfeys tarjima qiladi */
+  @IsOptional() @IsString() @MaxLength(60)
+  specialty: string = ''
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1_000_000_000)
+  consultationFee: number = 0
+
   @IsOptional() @IsString() @MaxLength(100)
   department: string = ''
 
@@ -148,6 +163,12 @@ export class UpdateStaffDto {
 
   @IsOptional() @IsString() @MinLength(2) @MaxLength(100)
   positionTitle?: string
+
+  @IsOptional() @IsString() @MaxLength(60)
+  specialty?: string
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1_000_000_000)
+  consultationFee?: number
 
   @IsOptional() @IsString() @MaxLength(100)
   department?: string

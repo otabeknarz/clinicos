@@ -1390,8 +1390,19 @@ export interface Staff {
   /** Birinchi kirishda parolni almashtirish talab qilinadimi */
   mustChangePassword: boolean
 
-  /** position = 'doctor' bo'lsa, shifokor yozuviga bog'lanish */
+  /**
+   * position = 'doctor' bo'lsa, shifokor yozuviga bog'lanish.
+   *
+   * Server buni O'ZI yaratadi: shifokor lavozimidagi xodim
+   * qo'shilsa, unga `Doctor` yozuvi ham ochiladi. Qabulga
+   * biriktirish, tashrif yozish va tushum hisobi o'shanga
+   * bog'langan — bo'lmasa shifokor hech qayerda ko'rinmaydi.
+   */
   doctorId: ID | null
+  /** Shifokor yozuvidan: mutaxassislik kaliti ("therapist") */
+  specialty: string
+  /** Shifokor yozuvidan: qabul narxi */
+  consultationFee: UZS
   avatarUrl: string | null
   notes: string
   createdAt: ISODateTime

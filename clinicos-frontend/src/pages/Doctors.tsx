@@ -6,6 +6,7 @@ import { listDoctors } from '@/api/doctors'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { SearchInput } from '@/components/ui/Form'
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/ui/States'
@@ -18,6 +19,8 @@ import type { DoctorWithStats } from '@/types/models'
 
 export function DoctorsPage() {
   const { t } = useI18n()
+  const { can } = useAuth()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const debounced = useDebounced(search, 250)
 
@@ -52,7 +55,22 @@ export function DoctorsPage() {
         </div>
       ) : rows.length === 0 ? (
         <Card>
-          <EmptyState />
+          {/*
+            Shifokor bu sahifadan QO'SHILMAYDI — u Xodimlar
+            bo'limidan "Shifokor" lavozimi bilan kiritiladi va
+            shu ro'yxatga o'zi tushadi. Bo'sh ekran buni aytmasa,
+            qayerdan qo'shishni topib bo'lmaydi.
+          */}
+          <EmptyState
+            description={t('doctors.empty')}
+            action={
+              can('staff.manage') ? (
+                <Button variant="gray" onClick={() => navigate('/staff')}>
+                  {t('nav.staff')}
+                </Button>
+              ) : undefined
+            }
+          />
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

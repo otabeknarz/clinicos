@@ -147,6 +147,16 @@ issue a one-time temporary password, revoke the target's sessions and set `mustC
 Note the tradeoff: an admin who resets an owner's password can then sign in as them, which
 sidesteps the view-only impersonation design — that is inherent to having a recovery path.
 
+**A doctor is hired through Staff, not Doctors.** The Doctors page is read-only — there is no
+create form and `POST /doctors` has no caller in the UI. `StaffService.create` therefore opens a
+`Doctor` row whenever `position === 'doctor'` and links `Staff.doctorId` + `User.doctorId`; the
+update path keeps the two in sync and flips the doctor to `inactive` when the position changes
+away (the row itself stays — visits, payments and appointments hang off it). Without that row a
+"doctor" is invisible everywhere that matters: `GET /doctors` is empty, the receptionist cannot
+attach one to an appointment, `visits.service` rejects the visit because `appointment.doctorId`
+never matches a null `doctorId`, and percent-based pay computes against zero revenue. Migration
+`20260906120000_shifokor_xodimga_yozuv` backfills clinics created before this.
+
 **Suspension is enforced in two places** (`common/clinic-access.ts`): at login and in
 `jwt.strategy.ts` on every request, so an already-issued 12h token stops working immediately.
 `PAST_DUE` deliberately does not block. Superadmins are exempt — their "clinic" is the platform

@@ -43,7 +43,7 @@ export class StaffService {
           query.withAccess === undefined ? {} : { hasSystemAccess: query.withAccess },
         ],
       },
-      include: { user: { select: { id: true, email: true, role: true } } },
+      include: STAFF_EXPAND,
       orderBy: { fullName: 'asc' },
     })
 
@@ -57,7 +57,7 @@ export class StaffService {
   async get(id: string) {
     const row = await this.db.staff.findFirst({
       where: { id },
-      include: { user: { select: { id: true, email: true, role: true } } },
+      include: STAFF_EXPAND,
     })
     if (!row) throw new NotFoundException('Xodim topilmadi')
     const performance = await this.performanceFor([row])
@@ -69,7 +69,7 @@ export class StaffService {
     const { userId } = this.ctx.require()
     const row = await this.db.staff.findFirst({
       where: { userId },
-      include: { user: { select: { id: true, email: true, role: true } } },
+      include: STAFF_EXPAND,
     })
     if (!row) throw new NotFoundException('Sizning xodim yozuvingiz topilmadi')
     const performance = await this.performanceFor([row])
@@ -218,6 +218,26 @@ export class StaffService {
     const row = await this.db.$transaction(async (tx) => {
       let userId: string | null = null
 
+      /*
+        SHIFOKOR XODIM — `Doctor` YOZUVI HAM YARATILADI.
+
+        Klinikada shifokor faqat shu yerdan qo'shiladi, ya'ni
+        "Shifokorlar" bo'limi o'z-o'zidan to'lmaydi. Yozuv
+        bo'lmasa: registrator qabulga shifokor biriktira olmaydi,
+        shifokorning o'zi tashrif yoza olmaydi (`visits.service`
+        qabulni shifokor bilan solishtiradi) va foizli maosh
+        nol tushumdan hisoblanadi.
+      */
+      const doctorId =
+        dto.position === 'doctor'
+          ? (
+              await tx.doctor.create({
+                data: { clinicId, ...doctorDataFrom(dto) },
+                select: { id: true },
+              })
+            ).id
+          : null
+
       if (dto.hasSystemAccess && dto.login && dto.password && dto.role) {
         const user = await tx.user.create({
           data: {
@@ -227,6 +247,8 @@ export class StaffService {
             phone: dto.phone.trim(),
             passwordHash: await argon2.hash(dto.password),
             role: toDb(dto.role),
+            // Shifokor o'z bemorlarini shu bog'lanish orqali ko'radi
+            doctorId,
           },
         })
         userId = user.id
@@ -235,6 +257,7 @@ export class StaffService {
       return tx.staff.create({
         data: {
           clinicId,
+          doctorId,
           fullName: dto.fullName.trim(),
           phone: dto.phone.trim(),
           email: dto.email.trim(),
@@ -254,7 +277,7 @@ export class StaffService {
           userId,
           notes: dto.notes,
         },
-        include: { user: { select: { id: true, email: true, role: true } } },
+        include: STAFF_EXPAND,
       })
     })
 
@@ -262,29 +285,60 @@ export class StaffService {
   }
 
   async update(id: string, dto: Partial<StaffInputDto>) {
-    await this.assertExists(id)
-
-    const row = await this.db.staff.update({
+    const current = await this.db.staff.findFirst({
       where: { id },
-      data: {
-        fullName: dto.fullName?.trim(),
-        phone: dto.phone?.trim(),
-        email: dto.email?.trim(),
-        position: dto.position ? toDb(dto.position) : undefined,
-        positionTitle: dto.positionTitle?.trim(),
-        department: dto.department,
-        workdays: dto.workdays,
-        shiftStart: dto.shiftStart,
-        shiftEnd: dto.shiftEnd,
-        workRate: dto.workRate,
-        payType: dto.payType ? toDb(dto.payType) : undefined,
-        percentRate: dto.percentRate,
-        salary: dto.salary,
-        hiredAt: dto.hiredAt ? new Date(dto.hiredAt) : undefined,
-        status: dto.status ? toDb(dto.status) : undefined,
-        notes: dto.notes,
+      select: {
+        id: true,
+        userId: true,
+        doctorId: true,
+        position: true,
+        status: true,
+        fullName: true,
+        phone: true,
+        email: true,
+        positionTitle: true,
+        workdays: true,
+        shiftStart: true,
+        shiftEnd: true,
+        hiredAt: true,
       },
-      include: { user: { select: { id: true, email: true, role: true } } },
+    })
+    if (!current) throw new NotFoundException('Xodim topilmadi')
+
+    /*
+      Shifokor yozuvini XODIM BILAN BIRGA yuritamiz. Ism yoki
+      smena faqat bitta joyda o'zgarsa, registrator ko'rayotgan
+      ro'yxat bilan kadrlar ro'yxati bir-biridan uzilib qolardi.
+    */
+    const position = dto.position ?? toApi(current.position)
+    const { clinicId } = this.ctx.require()
+
+    const row = await this.db.$transaction(async (tx) => {
+      const doctorId = await syncDoctor(tx, clinicId, current, dto, position)
+
+      return tx.staff.update({
+        where: { id },
+        data: {
+          doctorId,
+          fullName: dto.fullName?.trim(),
+          phone: dto.phone?.trim(),
+          email: dto.email?.trim(),
+          position: dto.position ? toDb(dto.position) : undefined,
+          positionTitle: dto.positionTitle?.trim(),
+          department: dto.department,
+          workdays: dto.workdays,
+          shiftStart: dto.shiftStart,
+          shiftEnd: dto.shiftEnd,
+          workRate: dto.workRate,
+          payType: dto.payType ? toDb(dto.payType) : undefined,
+          percentRate: dto.percentRate,
+          salary: dto.salary,
+          hiredAt: dto.hiredAt ? new Date(dto.hiredAt) : undefined,
+          status: dto.status ? toDb(dto.status) : undefined,
+          notes: dto.notes,
+        },
+        include: STAFF_EXPAND,
+      })
     })
 
     return toApiStaff(row)
@@ -299,6 +353,11 @@ export class StaffService {
   async remove(id: string) {
     await this.assertExists(id)
 
+    const staff = await this.db.staff.findFirst({
+      where: { id },
+      select: { doctorId: true },
+    })
+
     const used =
       (await this.db.attendance.count({ where: { staffId: id } })) +
       (await this.db.bonus.count({ where: { staffId: id } })) +
@@ -306,11 +365,37 @@ export class StaffService {
 
     if (used > 0) {
       await this.db.staff.update({ where: { id }, data: { status: 'FIRED' } })
+      // Ro'yxatlarda ko'rinmasin, lekin tashrif tarixi joyida qolsin
+      await this.deactivateDoctor(staff?.doctorId ?? null)
       return { archived: true }
     }
 
     await this.db.staff.delete({ where: { id } })
+
+    /*
+      Shifokor yozuvi xodim bilan birga ketadi — lekin faqat
+      unga hech narsa bog'lanmagan bo'lsa. Qabuli yoki to'lovi
+      bo'lsa, o'chirish tarixni uzib qo'yardi.
+    */
+    if (staff?.doctorId) {
+      const doctorId = staff.doctorId
+      const attached =
+        (await this.db.appointment.count({ where: { doctorId } })) +
+        (await this.db.payment.count({ where: { doctorId } }))
+
+      if (attached > 0) await this.deactivateDoctor(doctorId)
+      else await this.db.doctor.delete({ where: { id: doctorId } })
+    }
+
     return { archived: false }
+  }
+
+  private async deactivateDoctor(doctorId: string | null) {
+    if (!doctorId) return
+    await this.db.doctor.update({
+      where: { id: doctorId },
+      data: { status: 'INACTIVE' },
+    })
   }
 
   /**
@@ -445,7 +530,174 @@ export class StaffService {
 
 /* ------------------------------------------------------------------ */
 
-type StaffRow = Staff & { user: { id: string; email: string; role: string } | null }
+/**
+ * Xodim yozuvi bilan birga har doim tortiladigan bog'lanishlar.
+ *
+ * `doctor` shuning uchun kerak: shifokor xodimning mutaxassisligi
+ * va qabul narxi shu yerda turadi — `Staff` da bunday ustun yo'q
+ * va bo'lishi ham kerak emas (hamshirada mutaxassislik bo'lmaydi).
+ */
+const STAFF_EXPAND = {
+  user: { select: { id: true, email: true, role: true } },
+  doctor: { select: { specialty: true, consultationFee: true } },
+} as const
+
+/** `$transaction` ichidagi mijoz — bu yerda ikki jadval yetarli */
+type DoctorSyncTx = Pick<
+  ReturnType<PrismaService['forCurrentClinic']>,
+  'doctor' | 'user'
+>
+
+/** Xodim holatini shifokor holatiga o'giradi */
+function doctorStatusOf(status: string) {
+  if (status === 'fired') return 'INACTIVE' as const
+  if (status === 'on_leave') return 'ON_LEAVE' as const
+  return 'ACTIVE' as const
+}
+
+/**
+ * Xodim ma'lumotidan shifokor yozuvi.
+ *
+ * Ikkalasida bir xil bo'lgan maydonlar (ism, telefon, smena)
+ * XODIMDAN olinadi — u yagona manba. Mutaxassislik ko'rsatilmasa
+ * lavozim nomi ishlatiladi: "Stomatolog" deb yozilgan bo'lsa,
+ * uni yana alohida so'rashning ma'nosi yo'q.
+ */
+function doctorDataFrom(dto: {
+  fullName: string
+  phone: string
+  email: string
+  positionTitle: string
+  specialty?: string
+  consultationFee?: number
+  workdays: number[]
+  shiftStart: string
+  shiftEnd: string
+  hiredAt: string | Date
+  status?: string
+}) {
+  return {
+    fullName: dto.fullName.trim(),
+    specialty: (dto.specialty?.trim() || dto.positionTitle.trim()).slice(0, 60),
+    phone: dto.phone.trim(),
+    email: dto.email.trim(),
+    consultationFee: dto.consultationFee ?? 0,
+    workdays: dto.workdays,
+    shiftStart: dto.shiftStart,
+    shiftEnd: dto.shiftEnd,
+    hiredAt: new Date(dto.hiredAt),
+    status: doctorStatusOf(dto.status ?? 'active'),
+  }
+}
+
+/**
+ * Xodim tahrirlanganda shifokor yozuvini moslash.
+ *
+ * Uch holat bor:
+ *
+ *   lavozim shifokor, yozuv yo'q  → yaratiladi (eski xodimlar shu yo'ldan o'tadi)
+ *   lavozim shifokor, yozuv bor   → umumiy maydonlar ko'chiriladi
+ *   lavozim boshqa                → yozuv qoladi, lekin `inactive`
+ *
+ * Oxirgisida O'CHIRMAYMIZ: tashrif, to'lov va qabul tarixi shu
+ * yozuvga bog'langan.
+ */
+async function syncDoctor(
+  tx: DoctorSyncTx,
+  clinicId: string,
+  current: {
+    userId: string | null
+    doctorId: string | null
+    fullName: string
+    phone: string
+    email: string
+    positionTitle: string
+    workdays: number[]
+    shiftStart: string
+    shiftEnd: string
+    hiredAt: Date
+    status: string
+  },
+  dto: Partial<StaffInputDto>,
+  position: string,
+) {
+  if (position !== 'doctor') {
+    if (current.doctorId) {
+      await tx.doctor.update({
+        where: { id: current.doctorId },
+        data: { status: 'INACTIVE' },
+      })
+    }
+    return current.doctorId
+  }
+
+  const status = doctorStatusOf(dto.status ?? toApi(current.status))
+
+  if (!current.doctorId) {
+    const doctor = await tx.doctor.create({
+      data: {
+        clinicId,
+        ...doctorDataFrom({
+          fullName: dto.fullName ?? current.fullName,
+          phone: dto.phone ?? current.phone,
+          email: dto.email ?? current.email,
+          positionTitle: dto.positionTitle ?? current.positionTitle,
+          specialty: dto.specialty,
+          consultationFee: dto.consultationFee,
+          workdays: dto.workdays ?? current.workdays,
+          shiftStart: dto.shiftStart ?? current.shiftStart,
+          shiftEnd: dto.shiftEnd ?? current.shiftEnd,
+          hiredAt: dto.hiredAt ?? current.hiredAt,
+          status: dto.status ?? toApi(current.status),
+        }),
+      },
+      select: { id: true },
+    })
+
+    if (current.userId) {
+      await tx.user.update({
+        where: { id: current.userId },
+        data: { doctorId: doctor.id },
+      })
+    }
+    return doctor.id
+  }
+
+  await tx.doctor.update({
+    where: { id: current.doctorId },
+    data: {
+      fullName: dto.fullName?.trim(),
+      phone: dto.phone?.trim(),
+      email: dto.email?.trim(),
+      specialty: (dto.specialty?.trim() || dto.positionTitle?.trim()) || undefined,
+      consultationFee: dto.consultationFee,
+      workdays: dto.workdays,
+      shiftStart: dto.shiftStart,
+      shiftEnd: dto.shiftEnd,
+      hiredAt: dto.hiredAt ? new Date(dto.hiredAt) : undefined,
+      status,
+    },
+  })
+
+  /*
+    Bog'lanish faqat XODIMDA bo'lib, foydalanuvchida qolib
+    ketgan bo'lishi mumkin (eski yozuvlar). Shifokor o'z
+    bemorlarini ko'rishi shu ustunga bog'liq — to'g'rilaymiz.
+  */
+  if (current.userId) {
+    await tx.user.updateMany({
+      where: { id: current.userId, doctorId: null },
+      data: { doctorId: current.doctorId },
+    })
+  }
+
+  return current.doctorId
+}
+
+type StaffRow = Staff & {
+  user: { id: string; email: string; role: string } | null
+  doctor: { specialty: string; consultationFee: number } | null
+}
 
 function toApiStaff(row: StaffRow) {
   return {
@@ -473,6 +725,8 @@ function toApiStaff(row: StaffRow) {
     credentialsSetAt: row.user ? toApiDateTime(row.updatedAt) : null,
     mustChangePassword: false,
     doctorId: row.doctorId,
+    specialty: row.doctor?.specialty ?? '',
+    consultationFee: row.doctor?.consultationFee ?? 0,
     avatarUrl: row.avatarUrl,
     notes: row.notes,
     createdAt: toApiDateTime(row.createdAt)!,

@@ -224,6 +224,7 @@ export const dict: Dict = {
   'calendar.load.hint':
     'Чем темнее клетка, тем плотнее занят врач. Светлая клетка - свободные часы, то есть упущенная выручка.',
 
+  'doctors.empty': 'Врачи добавляются в разделе «Сотрудники» с должностью «Врач»',
   'doctors.title': 'Врачи',
   'doctors.add': '+ Добавить врача',
   'doctors.appointmentsToday': 'приёмов сегодня',
@@ -236,6 +237,8 @@ export const dict: Dict = {
   'doctor.tab.schedule': 'Расписание',
   'doctor.tab.patients': 'Пациенты',
   'doctor.tab.performance': 'Показатели',
+  'doctor.consultationFee': 'Цена приёма',
+  'staff.doctorHint': 'Отображается в списке врачей',
   'doctor.specialty': 'Специальность',
   'doctor.shift': 'Рабочее время',
   'doctor.fee': 'Стоимость приёма',

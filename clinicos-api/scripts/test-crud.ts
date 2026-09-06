@@ -212,6 +212,78 @@ async function main() {
     )
   }
 
+  /* ---------------- Shifokor xodim ---------------- */
+  /*
+    Klinikada shifokor FAQAT Xodimlar bo'limidan qo'shiladi.
+    Shu paytda `Doctor` yozuvi ham ochilishi shart — bo'lmasa
+    registrator qabulga shifokor biriktira olmaydi va
+    "Shifokorlar" ro'yxati bo'sh qolaveradi.
+  */
+  console.log('\nShifokor xodim (egasi)')
+  const docStaff = await call('POST', '/staff', owner, {
+    fullName: 'CRUD Shifokor Xodim',
+    phone: `+99893${RUN}`,
+    email: `crud.docstaff.${RUN}@shifomed.uz`,
+    position: 'doctor',
+    positionTitle: 'Shifokor',
+    specialty: 'cardiologist',
+    consultationFee: 150_000,
+    workdays: [1, 2, 3],
+    shiftStart: '09:00',
+    shiftEnd: '17:00',
+    payType: 'percent',
+    percentRate: 30,
+    hiredAt: today,
+    hasSystemAccess: true,
+    role: 'doctor',
+    login: `crud.docstaff.${RUN}@shifomed.uz`,
+    password: 'crud-doctor-1234',
+  })
+  check('shifokor xodim yaratildi', docStaff.status < 300, short(docStaff.data))
+  const docStaffId: string | undefined = docStaff.data?.id
+  const linkedDoctorId: string | undefined = docStaff.data?.doctorId
+
+  check('  shifokor yozuvi bog‘landi', Boolean(linkedDoctorId), `doctorId: ${linkedDoctorId}`)
+
+  if (linkedDoctorId) {
+    const inList = await call('GET', '/doctors?fields=short', reception)
+    const found = (inList.data ?? []).find(
+      (d: { id: string }) => d.id === linkedDoctorId,
+    )
+    check('  registrator ro‘yxatida ko‘rinadi', Boolean(found), short(inList.data))
+    check('  mutaxassislik ko‘chdi', found?.specialty === 'cardiologist', short(found))
+
+    const full = await call('GET', `/doctors/${linkedDoctorId}`, owner)
+    check(
+      '  qabul narxi ko‘chdi',
+      full.data?.consultationFee === 150_000,
+      `narx: ${full.data?.consultationFee}`,
+    )
+  }
+
+  if (docStaffId) {
+    const renamed = await call('PATCH', `/staff/${docStaffId}`, owner, {
+      fullName: 'CRUD Shifokor Yangi',
+    })
+    check('  ism tahriri o‘tdi', renamed.status === 200, short(renamed.data))
+
+    const one = await call('GET', `/doctors/${linkedDoctorId}`, owner)
+    check(
+      '  shifokor yozuvida ham yangilandi',
+      one.data?.fullName === 'CRUD Shifokor Yangi',
+      `ism: ${one.data?.fullName}`,
+    )
+
+    // Lavozim o'zgarsa yozuv o'chmaydi, faqat ro'yxatdan chiqadi
+    await call('PATCH', `/staff/${docStaffId}`, owner, { position: 'nurse' })
+    const after = await call('GET', '/doctors?fields=short', reception)
+    check(
+      '  hamshiraga o‘tgach ro‘yxatdan chiqdi',
+      !(after.data ?? []).some((d: { id: string }) => d.id === linkedDoctorId),
+      short(after.data),
+    )
+  }
+
   /* ---------------- Palata ---------------- */
   console.log('\nPalata (egasi)')
   const room = await call('POST', '/ward/rooms', owner, {

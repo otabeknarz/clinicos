@@ -223,6 +223,7 @@ export const dict: Dict = {
   'calendar.load.hint':
     'The darker the cell, the busier the doctor. Pale cells are free hours - revenue left on the table.',
 
+  'doctors.empty': 'Doctors are added in Staff with the “Doctor” position',
   'doctors.title': 'Doctors',
   'doctors.add': '+ Add doctor',
   'doctors.appointmentsToday': 'appointments today',
@@ -235,6 +236,8 @@ export const dict: Dict = {
   'doctor.tab.schedule': 'Schedule',
   'doctor.tab.patients': 'Patients',
   'doctor.tab.performance': 'Performance',
+  'doctor.consultationFee': 'Consultation fee',
+  'staff.doctorHint': 'Shown in the doctors list',
   'doctor.specialty': 'Specialty',
   'doctor.shift': 'Working hours',
   'doctor.fee': 'Consultation fee',

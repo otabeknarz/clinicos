@@ -20,6 +20,7 @@ import { toISODate } from '@/lib/dates'
 import { money, phoneToE164, weekdaysShort } from '@/lib/format'
 import { useAction } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
+import { SPECIALTIES } from '@/i18n/data'
 import { useToast } from '@/store/toast-context'
 import type { PayType, Role, Staff, StaffPosition, StaffStatus } from '@/types/models'
 
@@ -41,7 +42,7 @@ export function StaffFormModal({
   onSaved: () => void
   staff?: Staff | null
 }) {
-  const { t } = useI18n()
+  const { t, tSpecialty } = useI18n()
   const toast = useToast()
   const editing = Boolean(staff)
 
@@ -50,6 +51,9 @@ export function StaffFormModal({
   const [email, setEmail] = useState('')
   const [position, setPosition] = useState<StaffPosition>('nurse')
   const [positionTitle, setPositionTitle] = useState('')
+  /* Faqat shifokorda ishlatiladi — pastdagi `isDoctor` ga qarang */
+  const [specialty, setSpecialty] = useState('therapist')
+  const [consultationFee, setConsultationFee] = useState('')
   const [department, setDepartment] = useState('')
 
   const [workdays, setWorkdays] = useState<number[]>([1, 2, 3, 4, 5])
@@ -81,6 +85,8 @@ export function StaffFormModal({
     setEmail(staff?.email ?? '')
     setPosition(staff?.position ?? 'nurse')
     setPositionTitle(staff?.positionTitle ?? '')
+    setSpecialty(staff?.specialty || 'therapist')
+    setConsultationFee(staff?.consultationFee ? String(staff.consultationFee) : '')
     setDepartment(staff?.department ?? '')
     setWorkdays(staff?.workdays ?? [1, 2, 3, 4, 5])
     setShiftStart(staff?.shiftStart ?? '08:00')
@@ -157,6 +163,8 @@ export function StaffFormModal({
       email: email.trim(),
       position,
       positionTitle: positionTitle.trim() || t(`staff.position.${position}`),
+      specialty: isDoctor ? specialty : '',
+      consultationFee: isDoctor ? Number(consultationFee) || 0 : 0,
       department: department.trim(),
       workdays,
       shiftStart,
@@ -191,6 +199,12 @@ export function StaffFormModal({
     onClose()
   }
 
+  /*
+    Shifokorda qo'shimcha ikki maydon bo'ladi. Server shunday
+    xodimga `Doctor` yozuvini ochadi va qabulga biriktirish,
+    tashrif yozish shu yozuvga bog'lanadi.
+  */
+  const isDoctor = position === 'doctor'
   const showSalary = payType !== 'percent'
   const showPercent = payType !== 'salary'
   const monthly = showSalary ? (Number(salary) || 0) * (Number(workRate) || 0) : 0
@@ -244,6 +258,28 @@ export function StaffFormModal({
               onChange={(e) => setPositionTitle(e.target.value)}
             />
           </div>
+
+          {isDoctor ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Select
+                label={t('doctor.specialty')}
+                required
+                value={specialty}
+                onChange={(e) => setSpecialty(e.target.value)}
+                options={SPECIALTIES.map((key) => ({
+                  value: key,
+                  label: tSpecialty(key),
+                }))}
+              />
+              <TextInput
+                label={t('doctor.consultationFee')}
+                inputMode="numeric"
+                hint={t('staff.doctorHint')}
+                value={consultationFee}
+                onChange={(e) => setConsultationFee(e.target.value.replace(/\D/g, ''))}
+              />
+            </div>
+          ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <PhoneInput

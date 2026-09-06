@@ -94,6 +94,13 @@ export interface StaffInput {
   email: string
   position: StaffPosition
   positionTitle: string
+  /**
+   * Quyidagi ikkitasi FAQAT `position: 'doctor'` da ishlatiladi.
+   * Server shunday xodimga `Doctor` yozuvini ham ochadi — shu
+   * yozuv bo'lmasa shifokor qabul ro'yxatida ko'rinmaydi.
+   */
+  specialty: string
+  consultationFee: number
   department: string
   workdays: number[]
   shiftStart: string
@@ -129,10 +136,35 @@ export async function createStaff(input: StaffInput): Promise<Staff> {
   const { password, ...rest } = input
   const now = new Date().toISOString()
 
+  /*
+    Shifokor lavozimida `Doctor` yozuvi ham ochiladi — serverdagi
+    bilan bir xil. Aks holda demo rejimda shifokor ro'yxati bo'sh
+    qolar, muammo esa faqat haqiqiy backendda ko'rinardi.
+  */
+  const doctorId =
+    input.position === 'doctor'
+      ? db.doctors.insert({
+          id: db.doctors.nextId('doc'),
+          clinicId,
+          fullName: input.fullName.trim(),
+          specialty: input.specialty || input.positionTitle,
+          phone: input.phone,
+          email: input.email,
+          avatarUrl: null,
+          consultationFee: input.consultationFee,
+          status: input.status === 'fired' ? 'inactive' : input.status,
+          workdays: input.workdays,
+          shiftStart: input.shiftStart,
+          shiftEnd: input.shiftEnd,
+          hiredAt: input.hiredAt,
+          createdAt: now,
+        }).id
+      : null
+
   const staff: Staff = {
     id: db.staff.nextId('stf'),
     clinicId,
-    doctorId: null,
+    doctorId,
     avatarUrl: null,
     createdAt: now,
     ...rest,

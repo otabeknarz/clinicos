@@ -239,6 +239,7 @@ export const dict: Dict = {
     'Katak qanchalik quyuq bo’sa, shifokor shuncha band. Och katak - bo’sh soat, ya’ni yo’qotilgan daromad.',
 
   /* --- Shifokorlar --- */
+  'doctors.empty': 'Shifokorlar Xodimlar bo‘limidan “Shifokor” lavozimi bilan qo‘shiladi',
   'doctors.title': 'Shifokorlar',
   'doctors.add': "+ Shifokor qo'shish",
   'doctors.appointmentsToday': 'bugungi qabul',
@@ -251,6 +252,8 @@ export const dict: Dict = {
   'doctor.tab.schedule': 'Jadval',
   'doctor.tab.patients': 'Bemorlar',
   'doctor.tab.performance': "Ko'rsatkichlar",
+  'doctor.consultationFee': 'Qabul narxi',
+  'staff.doctorHint': 'Shifokorlar ro‘yxatida ko‘rinadi',
   'doctor.specialty': 'Mutaxassislik',
   'doctor.shift': 'Ish vaqti',
   'doctor.fee': 'Qabul narxi',
