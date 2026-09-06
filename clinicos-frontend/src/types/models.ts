@@ -1219,10 +1219,26 @@ export interface AdmissionExpanded extends Admission {
   doctor: Pick<Doctor, 'id' | 'fullName' | 'specialty'>
   room: Pick<Room, 'id' | 'number' | 'category' | 'dailyRate'>
   bed: Pick<Bed, 'id' | 'label'>
-  /** Bugungi kunga qadar necha kun yotgani */
+  /**
+   * Bugungi kunga qadar necha kun yotgani.
+   * Rejalashtirilgan yotqizishda `0` — hali hech kim yotmagan.
+   */
   daysStayed: number
+  /** Reja bo'yicha kunlar. `null` — chiqish sanasi belgilanmagan. */
+  plannedDays: number | null
+  /** Reja bo'yicha jami summa */
+  plannedTotal: UZS | null
   /** Yotgan kunlar uchun hisoblangan summa */
   accrued: UZS
+  /** Shu yotqizish uchun olingan pul (qaytarilganlarsiz) */
+  paid: UZS
+  /**
+   * Qolgan summa: hisoblangan − to'langan.
+   *
+   * MANFIY bo'lsa ortiqcha to'langan va qaytarish kerak —
+   * rejadan kamroq yotgan bemorda shunday bo'ladi.
+   */
+  balance: UZS
 }
 
 /** Statsionar ko'rsatkichlari */
@@ -1267,7 +1283,7 @@ export interface BedBoardSpan {
 
 export interface BedBoardRow {
   bed: Pick<Bed, 'id' | 'label' | 'status'>
-  room: Pick<Room, 'id' | 'number' | 'category'>
+  room: Pick<Room, 'id' | 'number' | 'category' | 'dailyRate'>
   spans: BedBoardSpan[]
 }
 

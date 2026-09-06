@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**141 ta endpoint.**
+**142 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -1094,9 +1094,11 @@ BedBoardSpan,
 DateRange,
 ID,
 Metric,
+PaymentMethod,
 Room,
 RoomCategory,
 SeriesPoint,
+UZS,
 WardStats,
 } from '@/types/models'
 
@@ -1130,6 +1132,18 @@ listAdmissions(query: AdmissionQuery = {}): Promise<AdmissionExpanded[]>
 
 ```ts
 admitPatient(input: AdmissionInput): Promise<Admission>
+```
+
+### `POST /ward/admissions/:id/check-in`
+
+Rejalashtirilgan bemorni haqiqatan yotqizish.
+
+Joy AYNAN SHU PAYTDA band qilinadi. Reja joyni ushlab turmaydi,
+shuning uchun oraliqda boshqa bemor yotqizilgan bo'lsa, xato
+shu yerda chiqadi.
+
+```ts
+checkInPatient(id: ID): Promise<Admission>
 ```
 
 ### `POST /ward/admissions/:id/discharge`
@@ -1226,8 +1240,13 @@ spans.sort((a, b) => a.fromIndex - b.fromIndex)
 return {
 bed: pick(bed, ['id', 'label', 'status'])!,
 room: room
-? pick(room, ['id', 'number', 'category'])!
-: { id: bed.roomId, number: '—', category: 'general' as RoomCategory },
+? pick(room, ['id', 'number', 'category', 'dailyRate'])!
+: {
+id: bed.roomId,
+number: '—',
+category: 'general' as RoomCategory,
+dailyRate: 0,
+},
 spans,
 }
 })

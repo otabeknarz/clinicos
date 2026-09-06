@@ -397,7 +397,13 @@ export class WardService {
 
     const [beds, admissions] = await Promise.all([
       this.db.bed.findMany({
-        include: { room: { select: { id: true, number: true, category: true } } },
+        /*
+          `dailyRate` ham kerak: yotqizish formasi joy tanlanishi
+          bilan narxni ko'rsatadi, alohida so'rov yubormasin.
+        */
+        include: {
+          room: { select: { id: true, number: true, category: true, dailyRate: true } },
+        },
         orderBy: { label: 'asc' },
       }),
       this.db.admission.findMany({
@@ -439,6 +445,7 @@ export class WardService {
           id: bed.room.id,
           number: bed.room.number,
           category: toApi(bed.room.category),
+          dailyRate: bed.room.dailyRate,
         },
         spans,
       }

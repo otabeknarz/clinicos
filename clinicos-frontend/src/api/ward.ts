@@ -31,9 +31,11 @@ import type {
   DateRange,
   ID,
   Metric,
+  PaymentMethod,
   Room,
   RoomCategory,
   SeriesPoint,
+  UZS,
   WardStats,
 } from '@/types/models'
 
@@ -117,10 +119,22 @@ export interface AdmissionInput {
   patientId: ID
   doctorId: ID
   bedId: ID
+  /**
+   * Kirish sanasi. KELAJAKDAGI kun bo'lsa yozuv rejalashtirilgan
+   * bo'ladi va joy bugundan band qilinmaydi.
+   */
   admittedAt: string
   expectedDischargeAt: string | null
   diagnosis: string
   notes: string
+  /**
+   * Oldindan to'lov. Ixtiyoriy va qisman ham bo'ladi (zakalat).
+   *
+   * Faqat `payments.create` ruxsati borlar yubora oladi —
+   * registrator. Egasida u ATAYLAB yo'q: pulni bir odam,
+   * tashrifni boshqasi yozadi.
+   */
+  prepayment?: { amount: UZS; method: PaymentMethod }
 }
 
 // POST /ward/admissions
@@ -161,6 +175,29 @@ export async function admitPatient(input: AdmissionInput): Promise<Admission> {
   db.beds.update(bed.id, { status: 'occupied' }, clinicId)
 
   return delay(admission, 320)
+}
+
+/**
+ * Rejalashtirilgan bemorni haqiqatan yotqizish.
+ *
+ * Joy AYNAN SHU PAYTDA band qilinadi. Reja joyni ushlab turmaydi,
+ * shuning uchun oraliqda boshqa bemor yotqizilgan bo'lsa, xato
+ * shu yerda chiqadi.
+ */
+// POST /ward/admissions/:id/check-in
+export async function checkInPatient(id: ID): Promise<Admission> {
+  if (!USE_MOCK) {
+    return request<Admission>('POST', `/ward/admissions/${id}/check-in`)
+  }
+
+  const { clinicId } = apiContext()
+  const updated = getDb().admissions.update(
+    id,
+    { status: 'active', admittedAt: new Date().toISOString() },
+    clinicId,
+  )
+  if (!updated) throw new Error('Yozuv topilmadi')
+  return delay(updated, 240)
 }
 
 // POST /ward/admissions/:id/discharge
@@ -260,8 +297,13 @@ export async function getBedBoard(from: Date, to: Date): Promise<BedBoard> {
       return {
         bed: pick(bed, ['id', 'label', 'status'])!,
         room: room
-          ? pick(room, ['id', 'number', 'category'])!
-          : { id: bed.roomId, number: '—', category: 'general' as RoomCategory },
+          ? pick(room, ['id', 'number', 'category', 'dailyRate'])!
+          : {
+              id: bed.roomId,
+              number: '—',
+              category: 'general' as RoomCategory,
+              dailyRate: 0,
+            },
         spans,
       }
     })
@@ -381,7 +423,10 @@ function expandAdmissions(): AdmissionExpanded[] {
     .all(clinicId)
     .filter((a) => !scopeDoctorId || a.doctorId === scopeDoctorId)
     .map((a) => {
-      const days = stayDays(a)
+      const days = a.status === 'planned' ? 0 : stayDays(a)
+      const plannedDays = a.expectedDischargeAt
+        ? inclusiveDays(new Date(a.admittedAt), new Date(a.expectedDischargeAt))
+        : null
       return {
         ...a,
         patient: pick(patients.get(a.patientId), ['id', 'fullName', 'phone']) ?? {
@@ -402,7 +447,16 @@ function expandAdmissions(): AdmissionExpanded[] {
         },
         bed: pick(beds.get(a.bedId), ['id', 'label']) ?? { id: a.bedId, label: '—' },
         daysStayed: days,
+        plannedDays,
+        plannedTotal: plannedDays === null ? null : plannedDays * a.dailyRate,
         accrued: days * a.dailyRate,
+        /*
+          Demo rejimda to'lovlar yotqizishga bog'lanmaydi —
+          mock qatlamida bunday bog'lanish yo'q. Haqiqiy
+          backendda bu qiymatlar serverdan keladi.
+        */
+        paid: 0,
+        balance: days * a.dailyRate,
       }
     })
 }
@@ -451,4 +505,14 @@ function average(values: number[]): number {
 function metric(current: number, previous: number): Metric {
   if (previous === 0) return { value: current, changePct: current === 0 ? 0 : null }
   return { value: current, changePct: ((current - previous) / previous) * 100 }
+}
+
+/**
+ * Ikki sana orasidagi kunlar. KIRGAN KUN HAM hisoblanadi —
+ * server bilan bir xil qoida (`ward.service.ts`), aks holda
+ * interfeys boshqa summa ko'rsatardi.
+ */
+export function inclusiveDays(from: Date, to: Date): number {
+  const ms = startOfDay(to).getTime() - startOfDay(from).getTime()
+  return Math.max(1, Math.round(ms / 86_400_000) + 1)
 }

@@ -145,6 +145,7 @@ export function ConfirmDialog({
   confirmLabel,
   danger = true,
   pending,
+  children,
 }: {
   open: boolean
   onClose: () => void
@@ -154,6 +155,15 @@ export function ConfirmDialog({
   confirmLabel?: string
   danger?: boolean
   pending?: boolean
+  /**
+   * Tasdiqdan oldin ko'rsatiladigan qo'shimcha ma'lumot.
+   *
+   * `description` faqat matn qabul qiladi. Ba'zan tasdiqlashdan
+   * oldin raqam ko'rsatish kerak bo'ladi — masalan statsionardan
+   * chiqarishda yakuniy hisob. Odam tugmani bosishdan oldin
+   * summani ko'rib turishi kerak.
+   */
+  children?: ReactNode
 }) {
   const { t } = useI18n()
 
@@ -183,7 +193,7 @@ export function ConfirmDialog({
         </>
       }
     >
-      <div className="pb-2" />
+      {children ? <div className="pb-2">{children}</div> : <div className="pb-2" />}
     </Modal>
   )
 }

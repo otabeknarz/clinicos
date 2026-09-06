@@ -11,12 +11,14 @@ import {
 } from 'lucide-react'
 
 import {
+  checkInPatient,
   dischargePatient,
   getBedBoard,
   getWardStats,
   listAdmissions,
   listRooms,
 } from '@/api/ward'
+import { AdmissionFormModal } from '@/components/modals/AdmissionFormModal'
 import { BedBoard, BedBoardLegend } from './ward/BedBoard'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Avatar } from '@/components/ui/Avatar'
@@ -32,6 +34,7 @@ import type { Column } from '@/components/ui/Table'
 import { Tabs } from '@/components/ui/Tabs'
 import { addDays, rangeFromPreset, startOfDay, toISODate } from '@/lib/dates'
 import { dateCompact, dateShort, groupDigits, money, moneyShort, percent, phone as fmtPhone } from '@/lib/format'
+import { cn } from '@/lib/cn'
 import type { Tone } from '@/lib/status'
 import { useAction, useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
@@ -48,9 +51,17 @@ const BOARD_DAYS = 14
 
 export function WardPage() {
   const { t } = useI18n()
+  const { can } = useAuth()
   const [tab, setTab] = useState<Tab>('board')
+  const [admitting, setAdmitting] = useState(false)
+  /*
+    Yotqizilgach ichki jadvallar qayta o'qilishi kerak. Har biri
+    o'z `useAsync` iga ega, shuning uchun umumiy hisoblagichni
+    kalit sifatida beramiz.
+  */
+  const [version, setVersion] = useState(0)
 
-  const stats = useAsync(() => getWardStats(rangeFromPreset('30d')), [])
+  const stats = useAsync(() => getWardStats(rangeFromPreset('30d')), [version])
 
   return (
     <>
@@ -64,9 +75,16 @@ export function WardPage() {
               })
             : undefined
         }
+        actions={
+          can('ward.manage') ? (
+            <Button icon={<BedDouble size={15} />} onClick={() => setAdmitting(true)}>
+              {t('ward.admit')}
+            </Button>
+          ) : null
+        }
       />
 
-      <WardKpis />
+      <WardKpis key={`kpi-${version}`} />
 
       <Card padded={false} className="mt-5">
         <div className="hairline px-5 pt-4 sm:px-6">
@@ -82,11 +100,17 @@ export function WardPage() {
           />
         </div>
 
-        {tab === 'board' ? <BoardTab /> : null}
-        {tab === 'patients' ? <PatientsTab /> : null}
+        {tab === 'board' ? <BoardTab key={`board-${version}`} /> : null}
+        {tab === 'patients' ? <PatientsTab key={`pat-${version}`} /> : null}
         {tab === 'rooms' ? <RoomsTab /> : null}
         {tab === 'analytics' ? <AnalyticsTab /> : null}
       </Card>
+
+      <AdmissionFormModal
+        open={admitting}
+        onClose={() => setAdmitting(false)}
+        onDone={() => setVersion((v) => v + 1)}
+      />
     </>
   )
 }
@@ -239,6 +263,7 @@ function PatientsTab() {
 
   const { data, loading, error, reload } = useAsync(() => listAdmissions({ status }), [status])
   const discharge = useAction(async (id: string) => dischargePatient(id))
+  const checkIn = useAction(async (id: string) => checkInPatient(id))
 
   async function confirmDischarge() {
     if (!discharging) return
@@ -328,8 +353,33 @@ function PatientsTab() {
             header: '',
             align: 'right' as const,
             width: 'w-28',
-            render: (row: AdmissionExpanded) =>
-              row.status === 'active' ? (
+            render: (row: AdmissionExpanded) => {
+              /*
+                Rejalashtirilgan bemor kelganda joy AYNAN SHU
+                PAYTDA band qilinadi — reja uni ushlab turmaydi.
+              */
+              if (row.status === 'planned') {
+                return (
+                  <Button
+                    variant="tinted"
+                    size="sm"
+                    loading={checkIn.pending}
+                    onClick={async (e) => {
+                      e.stopPropagation()
+                      try {
+                        await checkIn.run(row.id)
+                        toast.success(t('ward.checkedIn'))
+                        reload()
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : t('toast.error'))
+                      }
+                    }}
+                  >
+                    {t('ward.checkIn')}
+                  </Button>
+                )
+              }
+              return row.status === 'active' ? (
                 <Button
                   variant="tinted"
                   size="sm"
@@ -340,7 +390,8 @@ function PatientsTab() {
                 >
                   {t('ward.discharge')}
                 </Button>
-              ) : null,
+              ) : null
+            },
           },
         ]
       : []),
@@ -400,7 +451,42 @@ function PatientsTab() {
         description={discharging?.patient.fullName}
         confirmLabel={t('ward.discharge')}
         pending={discharge.pending}
-      />
+      >
+        {discharging ? (
+          /*
+            Chiqarishdan OLDIN yakuniy hisob: haqiqiy kun ×
+            muzlatilgan narx, to'langanini ayirib. Manfiy balans —
+            ortiqcha to'langan, qaytarish kerak. Registrator
+            raqamni ko'rib turib chiqarsin.
+          */
+          <div className="rounded-[10px] bg-fill-4 px-3 py-2.5 text-caption">
+            <div className="flex justify-between">
+              <span className="text-label-tertiary">
+                {t('ward.days', { count: discharging.daysStayed })} ×{' '}
+                {money(discharging.dailyRate)}
+              </span>
+              <span className="tnum text-label">{money(discharging.accrued)}</span>
+            </div>
+            <div className="mt-1 flex justify-between">
+              <span className="text-label-tertiary">{t('ward.paid')}</span>
+              <span className="tnum text-label">{money(discharging.paid)}</span>
+            </div>
+            <div
+              className={cn(
+                'mt-1.5 flex justify-between border-t border-separator pt-1.5 font-medium',
+                discharging.balance < 0 ? 'text-warn' : 'text-label',
+              )}
+            >
+              <span>
+                {discharging.balance < 0
+                  ? t('ward.balanceRefund')
+                  : t('ward.balanceDue')}
+              </span>
+              <span className="tnum">{money(Math.abs(discharging.balance))}</span>
+            </div>
+          </div>
+        ) : null}
+      </ConfirmDialog>
     </>
   )
 }
