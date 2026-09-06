@@ -47,8 +47,23 @@ export class PaymentInputDto {
   @IsUUID()
   doctorId!: string
 
+  /*
+    IKKITADAN BITTASI bo'lishi shart: yo katalog xizmati, yo
+    statsionar yotqizishi. Ikkalasi ham bo'lmasa, pul nima uchun
+    olingani noma'lum qolardi; ikkalasi birga bo'lsa esa qaysi
+    narxga qarab tekshirish kerakligi noaniq bo'lardi.
+
+    Tekshiruv servisda — DTO bir maydonni ikkinchisiga qarab
+    ko'ra olmaydi.
+  */
+  @IsOptional()
   @IsUUID()
-  serviceId!: string
+  serviceId?: string
+
+  /** Statsionar to'lovi: oldindan, qo'shimcha yoki chiqishdagi */
+  @IsOptional()
+  @IsUUID()
+  admissionId?: string
 
   @IsOptional()
   @ValidateIf((_, v) => v !== null)

@@ -11,7 +11,10 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator'
+
+import { PAYMENT_METHODS } from '../payments/payments.dto'
 
 export class RoomInputDto {
   @IsString()
@@ -63,6 +66,30 @@ export class AdmissionQueryDto {
   search?: string
 }
 
+/**
+ * Yotqizish paytidagi oldindan to'lov.
+ *
+ * BU KLASS `AdmissionInputDto` DAN OLDIN turishi SHART:
+ * dekorator metama'lumoti (`@Type(() => PrepaymentDto)`) klass
+ * yaratilgan paytda hisoblanadi. Pastda qolsa ilova
+ * "Cannot access 'PrepaymentDto' before initialization" bilan
+ * ishga tushmaydi — tip tekshiruvi buni ushlamaydi.
+ *
+ * IXTIYORIY: registrator zakalat ham, to'liq summani ham,
+ * umuman hech narsa ham olmasligi mumkin. Qolgani chiqishda
+ * hisoblanadi.
+ */
+export class PrepaymentDto {
+  @Type(() => Number)
+  @IsInt({ message: 'Summa butun son bo‘lishi kerak' })
+  @Min(1, { message: 'Summa noldan katta bo‘lishi kerak' })
+  @Max(1_000_000_000)
+  amount!: number
+
+  @IsIn(PAYMENT_METHODS)
+  method!: (typeof PAYMENT_METHODS)[number]
+}
+
 export class AdmissionInputDto {
   @IsUUID()
   patientId!: string
@@ -96,6 +123,20 @@ export class AdmissionInputDto {
   @IsString()
   @MaxLength(2000)
   notes: string = ''
+
+  /*
+    Oldindan to'lov. Berilsa, yotqizish bilan BITTA tranzaksiyada
+    yoziladi — aks holda to'lov o'tib, yotqizish sinsa, pul
+    egasiz qolardi.
+
+    Faqat `payments.create` ruxsati borlar bera oladi (registrator).
+    Egasida bu ruxsat ATAYLAB yo'q: pulni bir odam, tashrifni
+    boshqasi yozadi.
+  */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PrepaymentDto)
+  prepayment?: PrepaymentDto
 }
 
 export class WardRangeDto {

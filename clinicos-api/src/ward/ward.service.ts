@@ -21,6 +21,12 @@ const ADMISSION_EXPAND = {
   doctor: { select: { id: true, fullName: true, specialty: true } },
   room: { select: { id: true, number: true, category: true, dailyRate: true } },
   bed: { select: { id: true, label: true } },
+  /*
+    To'lovlar hisobni ko'rsatish uchun kerak: qancha to'langan,
+    qancha qolgan. Yotoq joylari kam, shuning uchun ro'yxatda ham
+    olib kelish qimmat emas.
+  */
+  payments: { select: { amount: true, status: true } },
 } satisfies Prisma.AdmissionInclude
 
 type AdmissionRow = Prisma.AdmissionGetPayload<{ include: typeof ADMISSION_EXPAND }>
@@ -161,42 +167,85 @@ export class WardService {
    * tranzaksiyada: ikki registrator bir vaqtda bir joyga
    * joylashtirmasin.
    */
+  /**
+   * BEMORNI YOTQIZISH — hozir yoki rejalashtirib.
+   *
+   * `admittedAt` kelajakdagi kun bo'lsa — yozuv `PLANNED` bo'lib
+   * qoladi va joy hali BAND QILINMAYDI. Bemor kelgan kuni
+   * `checkIn()` chaqiriladi.
+   *
+   * NEGA JOY DARHOL BAND QILINMAYDI: kelasi oyga rejalashtirilgan
+   * bemor uchun joyni bugundan yopib qo'yish palatani bekorga
+   * bo'sh saqlardi. Bandlik SANA ORALIG'I bo'yicha tekshiriladi.
+   */
   async admit(dto: AdmissionInputDto) {
-    const { clinicId, userId } = this.ctx.require()
+    const { clinicId, userId, permissions } = this.ctx.require()
 
     const bed = await this.db.bed.findFirst({
       where: { id: dto.bedId },
       include: { room: { select: { id: true, dailyRate: true, status: true } } },
     })
     if (!bed) throw new NotFoundException('Joy topilmadi')
-    if (bed.status !== 'FREE') throw new ConflictException('Bu joy band')
     if (bed.room.status !== 'ACTIVE') {
       throw new BadRequestException('Palata ta’mirda')
+    }
+    if (bed.status === 'MAINTENANCE') {
+      throw new BadRequestException('Bu joy ta’mirda')
     }
 
     await this.requireOwn('patient', dto.patientId, 'Bemor topilmadi')
     await this.requireOwn('doctor', dto.doctorId, 'Shifokor topilmadi')
 
-    const row = await this.db.$transaction(async (tx) => {
-      // Joyni band qilamiz — agar oradan boshqasi ulgurgan bo'lsa, 0 qaytadi
-      const taken = await tx.bed.updateMany({
-        where: { id: dto.bedId, status: 'FREE' },
-        data: { status: 'OCCUPIED' },
-      })
-      if (taken.count === 0) throw new ConflictException('Bu joy endigina band bo‘ldi')
+    const admittedAt = dto.admittedAt ? new Date(dto.admittedAt) : new Date()
+    const expectedDischargeAt = dto.expectedDischargeAt
+      ? new Date(dto.expectedDischargeAt)
+      : null
 
-      return tx.admission.create({
+    if (expectedDischargeAt && startOfDay(expectedDischargeAt) < startOfDay(admittedAt)) {
+      throw new BadRequestException('Chiqish sanasi kirish sanasidan oldin bo‘lmaydi')
+    }
+
+    /*
+      Kelajakdagi kun — reja. Bugun yoki o'tgan kun — darhol
+      yotqizish. Taqqoslash KUN bo'yicha: bugun soat 15 da
+      "bugun ertalab yotdi" deb yozish ham ishlashi kerak.
+    */
+    const planned = startOfDay(admittedAt) > startOfDay(new Date())
+
+    await this.assertBedFree(dto.bedId, admittedAt, expectedDischargeAt)
+
+    /*
+      Oldindan to'lovni faqat pul yozish huquqi borlar qo'sha
+      oladi. Egasida `payments.create` ATAYLAB yo'q — pulni bir
+      odam, tashrifni boshqasi yozadi.
+    */
+    if (dto.prepayment && !permissions.includes('payments.create')) {
+      throw new BadRequestException('Oldindan to‘lovni registrator kiritadi')
+    }
+
+    const row = await this.db.$transaction(async (tx) => {
+      /*
+        Darhol yotqizishda joyni band qilamiz. Shart bilan
+        yangilaymiz: oradan boshqasi ulgurgan bo'lsa 0 qaytadi.
+      */
+      if (!planned) {
+        const taken = await tx.bed.updateMany({
+          where: { id: dto.bedId, status: 'FREE' },
+          data: { status: 'OCCUPIED' },
+        })
+        if (taken.count === 0) throw new ConflictException('Bu joy endigina band bo‘ldi')
+      }
+
+      const created = await tx.admission.create({
         data: {
           clinicId,
           patientId: dto.patientId,
           doctorId: dto.doctorId,
           roomId: bed.room.id,
           bedId: dto.bedId,
-          admittedAt: dto.admittedAt ? new Date(dto.admittedAt) : new Date(),
-          expectedDischargeAt: dto.expectedDischargeAt
-            ? new Date(dto.expectedDischargeAt)
-            : null,
-          status: 'ACTIVE',
+          admittedAt,
+          expectedDischargeAt,
+          status: planned ? 'PLANNED' : 'ACTIVE',
           diagnosis: dto.diagnosis,
           // Narx joylashtirish paytida MUZLATILADI
           dailyRate: bed.room.dailyRate,
@@ -205,9 +254,110 @@ export class WardService {
         },
         include: ADMISSION_EXPAND,
       })
+
+      if (dto.prepayment) {
+        const days = expectedDischargeAt
+          ? daysBetween(admittedAt, expectedDischargeAt)
+          : 1
+        const total = days * bed.room.dailyRate
+        if (dto.prepayment.amount > total) {
+          throw new BadRequestException(
+            `Oldindan to‘lov jami summadan oshib ketdi (${total} so‘m)`,
+          )
+        }
+
+        await tx.payment.create({
+          data: {
+            clinicId,
+            patientId: dto.patientId,
+            doctorId: dto.doctorId,
+            admissionId: created.id,
+            amount: dto.prepayment.amount,
+            basePrice: total,
+            discountPct: 0,
+            method: toDb(dto.prepayment.method),
+            status: 'PAID',
+            paidAt: new Date(),
+            notes: 'Statsionar uchun oldindan to‘lov',
+            createdById: userId,
+          },
+        })
+      }
+
+      return tx.admission.findFirstOrThrow({
+        where: { id: created.id },
+        include: ADMISSION_EXPAND,
+      })
     })
 
     return toApiAdmission(row)
+  }
+
+  /**
+   * Rejalashtirilgan bemorni haqiqatan yotqizish.
+   *
+   * Joy shu paytda band qilinadi. Oraliqda boshqa bemor
+   * yotqizilgan bo'lsa, bu yerda bilinadi — reja joyni
+   * ushlab turmaydi, faqat band qilishga urinadi.
+   */
+  async checkIn(id: string) {
+    const current = await this.db.admission.findFirst({
+      where: { id },
+      select: { id: true, status: true, bedId: true },
+    })
+    if (!current) throw new NotFoundException('Yozuv topilmadi')
+    if (current.status !== 'PLANNED') {
+      throw new BadRequestException('Bu yozuv rejalashtirilgan holatda emas')
+    }
+
+    const row = await this.db.$transaction(async (tx) => {
+      const taken = await tx.bed.updateMany({
+        where: { id: current.bedId, status: 'FREE' },
+        data: { status: 'OCCUPIED' },
+      })
+      if (taken.count === 0) throw new ConflictException('Bu joy band')
+
+      return tx.admission.update({
+        where: { id },
+        data: { status: 'ACTIVE', admittedAt: new Date() },
+        include: ADMISSION_EXPAND,
+      })
+    })
+
+    return toApiAdmission(row)
+  }
+
+  /**
+   * Joy shu oraliqda bo'shmi.
+   *
+   * `bed.status` yolg'iz o'zi yetmaydi: u faqat BUGUNGI holatni
+   * biladi. Kelasi haftaga rejalashtirilgan joy bugun bo'sh
+   * turadi, lekin o'sha hafta uchun band. Shuning uchun
+   * yozuvlarning sana oralig'i solishtiriladi.
+   *
+   * Chiqish sanasi berilmagan yotqizish OCHIQ hisoblanadi —
+   * qachon chiqishi noma'lum, ya'ni har qanday keyingi reja
+   * bilan kesishadi.
+   */
+  private async assertBedFree(bedId: string, from: Date, to: Date | null) {
+    const existing = await this.db.admission.findMany({
+      where: { bedId, status: { in: ['PLANNED', 'ACTIVE'] } },
+      select: { admittedAt: true, expectedDischargeAt: true, status: true },
+    })
+
+    const fromDay = startOfDay(from).getTime()
+    const toDay = to ? startOfDay(to).getTime() : Number.POSITIVE_INFINITY
+
+    for (const row of existing) {
+      const otherFrom = startOfDay(row.admittedAt).getTime()
+      const otherTo = row.expectedDischargeAt
+        ? startOfDay(row.expectedDischargeAt).getTime()
+        : Number.POSITIVE_INFINITY
+
+      if (fromDay <= otherTo && otherFrom <= toDay) {
+        throw new ConflictException('Bu joy tanlangan kunlarda band')
+      }
+    }
   }
 
   async discharge(id: string) {
@@ -397,7 +547,29 @@ export class WardService {
 
 function toApiAdmission(row: AdmissionRow) {
   const now = new Date()
-  const daysStayed = daysBetween(row.admittedAt, row.dischargedAt ?? now)
+
+  /*
+    Rejalashtirilgan yotqizishda hali hech kim yotmagan —
+    "yotgan kun" 0 bo'ladi. Aks holda kelasi haftaga
+    rejalashtirilgan bemorga bugundan pul yozilardi.
+  */
+  const daysStayed =
+    row.status === 'PLANNED' ? 0 : daysBetween(row.admittedAt, row.dischargedAt ?? now)
+
+  /* Reja bo'yicha kunlar — forma ko'rsatgan summa shu */
+  const plannedDays = row.expectedDischargeAt
+    ? daysBetween(row.admittedAt, row.expectedDischargeAt)
+    : null
+
+  /*
+    Qaytarilgan to'lov hisobga OLINMAYDI: yozuv tarixda qoladi,
+    lekin pul bemorga qaytarilgan.
+  */
+  const paid = row.payments
+    .filter((p) => p.status === 'PAID')
+    .reduce((sum, p) => sum + p.amount, 0)
+
+  const accrued = daysStayed * row.dailyRate
 
   return {
     id: row.id,
@@ -420,8 +592,20 @@ function toApiAdmission(row: AdmissionRow) {
     room: { ...row.room, category: toApi(row.room.category) },
     bed: row.bed,
     daysStayed,
-    // Hisoblangan summa: yotgan kun × muzlatilgan kunlik narx
-    accrued: daysStayed * row.dailyRate,
+    /** Reja bo'yicha kunlar. `null` — chiqish sanasi belgilanmagan. */
+    plannedDays,
+    /** Reja bo'yicha jami summa */
+    plannedTotal: plannedDays === null ? null : plannedDays * row.dailyRate,
+    /** Hisoblangan summa: yotgan kun × muzlatilgan kunlik narx */
+    accrued,
+    /** Shu yotqizish uchun olingan pul (qaytarilganlarsiz) */
+    paid,
+    /**
+     * Qolgan summa. Manfiy bo'lsa — ortiqcha to'langan, qaytarish
+     * kerak. Reja bo'yicha to'lab, kamroq yotgan bemorda shunday
+     * bo'ladi.
+     */
+    balance: accrued - paid,
   }
 }
 

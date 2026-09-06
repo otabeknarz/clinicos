@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 
+import { WARD_KEY, WARD_LABEL } from '../common/ward-revenue'
 import { PrismaService } from '../prisma/prisma.service'
 import { RangeDto, RevenuePeriodDto } from './analytics.dto'
 
@@ -239,7 +240,19 @@ export class AnalyticsService {
         revenue,
       ),
       revenuePerService: breakdown(
-        payments.map((p) => [p.serviceId, p.service.name, p.amount] as const),
+        /*
+          Statsionar to'lovida katalog xizmati yo'q — yotoq narxi
+          palataning kunlik narxidan chiqadi. Ular alohida guruhga
+          yig'iladi, aks holda hisobotdan tushib qolardi.
+        */
+        payments.map(
+          (p) =>
+            [
+              p.serviceId ?? WARD_KEY,
+              p.service?.name ?? WARD_LABEL,
+              p.amount,
+            ] as const,
+        ),
         revenue,
       ),
     }

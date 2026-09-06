@@ -63,13 +63,19 @@ async function main() {
   await db.chatGroupMember.deleteMany()
   await db.chatGroup.deleteMany()
 
+  /*
+    To'lov statsionar yotqizishiga ham bog'langan bo'lishi mumkin,
+    shuning uchun to'lovlar YOTQIZISHDAN OLDIN o'chiriladi. Teskari
+    tartibda baza tashqi kalit xatosini beradi va seed to'xtaydi.
+  */
+  await db.feedback.deleteMany()
+  await db.followUp.deleteMany()
+  await db.payment.deleteMany()
+
   await db.admission.deleteMany()
   await db.bed.deleteMany()
   await db.room.deleteMany()
 
-  await db.feedback.deleteMany()
-  await db.followUp.deleteMany()
-  await db.payment.deleteMany()
   await db.visit.deleteMany()
   await db.appointment.deleteMany()
   await db.patient.deleteMany()

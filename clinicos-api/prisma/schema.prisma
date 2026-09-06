@@ -472,8 +472,20 @@ model Payment {
 
   patientId     String  @map("patient_id")
   doctorId      String  @map("doctor_id")
-  serviceId     String  @map("service_id")
   appointmentId String? @map("appointment_id")
+
+  /// Katalog xizmati. Statsionar to'lovida BO'SH bo'ladi —
+  /// yotoqning narxi katalogda emas, palataning kunlik narxi
+  /// va yotgan kunlar sonidan chiqadi.
+  serviceId String? @map("service_id")
+
+  /// Statsionar to'lovi bo'lsa — qaysi yotqizishga tegishli.
+  ///
+  /// NEGA PUL SHU YERDA: klinikaning HAMMA puli bitta o'zgarmas
+  /// jurnalda bo'lishi kerak, aks holda egasi kassani solishtira
+  /// olmaydi. Statsionar pulini alohida joyda saqlash butun
+  /// nazorat mantiqini buzardi.
+  admissionId String? @map("admission_id")
 
   /// So'mda, BUTUN SON. Pulni hech qachon float'da saqlamang.
   /// Bu — HAQIQATDA olingan summa.
@@ -503,7 +515,8 @@ model Payment {
   clinic      Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   patient     Patient      @relation(fields: [patientId], references: [id], onDelete: Restrict)
   doctor      Doctor       @relation(fields: [doctorId], references: [id], onDelete: Restrict)
-  service     Service      @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  service     Service?     @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  admission   Admission?   @relation(fields: [admissionId], references: [id], onDelete: Restrict)
   appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
 
   @@index([clinicId, paidAt])
@@ -948,6 +961,9 @@ model Admission {
   doctor  Doctor  @relation(fields: [doctorId], references: [id], onDelete: Restrict)
   room    Room    @relation(fields: [roomId], references: [id], onDelete: Restrict)
   bed     Bed     @relation(fields: [bedId], references: [id], onDelete: Restrict)
+
+  /// Shu yotqizish uchun olingan to'lovlar (oldindan va chiqishda)
+  payments Payment[]
 
   @@index([clinicId, status])
   @@index([clinicId, patientId])

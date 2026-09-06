@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client'
 import { toApi, toApiDateTime, toDb } from '../common/api-enum'
 import { paginated } from '../common/pagination'
 import { RequestContext } from '../common/request-context'
+import { WARD_KEY, WARD_LABEL } from '../common/ward-revenue'
 import { PrismaService } from '../prisma/prisma.service'
 import { ServicesService } from '../services/services.service'
 import {
@@ -125,13 +126,25 @@ export class PaymentsService {
   async create(dto: PaymentInputDto) {
     const { clinicId, userId } = this.ctx.require()
 
-    const preview = await this.services.priceFor(dto.serviceId, dto.patientId)
+    /*
+      IKKI XIL TO'LOV, bitta jurnal.
 
-    if (dto.amount > preview.price) {
+      Katalog xizmati — narxi katalogda turadi.
+      Statsionar    — narxi palataning kunlik narxi × yotgan kun.
+
+      Ikkalasida ham yuqori chegara SERVERDA hisoblanadi:
+      registrator bemordan ko'proq olib, tizimga kamroq yozib,
+      farqni o'ziga olib qololmasin.
+    */
+    if (!dto.serviceId === !dto.admissionId) {
       throw new BadRequestException(
-        `Summa katalog narxidan oshib ketdi (${preview.price} so‘m)`,
+        'Xizmat yoki statsionar yotqizishidan bittasi ko‘rsatilishi kerak',
       )
     }
+
+    const preview = dto.admissionId
+      ? await this.wardPreview(dto.admissionId, dto.patientId, dto.amount)
+      : await this.catalogPreview(dto.serviceId!, dto.patientId, dto.amount)
 
     if (dto.appointmentId) {
       const appointment = await this.db.appointment.findFirst({
@@ -150,7 +163,8 @@ export class PaymentsService {
           clinicId,
           patientId: dto.patientId,
           doctorId: dto.doctorId,
-          serviceId: dto.serviceId,
+          serviceId: dto.serviceId ?? null,
+          admissionId: dto.admissionId ?? null,
           appointmentId: dto.appointmentId,
           amount: dto.amount,
           basePrice: preview.basePrice,
@@ -184,6 +198,63 @@ export class PaymentsService {
     })
 
     return toApiPayment(row)
+  }
+
+  /** Katalog xizmati bo'yicha narx va chegara */
+  private async catalogPreview(serviceId: string, patientId: string, amount: number) {
+    const preview = await this.services.priceFor(serviceId, patientId)
+    if (amount > preview.price) {
+      throw new BadRequestException(
+        `Summa katalog narxidan oshib ketdi (${preview.price} so‘m)`,
+      )
+    }
+    return preview
+  }
+
+  /**
+   * Statsionar to'lovi: chegara yotqizish hisobidan chiqadi.
+   *
+   * Chegara — REJA va HAQIQAT dan kattarog'i, allaqachon
+   * to'langanini ayirib. Nega kattarog'i: rejalashtirilgan
+   * bemordan oldindan to'liq summani olish mumkin bo'lishi kerak,
+   * rejadan uzoq yotgan bemordan esa haqiqiy summani.
+   */
+  private async wardPreview(admissionId: string, patientId: string, amount: number) {
+    const admission = await this.db.admission.findFirst({
+      where: { id: admissionId },
+      include: { payments: { select: { amount: true, status: true } } },
+    })
+    if (!admission) throw new NotFoundException('Yotqizish topilmadi')
+    if (admission.patientId !== patientId) {
+      throw new BadRequestException('Bu yotqizish boshqa bemorga tegishli')
+    }
+
+    const plannedDays = admission.expectedDischargeAt
+      ? inclusiveDays(admission.admittedAt, admission.expectedDischargeAt)
+      : 0
+    const stayedDays =
+      admission.status === 'PLANNED'
+        ? 0
+        : inclusiveDays(admission.admittedAt, admission.dischargedAt ?? new Date())
+
+    const cap = Math.max(plannedDays, stayedDays) * admission.dailyRate
+    const paid = admission.payments
+      .filter((p) => p.status === 'PAID')
+      .reduce((sum, p) => sum + p.amount, 0)
+    const remaining = cap - paid
+
+    if (remaining <= 0) {
+      throw new BadRequestException('Bu yotqizish uchun to‘lov to‘liq olingan')
+    }
+    if (amount > remaining) {
+      throw new BadRequestException(`Qolgan summadan oshib ketdi (${remaining} so‘m)`)
+    }
+
+    /*
+      `basePrice` — jami hisob, chegirma yo'q. Statsionar narxi
+      yotqizish paytida muzlatilgan, ya'ni keyin tekshirib bo'ladi.
+    */
+    return { price: remaining, basePrice: cap, discountPct: 0 }
   }
 
   /**
@@ -268,7 +339,12 @@ export class PaymentsService {
       averageCheck: rows.length ? Math.round(total / rows.length) : 0,
       overTime,
       byDoctor: breakdown(rows, (r) => [r.doctorId, r.doctor.fullName], total),
-      byService: breakdown(rows, (r) => [r.serviceId, r.service.name], total),
+      /* Statsionar to'lovida katalog xizmati yo'q — alohida guruh */
+      byService: breakdown(
+        rows,
+        (r) => [r.serviceId ?? WARD_KEY, r.service?.name ?? WARD_LABEL],
+        total,
+      ),
       byMethod: breakdown(rows, (r) => [toApi(r.method), toApi(r.method)], total),
     }
   }
@@ -348,4 +424,19 @@ function addDays(date: Date, days: number): Date {
   const d = new Date(date)
   d.setDate(d.getDate() + days)
   return d
+}
+
+/**
+ * Yotgan kunlar soni. KIRGAN KUNNING O'ZI HAM hisoblanadi —
+ * `ward.service.ts` dagi qoida bilan bir xil bo'lishi shart,
+ * aks holda ikkita joyda ikki xil summa chiqardi.
+ */
+function inclusiveDays(from: Date, to: Date): number {
+  const startOfDay = (d: Date) => {
+    const x = new Date(d)
+    x.setHours(0, 0, 0, 0)
+    return x
+  }
+  const ms = startOfDay(to).getTime() - startOfDay(from).getTime()
+  return Math.max(1, Math.round(ms / 86_400_000) + 1)
 }

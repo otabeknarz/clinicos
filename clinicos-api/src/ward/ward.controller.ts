@@ -65,6 +65,18 @@ export class WardController {
   }
 
   // POST /ward/admissions/:id/discharge
+  /*
+    POST /ward/admissions/:id/check-in
+
+    Rejalashtirilgan bemor keldi — joyni band qilib, yotqizamiz.
+    Joy oraliqda boshqasiga berilgan bo'lsa, shu yerda bilinadi.
+  */
+  @Post('admissions/:id/check-in')
+  @RequirePermission('ward.manage')
+  checkIn(@Param() params: IdParamDto) {
+    return this.ward.checkIn(params.id)
+  }
+
   @Post('admissions/:id/discharge')
   @RequirePermission('ward.manage')
   discharge(@Param() params: IdParamDto) {

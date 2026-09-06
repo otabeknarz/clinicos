@@ -234,6 +234,128 @@ async function main() {
     )
   }
 
+  /* ---------------- Statsionar ---------------- */
+  console.log('\nStatsionar — yotqizish va hisob')
+  if (patientId && doctorId && roomId) {
+    const board = await call(
+      'GET',
+      `/ward/board?from=${today}&to=${today}`,
+      owner,
+    )
+    const beds: string[] = (board.data?.rows ?? [])
+      .filter((r: any) => r.room?.id === roomId)
+      .map((r: any) => r.bed.id)
+
+    check('palatada ikkita joy bor', beds.length >= 2, `${beds.length} ta`)
+    if (beds.length >= 2) {
+      const plus2 = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10)
+
+      /* --- Hozir yotqizish, oldindan to'lov bilan --- */
+      const now = await call('POST', '/ward/admissions', reception, {
+        patientId,
+        doctorId,
+        bedId: beds[0],
+        expectedDischargeAt: plus2,
+        prepayment: { amount: 350_000, method: 'cash' },
+      })
+      check('hozir yotqizildi', now.status < 300, short(now.data))
+      check('  holat active', now.data?.status === 'active', `${now.data?.status}`)
+      check(
+        '  reja: 3 kun × 350 000 = 1 050 000',
+        now.data?.plannedDays === 3 && now.data?.plannedTotal === 1_050_000,
+        `${now.data?.plannedDays} kun / ${now.data?.plannedTotal}`,
+      )
+      check('  oldindan to‘lov yozildi', now.data?.paid === 350_000, `${now.data?.paid}`)
+
+      /* --- Rejalashtirish: joy bugundan band bo'lmaydi --- */
+      const from = new Date(Date.now() + 30 * 86_400_000).toISOString()
+      const to = new Date(Date.now() + 32 * 86_400_000).toISOString().slice(0, 10)
+      const planned = await call('POST', '/ward/admissions', reception, {
+        patientId,
+        doctorId,
+        bedId: beds[1],
+        admittedAt: from,
+        expectedDischargeAt: to,
+      })
+      check('rejalashtirildi', planned.status < 300, short(planned.data))
+      check('  holat planned', planned.data?.status === 'planned', `${planned.data?.status}`)
+      check('  yotgan kun 0', planned.data?.daysStayed === 0, `${planned.data?.daysStayed}`)
+
+      /* --- O'sha joy, kesishuvchi kunlar --- */
+      const clash = await call('POST', '/ward/admissions', reception, {
+        patientId,
+        doctorId,
+        bedId: beds[1],
+        admittedAt: from,
+        expectedDischargeAt: to,
+      })
+      check('kesishuvchi kunda joy band', clash.status === 409, `${clash.status}`)
+
+      /* --- Egasi pul yoza olmaydi --- */
+      const byOwner = await call('POST', '/ward/admissions', owner, {
+        patientId,
+        doctorId,
+        bedId: beds[1],
+        admittedAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+        prepayment: { amount: 1000, method: 'cash' },
+      })
+      check(
+        'egasi oldindan to‘lov kirita olmaydi',
+        byOwner.status === 400,
+        `${byOwner.status}`,
+      )
+
+      /* --- Check-in --- */
+      const checkedIn = await call(
+        'POST',
+        `/ward/admissions/${planned.data?.id}/check-in`,
+        reception,
+      )
+      check('rejadagi bemor yotqizildi', checkedIn.status < 300, short(checkedIn.data))
+      check('  holat active', checkedIn.data?.status === 'active', `${checkedIn.data?.status}`)
+
+      /* --- Statsionar to'lovi katalog xizmatisiz --- */
+      const wardPay = await call('POST', '/payments', reception, {
+        patientId,
+        doctorId,
+        admissionId: now.data?.id,
+        amount: 100_000,
+        method: 'cash',
+      })
+      check('statsionar to‘lovi yozildi', wardPay.status < 300, short(wardPay.data))
+
+      const tooMuch = await call('POST', '/payments', reception, {
+        patientId,
+        doctorId,
+        admissionId: now.data?.id,
+        amount: 900_000_000,
+        method: 'cash',
+      })
+      check('chegaradan oshiq to‘lov rad etildi', tooMuch.status === 400, `${tooMuch.status}`)
+
+      const neither = await call('POST', '/payments', reception, {
+        patientId,
+        doctorId,
+        amount: 1000,
+        method: 'cash',
+      })
+      check('xizmatsiz va yotqizishsiz to‘lov rad etildi', neither.status === 400, `${neither.status}`)
+
+      /* --- Chiqarish va yakuniy hisob --- */
+      const out = await call(
+        'POST',
+        `/ward/admissions/${now.data?.id}/discharge`,
+        reception,
+      )
+      check('bemor chiqarildi', out.status < 300, short(out.data))
+      check(
+        '  hisob: 1 kun × 350 000, to‘langan 450 000 → balans −100 000',
+        out.data?.accrued === 350_000 && out.data?.paid === 450_000 && out.data?.balance === -100_000,
+        `hisoblangan ${out.data?.accrued} / to‘langan ${out.data?.paid} / balans ${out.data?.balance}`,
+      )
+    }
+  }
+
   /* ---------------- Qabul va tashrif ---------------- */
   console.log('\nQabul va tashrif')
   let appointmentId: string | undefined
@@ -380,6 +502,7 @@ async function main() {
   console.log('\nKlinikani to‘xtatish (platforma)')
   const tenants = await call('GET', '/platform/tenants', tokens.admin)
   const shifo = items(tenants.data).find((t: any) => String(t.name).includes('Shifo'))
+  check('Shifo Med klinikasi topildi', Boolean(shifo), 'seed ishlaganmi?')
   if (shifo) {
     const freshToken = (
       await call('POST', '/auth/login', undefined, {
@@ -423,6 +546,16 @@ async function main() {
     const salomat = items(
       (await call('GET', '/platform/tenants', tokens.admin)).data,
     ).find((x: any) => String(x.name).includes('Salomat'))
+
+    /*
+      Ma'lumot yo'q bo'lsa JIM O'TKAZIB YUBORMAYMIZ.
+
+      Ilgari shunday edi va bu yashirin muammoga aylandi: seed
+      sinib qolganda sinov 11 ta tekshiruvni sakrab o'tib,
+      baribir "0 ta xato" deb yozardi. Yetishmayotgan ma'lumot
+      ham xato.
+    */
+    check('Salomat klinikasi topildi', Boolean(salomat), 'seed ishlaganmi?')
 
     if (salomat) {
       const beforeToken = (
