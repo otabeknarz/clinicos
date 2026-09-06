@@ -233,6 +233,63 @@ export class PlatformService {
     }
   }
 
+  /**
+   * KLINIKA EGASINING PAROLINI TIKLASH.
+   *
+   * NEGA KERAK: klinika egasi `Staff` yozuvi emas, faqat `User`.
+   * Ya'ni `POST /staff/:id/password` unga yetmaydi va egasi
+   * parolini unutsa, tizimga qaytadigan yo'l umuman yo'q edi.
+   * Pochta xizmati yo'q, shuning uchun tiklash platforma
+   * admini orqali bo'ladi.
+   *
+   * FAQAT EGASI tiklanadi. Klinika ichidagi qolgan xodimlarni
+   * egasining o'zi tiklaydi (`POST /staff/:id/password`) —
+   * platforma admini klinikaning kundalik ishiga aralashmaydi.
+   *
+   * XAVFSIZLIK CHEGARASI, OCHIQ AYTAMIZ: parolni tiklagan
+   * platforma admini o'sha parol bilan egasi nomidan kira
+   * oladi, ya'ni "klinika paneliga faqat ko'rish uchun kirish"
+   * qoidasini chetlab o'tadi. Tiklash yo'li bo'lgan har qanday
+   * tizimda shunday. Yumshatuvchi omillar: amal audit jurnalida
+   * qoladi, egasining mavjud sessiyalari uziladi va u kirgach
+   * parolni almashtirishga majbur bo'ladi — ya'ni bexabar
+   * qolmaydi.
+   */
+  async resetOwnerPassword(tenantId: string) {
+    const sub = await this.requireSubscription(tenantId)
+
+    const owner = await this.db.user.findFirst({
+      where: { clinicId: sub.clinicId, role: 'OWNER', isActive: true },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, email: true, fullName: true },
+    })
+    if (!owner) {
+      throw new NotFoundException('Bu klinikada faol egasi topilmadi')
+    }
+
+    const password = generatePassword()
+
+    await this.db.user.update({
+      where: { id: owner.id },
+      data: {
+        passwordHash: await argon2.hash(password),
+        /*
+          Egasining mavjud sessiyalari uziladi va kirgach
+          almashtirish so'raladi.
+        */
+        passwordChangedAt: new Date(),
+        mustChangePassword: true,
+      },
+    })
+
+    return {
+      ownerName: owner.fullName,
+      ownerEmail: owner.email,
+      /* Parol FAQAT shu javobda. Bazada xeshi saqlanadi. */
+      password,
+    }
+  }
+
   /** Klinika ma'lumotlarini tahrirlash */
   async updateTenant(id: string, dto: TenantUpdateDto) {
     const sub = await this.requireSubscription(id)

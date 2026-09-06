@@ -412,6 +412,67 @@ async function main() {
     check('faollashtirgach kirish tiklandi', back.status < 300, `${back.status}`)
   }
 
+  /* ---------------- Egasining parolini tiklash ---------------- */
+  console.log('\nEgasining parolini tiklash (platforma)')
+  {
+    /*
+      SALOMAT klinikasi tanlandi: qolgan sinovlar Shifo Med
+      hisoblari bilan ishlaydi, ya'ni ularga xalal bermaymiz.
+      Oxirida parol qaytariladi.
+    */
+    const salomat = items(
+      (await call('GET', '/platform/tenants', tokens.admin)).data,
+    ).find((x: any) => String(x.name).includes('Salomat'))
+
+    if (salomat) {
+      const beforeToken = (
+        await call('POST', '/auth/login', undefined, {
+          email: 'owner@salomat.uz',
+          password: PASSWORD,
+        })
+      ).data?.token
+
+      const reset = await call(
+        'POST',
+        `/platform/tenants/${salomat.id}/reset-owner-password`,
+        tokens.admin,
+      )
+      check('parol tiklandi', reset.status < 300, short(reset.data))
+      check('  vaqtinchalik parol qaytdi', Boolean(reset.data?.password))
+
+      const oldToken = await call('GET', '/patients', beforeToken)
+      check('  egasining eski tokeni yaroqsiz', oldToken.status === 401, `${oldToken.status}`)
+
+      const oldPw = await call('POST', '/auth/login', undefined, {
+        email: 'owner@salomat.uz',
+        password: PASSWORD,
+      })
+      check('  eski parol ishlamaydi', oldPw.status === 401, `${oldPw.status}`)
+
+      const newPw = await call('POST', '/auth/login', undefined, {
+        email: 'owner@salomat.uz',
+        password: reset.data?.password,
+      })
+      check('  yangi parol bilan kirdi', newPw.status < 300, `${newPw.status}`)
+      check(
+        '  almashtirish so‘raladi',
+        newPw.data?.user?.mustChangePassword === true,
+        `${newPw.data?.user?.mustChangePassword}`,
+      )
+
+      /* Keyingi ishga tushirishlar uchun qaytaramiz */
+      await call('POST', '/auth/password', newPw.data?.token, {
+        currentPassword: reset.data?.password,
+        newPassword: PASSWORD,
+      })
+      const back = await call('POST', '/auth/login', undefined, {
+        email: 'owner@salomat.uz',
+        password: PASSWORD,
+      })
+      check('  parol qaytarildi', back.status < 300, `${back.status}`)
+    }
+  }
+
   console.log(`\n${passed} ta o‘tdi, ${failed} ta xato`)
   process.exit(failed ? 1 : 0)
 }

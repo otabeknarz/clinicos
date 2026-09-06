@@ -262,9 +262,32 @@ Bu ham xodimning eski sessiyalarini uzadi. `mustChangePassword`
 ilgari qabul qilinardi, lekin hech qayerga yozilmasdi — sxemada
 bunday ustun yo'q edi.
 
-**Parolni tiklash (unutgan bo'lsa) yo'q** — buning uchun pochta
-xizmati kerak. Klinika egasi parolini unutsa, hozircha faqat
-bazadan tiklash mumkin.
+### Parolni unutgan bo'lsa
+
+Pochta xizmati yo'q, shuning uchun tiklash odam orqali bo'ladi.
+Kim kimni tiklaydi:
+
+| Kim unutdi | Kim tiklaydi | Qanday |
+|---|---|---|
+| Xodim | Klinika egasi | `POST /staff/:id/password` |
+| Klinika egasi | Platforma admini | `POST /platform/tenants/:id/reset-owner-password` |
+| Platforma admini | Serverga kira oladigan odam | `npm run bootstrap -- reset-password` |
+
+Uchalasi ham bir xil ishlaydi: vaqtinchalik parol BIR MARTA
+ko'rsatiladi, odamning mavjud sessiyalari uziladi va u kirgach
+parolni almashtirishga majbur bo'ladi.
+
+```bash
+RESET_EMAIL=admin@clinic-os.uz npm run bootstrap -- reset-password
+```
+
+**Ochiq aytamiz:** klinika egasining parolini tiklagan platforma
+admini o'sha parol bilan egasi nomidan kira oladi, ya'ni
+"klinika paneliga faqat ko'rish uchun kirish" qoidasi chetlab
+o'tiladi. Tiklash yo'li bo'lgan har qanday tizimda shunday.
+Yumshatuvchi omillar: amal audit jurnalida qoladi va egasi
+kirgach parolni almashtirishga majbur bo'lgani uchun bexabar
+qolmaydi.
 
 ---
 

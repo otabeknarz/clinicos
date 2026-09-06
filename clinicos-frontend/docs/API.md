@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**140 ta endpoint.**
+**141 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -2890,6 +2890,23 @@ createTenant(input: TenantCreateInput): Promise<TenantCreated>
 
 ```ts
 updateTenant(id: ID, patch: TenantUpdateInput): Promise<Tenant>
+```
+
+### `POST /platform/tenants/:id/reset-owner-password`
+
+Klinika egasining parolini tiklash.
+
+NEGA PLATFORMA ORQALI: klinika egasi `Staff` yozuvi emas,
+shuning uchun xodimlar bo'limidagi tiklash unga yetmaydi.
+Pochta xizmati ham yo'q — ya'ni egasi parolini unutsa,
+tizimga qaytadigan boshqa yo'l qolmaydi.
+
+Vaqtinchalik parol javobda BIR MARTA keladi. Egasining
+mavjud sessiyalari uziladi va u kirgach almashtirishga
+majbur bo'ladi.
+
+```ts
+resetOwnerPassword(id: ID): Promise<OwnerPasswordReset>
 ```
 
 ### `POST /platform/tenants/:id/archive`

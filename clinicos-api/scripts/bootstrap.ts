@@ -28,7 +28,17 @@ import * as argon2 from 'argon2'
  *      ADMIN_PHONE="+998 90 000 00 00" \
  *      npm run bootstrap -- platform
  *
- * 2) Klinika — har bir yangi mijoz uchun:
+ * 2) Parolni tiklash — kim bo'lishidan qat'i nazar:
+ *
+ *      RESET_EMAIL=admin@clinic-os.uz npm run bootstrap -- reset-password
+ *
+ *    Bu ENG OXIRGI yo'l. Klinika egasining parolini platforma
+ *    panelidan tiklash mumkin, xodimnikini esa egasi tiklaydi.
+ *    Lekin platforma adminining o'zi parolini unutsa, unga
+ *    yordam beradigan hech kim yo'q — shuning uchun serverga
+ *    kira oladigan odam uchun shu buyruq bor.
+ *
+ * 3) Klinika — har bir yangi mijoz uchun:
  *
  *      CLINIC_NAME="Shifo Med" \
  *      CLINIC_PHONE="+998 71 200 00 00" \
@@ -180,7 +190,69 @@ async function bootstrapPlatform() {
 }
 
 /* ================================================================
-   2. KLINIKA
+   2. PAROLNI TIKLASH
+   ================================================================ */
+
+/**
+ * Foydalanuvchi parolini tiklash.
+ *
+ * Serverga kira oladigan odam baribir bazaga ham kira oladi,
+ * ya'ni bu buyruq yangi huquq bermaydi — faqat xeshni to'g'ri
+ * hisoblab, qo'lda SQL yozishdan qutqaradi.
+ *
+ * Email butun tizimda emas, KLINIKA ICHIDA noyob. Bir nechta
+ * mos yozuv topilsa, ro'yxat ko'rsatiladi va hech narsa
+ * o'zgartirilmaydi — noto'g'ri odamning parolini almashtirib
+ * qo'yishdan ko'ra to'xtagani yaxshi.
+ */
+async function resetPassword() {
+  const email = required('RESET_EMAIL').toLowerCase()
+  const password = process.env.RESET_PASSWORD?.trim() || generatePassword()
+  const generated = !process.env.RESET_PASSWORD?.trim()
+
+  const users = await db.user.findMany({
+    where: { email },
+    include: { clinic: { select: { name: true } } },
+  })
+
+  if (users.length === 0) {
+    console.error(`Bunday email topilmadi: ${email}`)
+    process.exit(1)
+  }
+
+  if (users.length > 1) {
+    console.error(`'${email}' bir nechta klinikada bor. Hech narsa o'zgartirilmadi:`)
+    for (const u of users) {
+      console.error(`  ${u.clinic.name} — ${u.fullName} (${u.role})`)
+    }
+    console.error('\nKlinika egasi bo\'lsa, platforma panelidan tiklang.')
+    process.exit(1)
+  }
+
+  const user = users[0]
+
+  await db.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash: await argon2.hash(password),
+      /* Eski sessiyalar uzilsin */
+      passwordChangedAt: new Date(),
+      mustChangePassword: generated,
+    },
+  })
+
+  console.log('\nParol tiklandi.')
+  console.log(`  klinika  ${user.clinic.name}`)
+  console.log(`  kim      ${user.fullName} (${user.role})`)
+  console.log(`  email    ${email}`)
+  if (generated) {
+    console.log(`  parol    ${password}`)
+    console.log('\n  Parol BOSHQA KO\'RSATILMAYDI. Kirgach almashtirish so\'raladi.')
+  }
+}
+
+/* ================================================================
+   3. KLINIKA
    ================================================================ */
 
 async function bootstrapClinic() {
@@ -283,9 +355,11 @@ async function main() {
 
   if (command === 'platform') await bootstrapPlatform()
   else if (command === 'clinic') await bootstrapClinic()
+  else if (command === 'reset-password') await resetPassword()
   else {
     console.error('Ishlatish:  npm run bootstrap -- platform')
     console.error('            npm run bootstrap -- clinic')
+    console.error('            npm run bootstrap -- reset-password')
     console.error('\nKerakli muhit o‘zgaruvchilari skript tepasidagi izohda.')
     process.exit(1)
   }

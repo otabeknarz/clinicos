@@ -909,6 +909,12 @@ export const dict: Dict = {
   'platform.archivePlaceholder': 'Masalan: shartnoma tugadi, mijoz boshqa xizmatga o’tdi',
   'platform.archiveWarning':
     'Ma’lumot O’CHIRILMAYDI: bemorlar, tashriflar, to’lovlar va audit jurnali joyida qoladi. Klinika xodimlari tizimga kira olmaydi. Keyin qaytarish mumkin.',
+  'platform.resetOwner': 'Egasining parolini tiklash',
+  'platform.resetOwnerTitle': 'Klinika egasining paroli',
+  'platform.resetOwnerWarning':
+    'Egasining ochiq sessiyalari uziladi va u kirgach parolni almashtirishga majbur bo’ladi. Amal audit jurnaliga yoziladi.',
+  'platform.resetOwnerConfirm': 'Tiklash',
+  'platform.resetOwnerDone': 'Yangi parol',
   'platform.suspend': 'To’xtatish',
   'platform.activate': 'Yoqish',
   'platform.suspendTitle': 'Klinikani to’xtatish',

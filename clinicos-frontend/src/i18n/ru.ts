@@ -872,6 +872,12 @@ export const dict: Dict = {
     'Например: договор закончился, клиент перешёл к другому сервису',
   'platform.archiveWarning':
     'Данные НЕ УДАЛЯЮТСЯ: пациенты, визиты, платежи и журнал аудита остаются. Сотрудники клиники не смогут войти. Позже можно вернуть.',
+  'platform.resetOwner': 'Сбросить пароль владельца',
+  'platform.resetOwnerTitle': 'Пароль владельца клиники',
+  'platform.resetOwnerWarning':
+    'Открытые сессии владельца завершатся, и при входе он должен будет сменить пароль. Действие попадёт в журнал аудита.',
+  'platform.resetOwnerConfirm': 'Сбросить',
+  'platform.resetOwnerDone': 'Новый пароль',
   'platform.suspend': 'Приостановить',
   'platform.activate': 'Включить',
   'platform.suspendTitle': 'Приостановить клинику',

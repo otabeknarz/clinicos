@@ -868,6 +868,12 @@ export const dict: Dict = {
   'platform.archivePlaceholder': 'For example: contract ended, moved to another service',
   'platform.archiveWarning':
     'Nothing is deleted: patients, visits, payments and the audit log stay. Clinic staff cannot sign in. It can be restored later.',
+  'platform.resetOwner': 'Reset the owner password',
+  'platform.resetOwnerTitle': 'Clinic owner password',
+  'platform.resetOwnerWarning':
+    'The owner’s open sessions end and they must change the password on the next sign-in. The action is recorded in the audit log.',
+  'platform.resetOwnerConfirm': 'Reset',
+  'platform.resetOwnerDone': 'New password',
   'platform.suspend': 'Suspend',
   'platform.activate': 'Activate',
   'platform.suspendTitle': 'Suspend clinic',

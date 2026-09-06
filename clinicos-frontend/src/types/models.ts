@@ -288,6 +288,18 @@ export interface TenantCreated extends Tenant {
 }
 
 /**
+ * Klinika egasining paroli tiklandi.
+ *
+ * `password` FAQAT shu javobda keladi va boshqa hech qachon
+ * ko'rsatilmaydi — bazada uning xeshi saqlanadi.
+ */
+export interface OwnerPasswordReset {
+  ownerName: string
+  ownerEmail: string
+  password: string
+}
+
+/**
  * Klinikadagi shifokor — platforma ro'yxati uchun.
  *
  * NEGA KONTAKT BOR: klinikalar tarmog'ini qurishda shifokorlar

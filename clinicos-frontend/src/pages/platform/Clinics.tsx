@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Archive, Building2, LogIn, Pause, Pencil, Play, Plus } from 'lucide-react'
+import { Archive, Building2, KeyRound, LogIn, Pause, Pencil, Play, Plus } from 'lucide-react'
 
 import {
   activateTenant,
@@ -8,6 +8,7 @@ import {
   createTenant,
   listPlans,
   listTenants,
+  resetOwnerPassword,
   startImpersonation,
   suspendTenant,
   updateTenant,
@@ -29,7 +30,7 @@ import { useAsync, useDebounced } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
 import { useToast } from '@/store/toast-context'
-import type { Tenant, TenantCreated, TenantStatus } from '@/types/models'
+import type { OwnerPasswordReset, Tenant, TenantCreated, TenantStatus } from '@/types/models'
 import { UNLIMITED } from '@/types/models'
 
 const STATUSES: (TenantStatus | 'all')[] = [
@@ -73,6 +74,7 @@ export function PlatformClinicsPage() {
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Tenant | null>(null)
   const [archiving, setArchiving] = useState<Tenant | null>(null)
+  const [resetting, setResetting] = useState<Tenant | null>(null)
 
   function setFilter(key: string, value: string) {
     const next = new URLSearchParams(searchParams)
@@ -160,6 +162,16 @@ export function PlatformClinicsPage() {
             }}
           >
             <Pencil size={15} />
+          </IconButton>
+
+          <IconButton
+            label={t('platform.resetOwner')}
+            onClick={(e) => {
+              e.stopPropagation()
+              setResetting(row)
+            }}
+          >
+            <KeyRound size={15} />
           </IconButton>
 
           <IconButton
@@ -315,6 +327,8 @@ export function PlatformClinicsPage() {
         onClose={() => setArchiving(null)}
         onDone={() => setVersion((v) => v + 1)}
       />
+
+      <ResetOwnerModal tenant={resetting} onClose={() => setResetting(null)} />
     </>
   )
 }
@@ -877,6 +891,115 @@ function ArchiveModal({
         />
         <p className="text-caption text-label-tertiary">{t('platform.archiveWarning')}</p>
       </div>
+    </Modal>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Egasining parolini tiklash                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * KLINIKA EGASINING PAROLINI TIKLASH.
+ *
+ * Klinika egasi `Staff` yozuvi emas va pochta xizmati ham yo'q —
+ * ya'ni parolini unutsa, tizimga qaytadigan boshqa yo'l yo'q.
+ *
+ * XAVFSIZLIK CHEGARASI: parolni tiklagan platforma admini o'sha
+ * parol bilan egasi nomidan kira oladi, ya'ni "klinika paneliga
+ * faqat ko'rish uchun kirish" qoidasi chetlab o'tiladi. Tiklash
+ * yo'li bo'lgan har qanday tizimda shunday. Shuning uchun amal
+ * audit jurnaliga yoziladi va egasi kirgach parolni almashtirishga
+ * majbur bo'ladi — bexabar qolmaydi.
+ */
+function ResetOwnerModal({
+  tenant,
+  onClose,
+}: {
+  tenant: Tenant | null
+  onClose: () => void
+}) {
+  const { t } = useI18n()
+  const toast = useToast()
+  const [saving, setSaving] = useState(false)
+  const [result, setResult] = useState<OwnerPasswordReset | null>(null)
+
+  async function submit() {
+    if (!tenant) return
+    setSaving(true)
+    try {
+      setResult(await resetOwnerPassword(tenant.id))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('toast.error'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function close() {
+    setResult(null)
+    onClose()
+  }
+
+  return (
+    <Modal
+      open={tenant !== null}
+      onClose={close}
+      title={t('platform.resetOwnerTitle')}
+      footer={
+        result ? (
+          <Button onClick={close}>{t('action.close')}</Button>
+        ) : (
+          <>
+            <Button variant="gray" onClick={close}>
+              {t('action.cancel')}
+            </Button>
+            <Button variant="danger" loading={saving} onClick={submit}>
+              {t('platform.resetOwnerConfirm')}
+            </Button>
+          </>
+        )
+      }
+    >
+      {result ? (
+        <div className="space-y-4">
+          <div className="rounded-[12px] bg-fill-4 p-4">
+            <p className="text-caption text-label-tertiary">{result.ownerName}</p>
+            <p className="mt-0.5 text-callout font-medium text-label">
+              {result.ownerEmail}
+            </p>
+
+            <p className="mt-3 text-caption text-label-tertiary">
+              {t('platform.resetOwnerDone')}
+            </p>
+            <div className="mt-0.5 flex items-center gap-2">
+              <code className="text-callout font-semibold tnum text-label">
+                {result.password}
+              </code>
+              <Button
+                size="sm"
+                variant="gray"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(result.password)
+                  toast.success(t('platform.copied'))
+                }}
+              >
+                {t('action.copy')}
+              </Button>
+            </div>
+          </div>
+
+          <p className="text-caption text-bad">{t('platform.passwordOnceHint')}</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-subhead text-label">{tenant?.name}</p>
+          <p className="text-caption text-label-tertiary">{tenant?.ownerEmail}</p>
+          <p className="rounded-[10px] bg-warn-soft px-3 py-2.5 text-caption text-warn">
+            {t('platform.resetOwnerWarning')}
+          </p>
+        </div>
+      )}
     </Modal>
   )
 }

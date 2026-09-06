@@ -139,7 +139,13 @@ a deliberate omission is declared with `ATAYLAB YO'Q: <field>` in the doc commen
 session*. Tokens carry a `pwd` claim (the `passwordChangedAt` epoch at issue time) which
 `jwt.strategy.ts` compares exactly against the DB — not against `iat`, which is whole-second and
 let a token issued in the same second as the change slip through. `POST /staff/:id/password`
-revokes the target's sessions the same way. There is no forgot-password flow (no mail service).
+revokes the target's sessions the same way. There is no mail service, so recovery goes through a person: owner resets staff
+(`POST /staff/:id/password`), platform admin resets the clinic owner
+(`POST /platform/tenants/:id/reset-owner-password`, audited), and
+`npm run bootstrap -- reset-password` is the bottom turtle for the platform admin. All three
+issue a one-time temporary password, revoke the target's sessions and set `mustChangePassword`.
+Note the tradeoff: an admin who resets an owner's password can then sign in as them, which
+sidesteps the view-only impersonation design — that is inherent to having a recovery path.
 
 **Suspension is enforced in two places** (`common/clinic-access.ts`): at login and in
 `jwt.strategy.ts` on every request, so an already-issued 12h token stops working immediately.
@@ -218,8 +224,8 @@ Path alias `@/` → `src/`, configured in both `vite.config.ts` and `tsconfig.ap
 ## Known gaps (intentional, needed before production)
 
 Row Level Security in the database (application-layer filtering is the only layer today),
-backups, no UI for reading the audit log, no password *recovery* (change works; a forgotten
-password needs DB access because there is no mail service), the patient-feedback endpoints are deliberately closed
+backups, no UI for reading the audit log, no self-service password recovery (a person must
+reset it for you — there is no mail service), the patient-feedback endpoints are deliberately closed
 until rate limiting exists (phone-number enumeration risk), and penalty rules are stored but
 never applied — the background job doesn't exist.
 

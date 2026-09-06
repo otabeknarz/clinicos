@@ -9,6 +9,7 @@ import {
   Query,
 } from '@nestjs/common'
 
+import { Audit } from '../common/audit.interceptor'
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { IdParamDto } from '../patients/patients.dto'
 import {
@@ -161,6 +162,23 @@ export class PlatformController {
   @RequirePermission('platform.manage')
   updateTenant(@Param() params: IdParamDto, @Body() dto: TenantUpdateDto) {
     return this.platform.updateTenant(params.id, dto)
+  }
+
+  /*
+    POST /platform/tenants/:id/reset-owner-password
+
+    Klinika egasi parolini unutgan bo'lsa. Vaqtinchalik parol
+    javobda BIR MARTA qaytadi, egasining sessiyalari uziladi va
+    u kirgach almashtirishga majbur bo'ladi.
+
+    Audit jurnaliga yoziladi: bu kuchli amal — tiklagan odam
+    o'sha parol bilan egasi nomidan kira oladi.
+  */
+  @Post('tenants/:id/reset-owner-password')
+  @RequirePermission('platform.manage')
+  @Audit('reset_password', 'Clinic')
+  resetOwnerPassword(@Param() params: IdParamDto) {
+    return this.platform.resetOwnerPassword(params.id)
   }
 
   /*

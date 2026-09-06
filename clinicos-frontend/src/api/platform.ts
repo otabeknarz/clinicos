@@ -32,6 +32,7 @@ import type {
   Plan,
   PlatformStats,
   Tenant,
+  OwnerPasswordReset,
   TenantCreated,
   TenantCreateInput,
   TenantInvoice,
@@ -179,6 +180,36 @@ export async function updateTenant(id: ID, patch: TenantUpdateInput): Promise<Te
   const updated = getDb().tenants.updateAcrossTenants(id, patch)
   if (!updated) throw new Error('Klinika topilmadi')
   return delay(updated, 260)
+}
+
+/**
+ * Klinika egasining parolini tiklash.
+ *
+ * NEGA PLATFORMA ORQALI: klinika egasi `Staff` yozuvi emas,
+ * shuning uchun xodimlar bo'limidagi tiklash unga yetmaydi.
+ * Pochta xizmati ham yo'q — ya'ni egasi parolini unutsa,
+ * tizimga qaytadigan boshqa yo'l qolmaydi.
+ *
+ * Vaqtinchalik parol javobda BIR MARTA keladi. Egasining
+ * mavjud sessiyalari uziladi va u kirgach almashtirishga
+ * majbur bo'ladi.
+ */
+// POST /platform/tenants/:id/reset-owner-password
+export async function resetOwnerPassword(id: ID): Promise<OwnerPasswordReset> {
+  if (!USE_MOCK) {
+    return request<OwnerPasswordReset>('POST', `/platform/tenants/${id}/reset-owner-password`)
+  }
+
+  const tenant = getDb().tenants.allAcrossTenants().find((t) => t.id === id)
+  if (!tenant) throw new Error('Klinika topilmadi')
+  return delay(
+    {
+      ownerName: tenant.ownerName,
+      ownerEmail: tenant.ownerEmail,
+      password: 'demo1234',
+    },
+    300,
+  )
 }
 
 /**
