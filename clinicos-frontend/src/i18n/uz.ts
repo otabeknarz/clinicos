@@ -186,6 +186,9 @@ export const dict: Dict = {
 
   /* --- Tashrif yozuvi (shifokor) --- */
   'visit.title': 'Tashrif yozuvi',
+  'visit.price': 'To’lov summasi',
+  'visit.priceHint': 'Bu xizmatning narxini siz belgilaysiz: {min} — {max}',
+  'visit.priceRangeError': 'Summa {min} va {max} oralig’ida bo’lishi kerak',
   'visit.complaint': 'Shikoyat',
   'visit.complaintPh': 'Bemor nimadan shikoyat qilmoqda',
   'visit.diagnosis': 'Tashxis',
@@ -274,6 +277,15 @@ export const dict: Dict = {
   'serviceForm.postpaid': 'Ko’rikdan keyin',
   'serviceForm.prepaidHint': 'Xizmat ko’rsatilishidan oldin to’lanadi',
   'serviceForm.postpaidHint': 'Qabul yakunlangach to’lanadi',
+  'serviceForm.doctorSet': 'Narxni shifokor belgilaydi',
+  'serviceForm.doctorSetHint':
+    'Summasi ko’rikdan oldin ma’lum bo’lmagan xizmatlar uchun. Shifokor ko’rikni yakunlaganda quyidagi oraliqda summa yozadi, registrator o’shani oladi.',
+  'serviceForm.minPrice': 'Eng kam narx',
+  'serviceForm.maxPrice': 'Eng ko’p narx',
+  'serviceForm.doctorSetPostpaid':
+    'Bunday xizmat oldindan to’lanmaydi — summasi ko’rikdan keyin ma’lum bo’ladi.',
+  'serviceForm.awaitingDoctorPrice': 'Shifokor belgilaydi',
+  'serviceForm.rangeInvalid': 'Eng kam narx eng ko’p narxdan katta bo’lmasin',
   'serviceForm.loyalty': 'Sodiqlik chegirmasi',
   'serviceForm.loyaltyHint':
     'Bemor xizmatdan bir necha marta foydalangach, narx avtomatik arzonlashadi.',
@@ -370,6 +382,9 @@ export const dict: Dict = {
   /* --- To'lovlar --- */
   'payments.title': "To'lovlar",
   'payments.add': "+ To'lov qo'shish",
+  'payments.unlinkedWarn':
+    "Bu bemorda to'lanmagan ko'rik bor. Bu yerdan olingan to'lov qabulga bog'lanmaydi va ogohlantirish o'chmaydi.",
+  'payments.unlinkedWarnAction': 'Registratura panelidan olish',
   'payments.revenueToday': 'Bugungi daromad',
   'payments.revenueWeek': 'Shu haftalik daromad',
   'payments.revenueMonth': 'Oxirgi 30 kun daromadi',
@@ -1187,6 +1202,7 @@ export const dict: Dict = {
   'reception.complete': 'Yakunlash',
   'reception.noShow': 'Kelmadi',
   'reception.takePayment': 'To’lov olish',
+  'reception.priceSetByDoctor': 'summani shifokor belgilagan',
   'reception.newAppointment': 'Yangi qabul',
   'reception.newPatient': 'Yangi bemor',
   'reception.findPatient': 'Bemorni topish',

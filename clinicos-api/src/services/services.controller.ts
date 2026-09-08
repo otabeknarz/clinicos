@@ -34,15 +34,18 @@ export class ServicesController {
   }
 
   /*
-    GET /services/:id/price?patientId=
+    GET /services/:id/price?patientId=&appointmentId=
 
     Bemor uchun amaldagi narx: sodiqlik chegirmasi qo'llangan holda.
     Registratorga ham ochiq — u narxni ko'rmasa, pul ololmaydi.
+
+    Narxni shifokor belgilaydigan xizmatda summa katalogda emas,
+    qabulning ko'rigida turadi — shuning uchun `appointmentId`.
   */
   @Get(':id/price')
   @RequirePermission('services.view')
   price(@Param() params: IdParamDto, @Query() query: PriceQueryDto) {
-    return this.services.priceFor(params.id, query.patientId)
+    return this.services.priceFor(params.id, query.patientId, query.appointmentId)
   }
 
   // POST /services

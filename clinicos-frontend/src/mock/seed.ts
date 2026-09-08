@@ -131,6 +131,8 @@ const SERVICE_CATALOG: {
   prepaid?: boolean
   /** Sodiqlik chegirmalari */
   loyalty?: { afterVisits: number; discountPct: number }[]
+  /** Narxni shifokor belgilasa — oraliq. Katalog narxi ishlatilmaydi. */
+  doctorSet?: { min: number; max: number }
 }[] = [
   {
     key: 'consultation_primary',
@@ -206,12 +208,21 @@ const SERVICE_CATALOG: {
   { key: 'dental_cleaning', category: 'dental', price: 350_000, duration: 45 },
   { key: 'dental_filling', category: 'dental', price: 450_000, duration: 60 },
   { key: 'dental_extraction', category: 'dental', price: 300_000, duration: 40 },
+  /*
+    NARXINI SHIFOKOR BELGILAYDIGAN XIZMAT.
+
+    Jarrohlikning summasi ko'rikdan OLDIN ma'lum emas — shuning uchun
+    u oldindan to'lanmaydi ham. Egasi oraliq beradi, shifokor ko'rikda
+    aniq summani yozadi, registrator o'shani oladi.
+
+    Demo rejimda shu yo'lni ko'rib bo'lsin deb ataylab bittasi bor.
+  */
   {
     key: 'minor_surgery',
     category: 'surgery',
     price: 900_000,
     duration: 90,
-    prepaid: true,
+    doctorSet: { min: 600_000, max: 2_500_000 },
   },
 ]
 
@@ -331,9 +342,14 @@ export function generateSeed(seed = 20260901): SeedData {
     clinicId: MAIN_CLINIC_ID,
     name: s.key,
     category: s.category,
-    price: s.price,
+    // Serverdagi kabi: shifokor belgilaydigan xizmatda katalog narxi = eng kami
+    price: s.doctorSet ? s.doctorSet.min : s.price,
+    priceMode: s.doctorSet ? 'doctor_set' : 'fixed',
+    minPrice: s.doctorSet?.min ?? null,
+    maxPrice: s.doctorSet?.max ?? null,
     durationMinutes: s.duration,
-    paymentTiming: s.prepaid ? 'prepaid' : 'postpaid',
+    // Summasi noma'lum xizmatni oldindan to'lab bo'lmaydi
+    paymentTiming: s.prepaid && !s.doctorSet ? 'prepaid' : 'postpaid',
     loyaltyTiers: s.loyalty ?? [],
     status: 'active',
     createdAt: iso(addDays(today, -390)),
@@ -596,6 +612,16 @@ export function generateSeed(seed = 20260901): SeedData {
         const visitedAt = addMinutes(startsAt, service.durationMinutes)
         const complaint = r.pick(COMPLAINT_KEYS)
 
+        /*
+          Narxni shifokor belgilaydigan xizmatda summa ko'rikda yoziladi.
+          Oraliqning ichidan tasodifiy raqam — demo rejimda registrator
+          har bemorda boshqacha summa ko'radi, hayotdagidek.
+        */
+        const doctorPrice =
+          service.priceMode === 'doctor_set'
+            ? r.int(service.minPrice ?? 0, service.maxPrice ?? 0)
+            : null
+
         visits.push({
           id: `vis_${visitSeq}`,
           clinicId: MAIN_CLINIC_ID,
@@ -603,6 +629,7 @@ export function generateSeed(seed = 20260901): SeedData {
           patientId: patient.id,
           doctorId: doctor.id,
           visitedAt: iso(visitedAt),
+          price: doctorPrice,
           complaint,
           diagnosis: DIAGNOSIS_BY_COMPLAINT[complaint] ?? '',
           treatment: r.pick(TREATMENTS),
@@ -619,7 +646,7 @@ export function generateSeed(seed = 20260901): SeedData {
             doctorId: doctor.id,
             serviceId: service.id,
             appointmentId: id,
-            amount: service.price,
+            amount: doctorPrice ?? service.price,
             method: r.weighted<PaymentMethod>([
               ['cash', 5],
               ['card', 4],
@@ -643,7 +670,7 @@ export function generateSeed(seed = 20260901): SeedData {
             doctorId: doctor.id,
             serviceId: service.id,
             appointmentId: id,
-            amount: service.price,
+            amount: doctorPrice ?? service.price,
             method: 'cash',
             status: 'pending',
             paidAt: iso(visitedAt),

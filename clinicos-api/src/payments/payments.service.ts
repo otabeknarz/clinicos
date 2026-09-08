@@ -144,7 +144,12 @@ export class PaymentsService {
 
     const preview = dto.admissionId
       ? await this.wardPreview(dto.admissionId, dto.patientId, dto.amount)
-      : await this.catalogPreview(dto.serviceId!, dto.patientId, dto.amount)
+      : await this.catalogPreview(
+          dto.serviceId!,
+          dto.patientId,
+          dto.amount,
+          dto.appointmentId ?? undefined,
+        )
 
     if (dto.appointmentId) {
       const appointment = await this.db.appointment.findFirst({
@@ -200,15 +205,44 @@ export class PaymentsService {
     return toApiPayment(row)
   }
 
-  /** Katalog xizmati bo'yicha narx va chegara */
-  private async catalogPreview(serviceId: string, patientId: string, amount: number) {
-    const preview = await this.services.priceFor(serviceId, patientId)
+  /**
+   * Katalog xizmati bo'yicha narx va chegara.
+   *
+   * NARXNI SHIFOKOR BELGILAYDIGAN XIZMATDA chegara katalogdan emas,
+   * ko'rikdan keladi. Shuning uchun bunday to'lov qabulga bog'lanishi
+   * SHART: bog'lanmasa qaysi ko'rikning summasi ekanini bilib
+   * bo'lmaydi va chegara umuman qolmasdi.
+   */
+  private async catalogPreview(
+    serviceId: string,
+    patientId: string,
+    amount: number,
+    appointmentId?: string,
+  ) {
+    const preview = await this.services.priceFor(serviceId, patientId, appointmentId)
+
+    if (preview.priceMode === 'doctor_set') {
+      if (!appointmentId) {
+        throw new BadRequestException(
+          'Narxini shifokor belgilaydigan xizmatga to‘lov qabulga bog‘lanishi shart',
+        )
+      }
+      if (preview.price === null) {
+        throw new BadRequestException('Shifokor hali to‘lov summasini belgilamagan')
+      }
+    }
+
+    if (preview.price === null) {
+      throw new BadRequestException('Xizmat narxi aniqlanmadi')
+    }
+
     if (amount > preview.price) {
       throw new BadRequestException(
         `Summa katalog narxidan oshib ketdi (${preview.price} so‘m)`,
       )
     }
-    return preview
+
+    return { ...preview, price: preview.price, basePrice: preview.basePrice ?? preview.price }
   }
 
   /**

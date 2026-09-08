@@ -104,7 +104,9 @@ export function ServicesPage() {
       key: 'price',
       header: t('common.price'),
       align: 'right',
-      render: (row) => <span className="font-semibold tnum text-label">{money(row.price)}</span>,
+      render: (row) => (
+        <span className="font-semibold tnum text-label">{servicePriceLabel(row)}</span>
+      ),
     },
     {
       key: 'status',
@@ -210,7 +212,9 @@ export function ServicesPage() {
                       : ''}
                   </p>
                 </div>
-                <span className="shrink-0 font-semibold tnum text-label">{money(row.price)}</span>
+                <span className="shrink-0 font-semibold tnum text-label">
+                  {servicePriceLabel(row)}
+                </span>
               </div>
             )}
           />
@@ -232,4 +236,16 @@ export function ServicesPage() {
       />
     </>
   )
+}
+
+/**
+ * Narx ustunidagi yozuv.
+ *
+ * Narxni shifokor belgilaydigan xizmatda bitta raqam ko'rsatish
+ * ADASHTIRADI: u hech qachon olinmaydigan summa. Oraliq ko'rsatiladi —
+ * egasi o'zi qo'ygan chegarani ro'yxatda ham ko'rib turadi.
+ */
+function servicePriceLabel(row: Service): string {
+  if (row.priceMode !== 'doctor_set') return money(row.price)
+  return `${money(row.minPrice ?? 0)} — ${money(row.maxPrice ?? 0)}`
 }

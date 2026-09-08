@@ -53,6 +53,9 @@ export class VisitsService {
         doctorId: true,
         status: true,
         checkedInAt: true,
+        service: {
+          select: { priceMode: true, minPrice: true, maxPrice: true },
+        },
       },
     })
     if (!appointment) throw new NotFoundException('Qabul topilmadi')
@@ -79,6 +82,8 @@ export class VisitsService {
       throw new ConflictException('Bu qabulga tashrif allaqachon yozilgan')
     }
 
+    const price = resolveVisitPrice(appointment.service, dto.price)
+
     const now = new Date()
 
     const visit = await this.db.$transaction(async (tx) => {
@@ -89,6 +94,7 @@ export class VisitsService {
           patientId: appointment.patientId,
           doctorId: appointment.doctorId,
           visitedAt: now,
+          price,
           complaint: dto.complaint,
           diagnosis: dto.diagnosis,
           treatment: dto.treatment,
@@ -227,6 +233,39 @@ export class VisitsService {
   }
 }
 
+/**
+ * Shifokor belgilagan summani tekshiradi.
+ *
+ * Chegara XIZMATDAN olinadi, so'rovdan emas: aks holda shifokor
+ * o'zi oraliqni ham, summani ham yuborib, egasi qo'ygan chegarani
+ * chetlab o'tardi.
+ */
+function resolveVisitPrice(
+  service: { priceMode: string; minPrice: number | null; maxPrice: number | null },
+  price: number | undefined,
+): number | null {
+  if (service.priceMode !== 'DOCTOR_SET') {
+    if (price !== undefined) {
+      throw new BadRequestException('Bu xizmatning narxi katalogda belgilangan')
+    }
+    return null
+  }
+
+  if (price === undefined) {
+    throw new BadRequestException('Bu xizmatga to‘lov summasini kiritish shart')
+  }
+
+  const min = service.minPrice ?? 1
+  const max = service.maxPrice ?? Number.MAX_SAFE_INTEGER
+  if (price < min || price > max) {
+    throw new BadRequestException(
+      `Summa ${min} va ${max} so‘m oralig‘ida bo‘lishi kerak`,
+    )
+  }
+
+  return price
+}
+
 function toApiVisit(row: Visit) {
   return {
     id: row.id,
@@ -235,6 +274,7 @@ function toApiVisit(row: Visit) {
     patientId: row.patientId,
     doctorId: row.doctorId,
     visitedAt: toApiDateTime(row.visitedAt)!,
+    price: row.price,
     complaint: row.complaint,
     diagnosis: row.diagnosis,
     treatment: row.treatment,

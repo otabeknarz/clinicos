@@ -174,6 +174,9 @@ export const dict: Dict = {
   'patient.medicalNotice': 'Medical data — confidential',
 
   'visit.title': 'Visit record',
+  'visit.price': 'Amount to pay',
+  'visit.priceHint': 'You set the price for this service: {min} — {max}',
+  'visit.priceRangeError': 'The amount must be between {min} and {max}',
   'visit.complaint': 'Complaint',
   'visit.complaintPh': 'What the patient reports',
   'visit.diagnosis': 'Diagnosis',
@@ -257,6 +260,15 @@ export const dict: Dict = {
   'serviceForm.postpaid': 'After the visit',
   'serviceForm.prepaidHint': 'Paid before the service is provided',
   'serviceForm.postpaidHint': 'Paid once the appointment is complete',
+  'serviceForm.doctorSet': 'The doctor sets the price',
+  'serviceForm.doctorSetHint':
+    'For services whose cost is unknown before the visit. The doctor enters an amount within this range when closing the visit, and reception collects it.',
+  'serviceForm.minPrice': 'Minimum price',
+  'serviceForm.maxPrice': 'Maximum price',
+  'serviceForm.doctorSetPostpaid':
+    'Such a service cannot be prepaid — the amount is only known after the visit.',
+  'serviceForm.awaitingDoctorPrice': 'Set by the doctor',
+  'serviceForm.rangeInvalid': 'The minimum price must not exceed the maximum',
   'serviceForm.loyalty': 'Loyalty discount',
   'serviceForm.loyaltyHint':
     'After several visits the price drops automatically.',
@@ -349,6 +361,9 @@ export const dict: Dict = {
 
   'payments.title': 'Payments',
   'payments.add': '+ Add payment',
+  'payments.unlinkedWarn':
+    'This patient has an unpaid visit. A payment recorded here is not linked to the appointment, so the reminder will stay.',
+  'payments.unlinkedWarnAction': 'Take it from the reception panel',
   'payments.revenueToday': "Today's revenue",
   'payments.revenueWeek': "This week's revenue",
   'payments.revenueMonth': 'Revenue in 30 days',
@@ -1139,6 +1154,7 @@ export const dict: Dict = {
   'reception.complete': 'Complete',
   'reception.noShow': 'No-show',
   'reception.takePayment': 'Take payment',
+  'reception.priceSetByDoctor': 'amount set by the doctor',
   'reception.newAppointment': 'New appointment',
   'reception.newPatient': 'New patient',
   'reception.findPatient': 'Find a patient',

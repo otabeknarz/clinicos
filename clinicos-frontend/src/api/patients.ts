@@ -353,11 +353,23 @@ export function expandAppointment(
       fullName: '—',
       specialty: '',
     },
-    service: pick(services.get(a.serviceId), ['id', 'name', 'price', 'durationMinutes']) ?? {
+    service: pick(services.get(a.serviceId), [
+      'id',
+      'name',
+      'price',
+      'durationMinutes',
+      // Shifokorning ko'rik formasi narx oralig'ini shundan biladi
+      'priceMode',
+      'minPrice',
+      'maxPrice',
+    ]) ?? {
       id: a.serviceId,
       name: '—',
       price: 0,
       durationMinutes: 0,
+      priceMode: 'fixed',
+      minPrice: null,
+      maxPrice: null,
     },
   }
 }

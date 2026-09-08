@@ -41,6 +41,7 @@ export async function getReceptionSummary(userId: string): Promise<ReceptionSumm
   const toItem = (a: (typeof todayAppointments)[number]): ReceptionQueueItem => {
     const patient = patients.get(a.patientId)
     const startsAt = new Date(a.startsAt)
+    const doctorSet = services.get(a.serviceId)?.priceMode === 'doctor_set'
 
     return {
       appointmentId: a.id,
@@ -60,7 +61,15 @@ export async function getReceptionSummary(userId: string): Promise<ReceptionSumm
       status: a.status,
       paymentStatus: a.paymentStatus,
       prepaid: services.get(a.serviceId)?.paymentTiming === 'prepaid',
-      price: services.get(a.serviceId)?.price ?? 0,
+      /*
+        Narxni shifokor belgilaydigan xizmatda summa ko'rikda turadi.
+        Ko'rik yozilmagan bo'lsa 0 — registrator pul ololmaydi, chunki
+        qancha olishini hech kim aytmagan.
+      */
+      price: doctorSet
+        ? (db.visits.all(clinicId).find((v) => v.appointmentId === a.id)?.price ?? 0)
+        : (services.get(a.serviceId)?.price ?? 0),
+      priceSetByDoctor: doctorSet,
     }
   }
 

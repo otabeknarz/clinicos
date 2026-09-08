@@ -22,7 +22,18 @@ import {
 const EXPAND = {
   patient: { select: { id: true, fullName: true, phone: true } },
   doctor: { select: { id: true, fullName: true, specialty: true } },
-  service: { select: { id: true, name: true, price: true, durationMinutes: true } },
+  service: {
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      durationMinutes: true,
+      // Shifokor ko'rikda summani shu oraliqda kiritadi
+      priceMode: true,
+      minPrice: true,
+      maxPrice: true,
+    },
+  },
 } satisfies Prisma.AppointmentInclude
 
 type Expanded = Prisma.AppointmentGetPayload<{ include: typeof EXPAND }>
@@ -413,7 +424,8 @@ function toApiAppointment(row: Expanded) {
     createdAt: toApiDateTime(row.createdAt)!,
     patient: row.patient,
     doctor: row.doctor,
-    service: row.service,
+    // Enum kichik harfga o'giriladi — xom Prisma qatori chiqib ketmasin
+    service: { ...row.service, priceMode: toApi(row.service.priceMode) },
   }
 }
 

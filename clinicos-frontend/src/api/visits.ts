@@ -21,6 +21,14 @@ export interface VisitInput {
   appointmentId: ID
   patientId: ID
   doctorId: ID
+  /**
+   * Shifokor belgilagan summa.
+   *
+   * Xizmat `doctor_set` bo'lsa MAJBURIY va uning oralig'i ichida
+   * bo'lishi kerak — serverda tekshiriladi. Qolgan xizmatlarga
+   * yuborilsa rad etiladi.
+   */
+  price?: number
   complaint: string
   diagnosis: string
   treatment: string
@@ -45,6 +53,7 @@ export async function createVisit(input: VisitInput): Promise<Visit> {
     patientId: input.patientId,
     doctorId: input.doctorId,
     visitedAt: now,
+    price: input.price ?? null,
     complaint: input.complaint,
     diagnosis: input.diagnosis,
     treatment: input.treatment,

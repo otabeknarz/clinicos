@@ -61,6 +61,31 @@ export class ServiceInputDto {
   @IsIn(['prepaid', 'postpaid'])
   paymentTiming: 'prepaid' | 'postpaid' = 'postpaid'
 
+  /*
+    NARXNI SHIFOKOR BELGILASA.
+
+    `doctor_set` da `minPrice` va `maxPrice` majburiy bo'ladi va
+    to'lov vaqti majburan `postpaid` ga o'tadi — summasi ko'rikdan
+    oldin noma'lum xizmatni oldindan to'lab bo'lmaydi. Tekshiruv
+    servisda, chunki u maydonlar orasidagi bog'liqlikni biladi.
+  */
+  @IsIn(['fixed', 'doctor_set'])
+  priceMode: 'fixed' | 'doctor_set' = 'fixed'
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Eng kam narx butun son bo‘lishi kerak' })
+  @Min(1, { message: 'Eng kam narx noldan katta bo‘lishi kerak' })
+  @Max(1_000_000_000)
+  minPrice?: number
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Eng ko‘p narx butun son bo‘lishi kerak' })
+  @Min(1, { message: 'Eng ko‘p narx noldan katta bo‘lishi kerak' })
+  @Max(1_000_000_000)
+  maxPrice?: number
+
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(10, { message: 'Chegirma pog‘onalari 10 tadan oshmasin' })
@@ -97,6 +122,14 @@ export class PriceQueryDto {
   @IsOptional()
   @IsUUID()
   patientId?: string
+
+  /*
+    Narxni shifokor belgilaydigan xizmatda summa AYNAN shu qabulning
+    ko'rigidan keladi — katalogda uni topib bo'lmaydi.
+  */
+  @IsOptional()
+  @IsUUID()
+  appointmentId?: string
 }
 
 /**
@@ -136,6 +169,23 @@ export class UpdateServiceDto {
 
   @IsOptional() @IsIn(['prepaid', 'postpaid'])
   paymentTiming?: 'prepaid' | 'postpaid'
+
+  @IsOptional() @IsIn(['fixed', 'doctor_set'])
+  priceMode?: 'fixed' | 'doctor_set'
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Eng kam narx butun son bo‘lishi kerak' })
+  @Min(1, { message: 'Eng kam narx noldan katta bo‘lishi kerak' })
+  @Max(1_000_000_000)
+  minPrice?: number
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Eng ko‘p narx butun son bo‘lishi kerak' })
+  @Min(1, { message: 'Eng ko‘p narx noldan katta bo‘lishi kerak' })
+  @Max(1_000_000_000)
+  maxPrice?: number
 
   @IsOptional()
   @IsArray()

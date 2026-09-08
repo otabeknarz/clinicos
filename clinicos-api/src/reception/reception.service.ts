@@ -42,8 +42,15 @@ export class ReceptionService {
             name: true,
             price: true,
             paymentTiming: true,
+            priceMode: true,
           },
         },
+        /*
+          Narxni shifokor belgilaydigan xizmatda to'lanadigan summa
+          katalogda emas, ko'rikda turadi. Ko'rik hali yozilmagan
+          bo'lsa registrator "shifokor belgilamagan" holatini ko'radi.
+        */
+        visit: { select: { price: true } },
       },
       orderBy: { startsAt: 'asc' },
     })
@@ -65,6 +72,16 @@ export class ReceptionService {
     const paidByAppointment = new Map(
       paidRows.map((r) => [r.appointmentId, r._sum.amount ?? 0]),
     )
+
+    /**
+     * Xizmatning to'liq summasi.
+     *
+     * Narxni shifokor belgilaydigan xizmatda — ko'rikdagi summa.
+     * Ko'rik yozilmagan bo'lsa 0: registrator hali pul ololmaydi,
+     * chunki qancha olishini hech kim aytmagan.
+     */
+    const fullPrice = (a: (typeof appointments)[number]) =>
+      a.service.priceMode === 'DOCTOR_SET' ? (a.visit?.price ?? 0) : a.service.price
 
     const toQueueItem = (a: (typeof appointments)[number]) => {
       const prepaid = a.service.paymentTiming === 'PREPAID'
@@ -88,7 +105,9 @@ export class ReceptionService {
         paymentStatus: toApi(a.paymentStatus),
         prepaid,
         // Ko'rsatiladigan summa — hali to'lanmagan qismi
-        price: Math.max(0, a.service.price - paid),
+        price: Math.max(0, fullPrice(a) - paid),
+        /** Summani shifokor belgilaganmi — interfeys shunga qarab yozadi */
+        priceSetByDoctor: a.service.priceMode === 'DOCTOR_SET',
       }
     }
 
@@ -117,7 +136,7 @@ export class ReceptionService {
     )
 
     const owed = (a: (typeof appointments)[number]) =>
-      Math.max(0, a.service.price - (paidByAppointment.get(a.id) ?? 0))
+      Math.max(0, fullPrice(a) - (paidByAppointment.get(a.id) ?? 0))
 
     const [followUps, staffTotal, markedToday, shift, cashRows] = await Promise.all([
       this.db.followUp.count({

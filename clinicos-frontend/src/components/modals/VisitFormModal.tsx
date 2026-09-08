@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { TextArea, TextInput } from '@/components/ui/Form'
 import { addDays, toISODate } from '@/lib/dates'
+import { money } from '@/lib/format'
 import { useAction } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useToast } from '@/store/toast-context'
@@ -41,9 +42,22 @@ export function VisitFormModal({
   const [followUpReason, setFollowUpReason] = useState('')
   const [touched, setTouched] = useState(false)
 
+  /*
+    NARXNI SHIFOKOR BELGILAYDIGAN XIZMAT.
+
+    Summa shu yerda kiritiladi va ko'rik yozuvida muzlaydi. Registrator
+    keyin aynan shu raqamni oladi — pulni oladigan odam summani o'zi
+    belgilamaydi.
+  */
+  const doctorSet = appointment?.service.priceMode === 'doctor_set'
+  const minPrice = appointment?.service.minPrice ?? 0
+  const maxPrice = appointment?.service.maxPrice ?? 0
+  const [price, setPrice] = useState('')
+
   useEffect(() => {
     if (!open) return
     setTouched(false)
+    setPrice('')
     setComplaint('')
     setDiagnosis('')
     setTreatment('')
@@ -58,6 +72,7 @@ export function VisitFormModal({
       appointmentId: appointment.id,
       patientId: appointment.patient.id,
       doctorId: appointment.doctor.id,
+      price: doctorSet ? Number(price) : undefined,
       complaint: complaint.trim(),
       diagnosis: diagnosis.trim(),
       treatment: treatment.trim(),
@@ -69,9 +84,26 @@ export function VisitFormModal({
 
   const diagnosisError = touched && !diagnosis.trim() ? t('valid.required') : undefined
 
+  /*
+    Oraliqni FORMA emas, server hal qiladi — bu yerdagi tekshiruv
+    shunchaki shifokorga darrov aytish uchun.
+  */
+  const priceValue = Number(price)
+  const priceError = !doctorSet
+    ? undefined
+    : !price || priceValue <= 0
+      ? t('valid.positive')
+      : priceValue < minPrice || priceValue > maxPrice
+        ? t('visit.priceRangeError', {
+            min: money(minPrice),
+            max: money(maxPrice),
+          })
+        : undefined
+
   async function submit() {
     setTouched(true)
     if (!diagnosis.trim()) return
+    if (doctorSet && priceError) return
 
     const result = await save.run()
     if (!result) {
@@ -107,6 +139,28 @@ export function VisitFormModal({
           <ShieldAlert size={13} />
           {t('patient.medicalNotice')}
         </p>
+
+        {/*
+          Narxni shifokor belgilaydigan xizmat: summa shu yerda
+          kiritiladi va ko'rik yozuvida muzlaydi. Registrator keyin
+          aynan shuni oladi.
+        */}
+        {doctorSet ? (
+          <TextInput
+            label={t('visit.price')}
+            type="number"
+            inputMode="numeric"
+            min={minPrice}
+            max={maxPrice}
+            step={10000}
+            required
+            suffix="so'm"
+            hint={t('visit.priceHint', { min: money(minPrice), max: money(maxPrice) })}
+            value={price}
+            error={touched ? priceError : undefined}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+        ) : null}
 
         <TextInput
           label={t('visit.complaint')}

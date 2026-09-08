@@ -247,7 +247,17 @@ export class PatientsService {
       include: {
         patient: { select: { id: true, fullName: true, phone: true } },
         doctor: { select: { id: true, fullName: true, specialty: true } },
-        service: { select: { id: true, name: true, price: true } },
+        service: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            durationMinutes: true,
+            priceMode: true,
+            minPrice: true,
+            maxPrice: true,
+          },
+        },
       },
     })
     return rows.map((a) => ({
@@ -269,7 +279,7 @@ export class PatientsService {
       createdAt: toApiDateTime(a.createdAt)!,
       patient: a.patient,
       doctor: a.doctor,
-      service: a.service,
+      service: { ...a.service, priceMode: toApi(a.service.priceMode) },
     }))
   }
 

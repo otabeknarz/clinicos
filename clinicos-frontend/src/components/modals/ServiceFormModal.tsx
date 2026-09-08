@@ -12,7 +12,12 @@ import { useAction } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useToast } from '@/store/toast-context'
 import { resolveServicePrice } from '@/types/models'
-import type { LoyaltyTier, PaymentTiming, Service } from '@/types/models'
+import type {
+  LoyaltyTier,
+  PaymentTiming,
+  Service,
+  ServicePriceMode,
+} from '@/types/models'
 
 export function ServiceFormModal({
   open,
@@ -37,6 +42,16 @@ export function ServiceFormModal({
   const [tiers, setTiers] = useState<LoyaltyTier[]>([])
   const [touched, setTouched] = useState(false)
 
+  /*
+    NARXNI SHIFOKOR BELGILAYDIMI.
+
+    Egasi buni FAQAT shu yerda belgilaydi — undan keyingi hamma ish
+    shifokor va registrator panelida bo'ladi.
+  */
+  const [doctorSet, setDoctorSet] = useState(false)
+  const [minPrice, setMinPrice] = useState('')
+  const [maxPrice, setMaxPrice] = useState('')
+
   useEffect(() => {
     if (!open) return
     setTouched(false)
@@ -48,23 +63,44 @@ export function ServiceFormModal({
     setDuration(service ? String(service.durationMinutes) : '30')
     setTiming(service?.paymentTiming ?? 'postpaid')
     setTiers(service?.loyaltyTiers ? [...service.loyaltyTiers] : [])
+    setDoctorSet(service?.priceMode === 'doctor_set')
+    setMinPrice(service?.minPrice ? String(service.minPrice) : '')
+    setMaxPrice(service?.maxPrice ? String(service.maxPrice) : '')
   }, [open, service, tService])
 
   const errors = {
     name: !name.trim() ? t('valid.required') : undefined,
     category: !category ? t('valid.required') : undefined,
-    price: !price || Number(price) <= 0 ? t('valid.positive') : undefined,
+    price: doctorSet || (price && Number(price) > 0) ? undefined : t('valid.positive'),
     duration: !duration || Number(duration) <= 0 ? t('valid.positive') : undefined,
+    minPrice:
+      doctorSet && (!minPrice || Number(minPrice) <= 0) ? t('valid.positive') : undefined,
+    maxPrice: doctorSet
+      ? !maxPrice || Number(maxPrice) <= 0
+        ? t('valid.positive')
+        : Number(minPrice) > Number(maxPrice)
+          ? t('serviceForm.rangeInvalid')
+          : undefined
+      : undefined,
   }
-  const valid = !errors.name && !errors.category && !errors.price && !errors.duration
+  const valid = Object.values(errors).every((error) => error === undefined)
 
   const save = useAction(async () => {
     const payload = {
       name: name.trim(),
       category,
-      price: Number(price),
+      /*
+        Narxni shifokor belgilasa, katalog narxi sifatida eng kami
+        yoziladi — server ham xuddi shunday qiladi. Narxni o'qiydigan
+        eski joylar bo'sh qiymat ko'rmasin.
+      */
+      price: doctorSet ? Number(minPrice) : Number(price),
+      priceMode: (doctorSet ? 'doctor_set' : 'fixed') as ServicePriceMode,
+      minPrice: doctorSet ? Number(minPrice) : undefined,
+      maxPrice: doctorSet ? Number(maxPrice) : undefined,
       durationMinutes: Number(duration),
-      paymentTiming: timing,
+      // Summasi noma'lum xizmatni oldindan to'lab bo'lmaydi
+      paymentTiming: doctorSet ? ('postpaid' as PaymentTiming) : timing,
       // Bo'sh yoki noto'g'ri pog'onalarni saqlamaymiz
       loyaltyTiers: tiers
         .filter((tier) => tier.afterVisits > 0 && tier.discountPct > 0)
@@ -130,19 +166,66 @@ export function ServiceFormModal({
           options={SERVICE_CATEGORIES.map((key) => ({ value: key, label: tCategory(key) }))}
         />
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextInput
-            label={t('serviceForm.price')}
-            type="number"
-            inputMode="numeric"
-            min={0}
-            step={10000}
-            required
-            suffix="so'm"
-            value={price}
-            error={touched ? errors.price : undefined}
-            onChange={(e) => setPrice(e.target.value)}
+        {/* ============ Narxni kim belgilaydi ============ */}
+        <label className="flex cursor-pointer items-start gap-3 rounded-[12px] bg-sunken p-3.5">
+          <input
+            type="checkbox"
+            checked={doctorSet}
+            onChange={(e) => setDoctorSet(e.target.checked)}
+            className="mt-0.5 size-4 shrink-0 accent-[var(--color-accent)]"
           />
+          <span className="min-w-0">
+            <span className="block text-subhead font-medium text-label">
+              {t('serviceForm.doctorSet')}
+            </span>
+            <span className="mt-0.5 block text-caption text-label-tertiary">
+              {t('serviceForm.doctorSetHint')}
+            </span>
+          </span>
+        </label>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {doctorSet ? (
+            <>
+              <TextInput
+                label={t('serviceForm.minPrice')}
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={10000}
+                required
+                suffix="so'm"
+                value={minPrice}
+                error={touched ? errors.minPrice : undefined}
+                onChange={(e) => setMinPrice(e.target.value)}
+              />
+              <TextInput
+                label={t('serviceForm.maxPrice')}
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={10000}
+                required
+                suffix="so'm"
+                value={maxPrice}
+                error={touched ? errors.maxPrice : undefined}
+                onChange={(e) => setMaxPrice(e.target.value)}
+              />
+            </>
+          ) : (
+            <TextInput
+              label={t('serviceForm.price')}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={10000}
+              required
+              suffix="so'm"
+              value={price}
+              error={touched ? errors.price : undefined}
+              onChange={(e) => setPrice(e.target.value)}
+            />
+          )}
 
           <TextInput
             label={t('serviceForm.duration')}
@@ -162,18 +245,26 @@ export function ServiceFormModal({
         <Field
           label={t('serviceForm.paymentTiming')}
           hint={
-            timing === 'prepaid'
-              ? t('serviceForm.prepaidHint')
-              : t('serviceForm.postpaidHint')
+            /*
+              Narxni shifokor belgilasa tanlov yo'q: summasi ko'rikdan
+              oldin noma'lum xizmatni oldindan to'lab bo'lmaydi. Server
+              ham buni majburan `postpaid` qiladi.
+            */
+            doctorSet
+              ? t('serviceForm.doctorSetPostpaid')
+              : timing === 'prepaid'
+                ? t('serviceForm.prepaidHint')
+                : t('serviceForm.postpaidHint')
           }
         >
           <div className="flex gap-2">
             {(['prepaid', 'postpaid'] as PaymentTiming[]).map((option) => {
-              const active = timing === option
+              const active = doctorSet ? option === 'postpaid' : timing === option
               return (
                 <button
                   key={option}
                   type="button"
+                  disabled={doctorSet}
                   onClick={() => setTiming(option)}
                   className={cn(
                     'h-10 flex-1 rounded-[10px] text-subhead font-medium',
@@ -181,6 +272,7 @@ export function ServiceFormModal({
                     active
                       ? 'bg-accent text-white'
                       : 'bg-sunken text-label-secondary hover:text-label',
+                    doctorSet && 'cursor-not-allowed opacity-50 hover:text-label-secondary',
                   )}
                 >
                   {t(`serviceForm.${option}`)}
@@ -190,8 +282,15 @@ export function ServiceFormModal({
           </div>
         </Field>
 
-        {/* ============ Sodiqlik chegirmasi ============ */}
-        <section className="rounded-[14px] bg-sunken p-4">
+        {/*
+          ============ Sodiqlik chegirmasi ============
+
+          Narxni shifokor belgilaydigan xizmatda CHEGIRMA YO'Q: shifokor
+          summani belgilaganda bemorning holatini allaqachon hisobga
+          oladi, ustiga chegirma qo'yilsa ikki marta hisoblangan bo'lardi.
+          Server ham bu xizmatlarga chegirma qo'llamaydi.
+        */}
+        <section className={cn('rounded-[14px] bg-sunken p-4', doctorSet && 'hidden')}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-subhead font-medium text-label">

@@ -574,6 +574,139 @@ async function main() {
           (i: { appointmentId: string }) => i.appointmentId === todayApptId,
         )
         check('  ogohlantirishdan YO‘QOLDI', !still, short(after.data?.attention?.unpaid))
+
+        /*
+          ILDIZI: ogohlantirish `appointment.paymentStatus` ga qarab
+          chiqadi va uni FAQAT `appointmentId` bilan kelgan to'lov
+          o'zgartiradi. Bog'lanmagan to'lov kassaga tushib, qabulni
+          "to'lanmagan" holida qoldirardi. Panel orqali yo'l endi
+          to'g'ri, lekin buni tekshiradigan sinov yo'q edi.
+        */
+        const appt = await call('GET', `/appointments/${todayApptId}`, reception)
+        check(
+          '  qabul “to‘landi” bo‘ldi',
+          appt.data?.paymentStatus === 'paid',
+          `holat: ${appt.data?.paymentStatus}`,
+        )
+      }
+    }
+  }
+
+  /* ---------------- Narxni shifokor belgilaydigan xizmat ---------------- */
+  /*
+    Egasi oraliq beradi, shifokor ko'rikda summani yozadi, registrator
+    o'shani oladi. Chegara katalogdan emas, KO'RIKDAN keladi — shuning
+    uchun bunday to'lov qabulga bog'lanmasa qabul qilinmasligi kerak.
+  */
+  console.log('\nNarxni shifokor belgilaydigan xizmat')
+  if (patientId) {
+    const me = await call('GET', '/auth/me', doctor)
+    const ownDoctorId = me.data?.user?.doctorId
+
+    const dsService = await call('POST', '/services', owner, {
+      name: `CRUD shifokor narxi ${RUN}`,
+      category: 'surgery',
+      price: 1,
+      priceMode: 'doctor_set',
+      minPrice: 500_000,
+      maxPrice: 1_500_000,
+      durationMinutes: 60,
+    })
+    check('xizmat yaratildi', dsService.status < 300, short(dsService.data))
+    check(
+      '  oldindan to‘lash o‘chirildi',
+      dsService.data?.paymentTiming === 'postpaid',
+      `to‘lov vaqti: ${dsService.data?.paymentTiming}`,
+    )
+    /* Katalog narxi eng kam qiymatga tenglashadi — `price` hech qachon bo'sh qolmaydi */
+    check(
+      '  katalog narxi eng kam qiymatga tenglandi',
+      dsService.data?.price === 500_000,
+      `narx: ${dsService.data?.price}`,
+    )
+
+    const noRange = await call('POST', '/services', owner, {
+      name: `CRUD oraliqsiz ${RUN}`,
+      category: 'surgery',
+      price: 100_000,
+      priceMode: 'doctor_set',
+      durationMinutes: 60,
+    })
+    check('oraliqsiz xizmat RAD ETILDI', noRange.status === 400, short(noRange.data))
+
+    const dsServiceId: string | undefined = dsService.data?.id
+
+    if (dsServiceId && ownDoctorId) {
+      const appt = await call('POST', '/appointments', reception, {
+        patientId,
+        doctorId: ownDoctorId,
+        serviceId: dsServiceId,
+        startsAt: new Date(Date.now() + 120_000).toISOString(),
+      })
+      const dsApptId: string | undefined = appt.data?.id
+      check('qabul yaratildi', appt.status < 300, short(appt.data))
+
+      if (dsApptId) {
+        const noPrice = await call('POST', '/visits', doctor, {
+          appointmentId: dsApptId,
+          diagnosis: 'summasiz',
+        })
+        check('summasiz ko‘rik RAD ETILDI', noPrice.status === 400, short(noPrice.data))
+
+        const tooHigh = await call('POST', '/visits', doctor, {
+          appointmentId: dsApptId,
+          diagnosis: 'oraliqdan tashqari',
+          price: 5_000_000,
+        })
+        check('oraliqdan tashqari summa RAD ETILDI', tooHigh.status === 400, short(tooHigh.data))
+
+        const visit = await call('POST', '/visits', doctor, {
+          appointmentId: dsApptId,
+          diagnosis: 'jarrohlik',
+          treatment: 'kuzatuv',
+          price: 900_000,
+        })
+        check('shifokor summani belgiladi', visit.status < 300, short(visit.data))
+
+        const unlinked = await call('POST', '/payments', reception, {
+          patientId,
+          doctorId: ownDoctorId,
+          serviceId: dsServiceId,
+          amount: 900_000,
+          method: 'cash',
+        })
+        check('bog‘lanmagan to‘lov RAD ETILDI', unlinked.status === 400, short(unlinked.data))
+
+        const overPay = await call('POST', '/payments', reception, {
+          patientId,
+          doctorId: ownDoctorId,
+          serviceId: dsServiceId,
+          appointmentId: dsApptId,
+          amount: 1_200_000,
+          method: 'cash',
+        })
+        check(
+          'shifokor summasidan ortiq to‘lov RAD ETILDI',
+          overPay.status === 400,
+          short(overPay.data),
+        )
+
+        const paid = await call('POST', '/payments', reception, {
+          patientId,
+          doctorId: ownDoctorId,
+          serviceId: dsServiceId,
+          appointmentId: dsApptId,
+          amount: 900_000,
+          method: 'cash',
+        })
+        check('shifokor belgilagan summa olindi', paid.status < 300, short(paid.data))
+
+        const dsAppt = await call('GET', `/appointments/${dsApptId}`, reception)
+        check(
+          '  qabul “to‘landi” bo‘ldi',
+          dsAppt.data?.paymentStatus === 'paid',
+          `holat: ${dsAppt.data?.paymentStatus}`,
+        )
       }
     }
   }

@@ -82,9 +82,23 @@ export class NotificationsService {
       }
     }
 
+    /*
+      TO'LANMAGANLAR QAYERGA OLIB BORADI.
+
+      Ilgari hamma uchun `/payments` edi va bu noto'g'ri ish qildirardi:
+      registrator o'sha sahifadan to'lovni qabulga BOG'LAMAY yozardi,
+      natijada pul kassaga tushib, `appointment.paymentStatus` o'zgarmay
+      qolardi — ya'ni ogohlantirish o'chmasdi.
+
+      `/reception` degan yo'l yo'q: registratura paneli registratorning
+      BOSH sahifasi. Egasi esa to'lov umuman yarata olmaydi
+      (`payments.create` unda ataylab yo'q), unga ro'yxat to'g'ri keladi.
+    */
+    const unpaidHref = permissions.includes('payments.create') ? '/' : '/payments'
+
     add('appointments_today', today, '/appointments', 'info')
     add('unconfirmed', unconfirmed, '/appointments', 'warn')
-    add('pending_payments', unpaid, '/payments', 'bad')
+    add('pending_payments', unpaid, unpaidHref, 'bad')
     add('follow_ups_due', followUps, '/patients', 'info')
     add('no_shows', noShows, '/appointments', 'warn')
 

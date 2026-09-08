@@ -175,6 +175,9 @@ export const dict: Dict = {
   'patient.medicalNotice': 'Медицинские данные — конфиденциально',
 
   'visit.title': 'Запись о визите',
+  'visit.price': 'Сумма к оплате',
+  'visit.priceHint': 'Стоимость этой услуги определяете вы: {min} — {max}',
+  'visit.priceRangeError': 'Сумма должна быть в диапазоне {min} — {max}',
   'visit.complaint': 'Жалоба',
   'visit.complaintPh': 'На что жалуется пациент',
   'visit.diagnosis': 'Диагноз',
@@ -258,6 +261,15 @@ export const dict: Dict = {
   'serviceForm.postpaid': 'После приёма',
   'serviceForm.prepaidHint': 'Оплачивается до оказания услуги',
   'serviceForm.postpaidHint': 'Оплачивается после завершения приёма',
+  'serviceForm.doctorSet': 'Цену определяет врач',
+  'serviceForm.doctorSetHint':
+    'Для услуг, стоимость которых неизвестна до приёма. Врач указывает сумму в этом диапазоне при завершении приёма, регистратура принимает её.',
+  'serviceForm.minPrice': 'Минимальная цена',
+  'serviceForm.maxPrice': 'Максимальная цена',
+  'serviceForm.doctorSetPostpaid':
+    'Такая услуга не оплачивается заранее — сумма известна только после приёма.',
+  'serviceForm.awaitingDoctorPrice': 'Определит врач',
+  'serviceForm.rangeInvalid': 'Минимальная цена не должна превышать максимальную',
   'serviceForm.loyalty': 'Скидка за лояльность',
   'serviceForm.loyaltyHint':
     'После нескольких обращений цена автоматически снижается.',
@@ -350,6 +362,9 @@ export const dict: Dict = {
 
   'payments.title': 'Платежи',
   'payments.add': '+ Добавить платёж',
+  'payments.unlinkedWarn':
+    'У этого пациента есть неоплаченный приём. Платёж, внесённый здесь, не привяжется к приёму и напоминание не исчезнет.',
+  'payments.unlinkedWarnAction': 'Принять на стойке регистрации',
   'payments.revenueToday': 'Выручка за сегодня',
   'payments.revenueWeek': 'Выручка за неделю',
   'payments.revenueMonth': 'Выручка за 30 дней',
@@ -1143,6 +1158,7 @@ export const dict: Dict = {
   'reception.complete': 'Завершить',
   'reception.noShow': 'Не пришёл',
   'reception.takePayment': 'Принять оплату',
+  'reception.priceSetByDoctor': 'сумму определил врач',
   'reception.newAppointment': 'Новый приём',
   'reception.newPatient': 'Новый пациент',
   'reception.findPatient': 'Найти пациента',

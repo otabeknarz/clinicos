@@ -803,12 +803,25 @@ export interface LoyaltyTier {
   discountPct: number
 }
 
+/**
+ * Narx katalogda turadimi yoki uni shifokor belgilaydimi.
+ *
+ * `doctor_set` — summasi ko'rikdan oldin ma'lum bo'lmagan xizmatlar
+ * (jarrohlik, murakkab davolash). Egasi oraliq beradi, shifokor shu
+ * oraliqda belgilaydi, registrator o'shani oladi.
+ */
+export type ServicePriceMode = 'fixed' | 'doctor_set'
+
 export interface Service {
   id: ID
   clinicId: ID
   name: string
   category: string
   price: UZS
+  priceMode: ServicePriceMode
+  /** `doctor_set` da shifokor chiqa olmaydigan chegaralar. `fixed` da null. */
+  minPrice: UZS | null
+  maxPrice: UZS | null
   /** Davomiyligi — daqiqada */
   durationMinutes: number
   /** To'lov xizmatdan oldin olinadimi yoki keyin */
@@ -832,6 +845,11 @@ export function resolveServicePrice(
   service: Pick<Service, 'price' | 'loyaltyTiers'>,
   visitCount: number,
 ): { price: UZS; discountPct: number; basePrice: UZS } {
+  /*
+    Narxni shifokor belgilaydigan xizmatga bu funksiya CHAQIRILMAYDI —
+    u yerda summa ko'rikda turadi va sodiqlik chegirmasi qo'llanmaydi
+    (shifokor bemorning holatini allaqachon hisobga oladi).
+  */
   const tier = [...service.loyaltyTiers]
     .filter((t) => visitCount >= t.afterVisits)
     .sort((a, b) => b.discountPct - a.discountPct)[0]
@@ -883,7 +901,15 @@ export interface Appointment {
 export interface AppointmentExpanded extends Appointment {
   patient: Pick<Patient, 'id' | 'fullName' | 'phone'>
   doctor: Pick<Doctor, 'id' | 'fullName' | 'specialty'>
-  service: Pick<Service, 'id' | 'name' | 'price' | 'durationMinutes'>
+  /*
+    `priceMode` va oraliq ham keladi: shifokor ko'rikni yakunlashda
+    summani shu chegaralar ichida kiritishi kerak, forma esa buni
+    qabuldan biladi — alohida so'rov yubormaydi.
+  */
+  service: Pick<
+    Service,
+    'id' | 'name' | 'price' | 'durationMinutes' | 'priceMode' | 'minPrice' | 'maxPrice'
+  >
 }
 
 /* ------------------------------------------------------------------ */
@@ -902,6 +928,11 @@ export interface Visit {
   patientId: ID
   doctorId: ID
   visitedAt: ISODateTime
+  /**
+   * Shifokor belgilagan summa. Faqat `doctor_set` xizmatlarda to'ladi,
+   * qolganida null. To'lov chegarasi shu raqamdan olinadi.
+   */
+  price: UZS | null
   /** Shikoyat / murojaat sababi */
   complaint: string
   diagnosis: string
@@ -2248,6 +2279,13 @@ export interface ReceptionQueueItem {
   prepaid: boolean
   /** To'lanadigan summa (chegirma hisobga olingan) */
   price: UZS
+  /**
+   * Summani shifokor belgilaganmi.
+   *
+   * Ko'rik hali yozilmagan bo'lsa `price` nol bo'ladi — registrator
+   * pul ololmaydi, chunki summani hech kim aytmagan.
+   */
+  priceSetByDoctor: boolean
 }
 
 /**
@@ -2329,11 +2367,21 @@ export interface ReceptionSummary {
 export interface PricePreview {
   serviceId: ID
   serviceName: string
-  basePrice: UZS
+  /** `doctor_set` xizmatda ko'rik yozilmagan bo'lsa — null */
+  basePrice: UZS | null
   /** Qo'llanilgan chegirma, % */
   discountPct: number
-  /** To'lanadigan yakuniy summa */
-  price: UZS
+  /**
+   * To'lanadigan yakuniy summa.
+   *
+   * `doctor_set` xizmatda shifokor hali summani belgilamagan bo'lsa
+   * null keladi — registrator pul ololmaydi, chunki qancha olishini
+   * hech kim aytmagan.
+   */
+  price: UZS | null
+  priceMode: ServicePriceMode
+  minPrice: UZS | null
+  maxPrice: UZS | null
   /** Bemor shu xizmatdan necha marta foydalangan */
   visitCount: number
   /** Keyingi pog'onagacha necha tashrif qoldi. null = boshqa pog'ona yo'q. */

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { createPayment } from '@/api/payments'
 import { listDoctorsShort } from '@/api/doctors'
-import { listPatients } from '@/api/patients'
+import { getPatientAppointments, listPatients } from '@/api/patients'
 import { listServices, resolvePriceForPatient } from '@/api/services'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
@@ -81,15 +82,43 @@ export function PaymentFormModal({
    * foydalanganiga qarab tizim o'zi hisoblaydi.
    */
   const { data: price } = useAsync(
-    () => resolvePriceForPatient(serviceId, patientId || null),
-    [serviceId, patientId],
+    /*
+      `appointmentId` ham uzatiladi: narxni shifokor belgilaydigan
+      xizmatda summa katalogda emas, aynan shu qabulning ko'rigida
+      turadi.
+    */
+    () =>
+      resolvePriceForPatient(serviceId, patientId || null, preset?.appointmentId ?? null),
+    [serviceId, patientId, preset?.appointmentId],
     { skip: !serviceId },
   )
 
   // Hisoblangan narxni summa maydoniga qo'yamiz
   useEffect(() => {
-    if (price) setAmount(String(price.price))
+    // Shifokor hali belgilamagan bo'lsa summa yo'q — maydonga nol yozilmasin
+    if (price && price.price !== null) setAmount(String(price.price))
   }, [price])
+
+  /**
+   * BOG'LANMAGAN TO'LOV OGOHLANTIRISHI.
+   *
+   * Forma preset siz ochilsa (To'lovlar sahifasidagi "To'lov qo'shish"),
+   * to'lov hech qaysi qabulga bog'lanmaydi. Pul kassaga tushadi, lekin
+   * qabul "to'lanmagan" bo'lib qoladi va registratura panelidagi
+   * ogohlantirish o'chmaydi — aynan shu chalkashlik bo'lgan.
+   *
+   * Tugma bloklanmaydi: navbatsiz kelgan bemor va statsionar to'lovlari
+   * uchun bog'lanmagan to'lov qonuniy.
+   */
+  const { data: patientAppointments } = useAsync(
+    () => getPatientAppointments(patientId),
+    [patientId],
+    { skip: !patientId || Boolean(preset?.appointmentId) },
+  )
+
+  const unpaidVisit = (patientAppointments ?? []).find(
+    (a) => a.status === 'completed' && a.paymentStatus !== 'paid',
+  )
 
   /**
    * Bemorlar ro'yxati sahifalab keladi, shuning uchun navbatdan
@@ -167,6 +196,19 @@ export function PaymentFormModal({
           onChange={(e) => setPatientId(e.target.value)}
           options={patientOptions}
         />
+
+        {unpaidVisit ? (
+          <div className="rounded-[10px] bg-warn-soft px-4 py-3">
+            <p className="text-caption text-warn">{t('payments.unlinkedWarn')}</p>
+            <Link
+              to="/"
+              onClick={onClose}
+              className="mt-1 inline-block text-caption font-medium text-warn underline"
+            >
+              {t('payments.unlinkedWarnAction')}
+            </Link>
+          </div>
+        ) : null}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Select

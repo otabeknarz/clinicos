@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { Service, ServiceLoyaltyTier } from '@prisma/client'
 
 import { toApi, toApiDateTime, toDb } from '../common/api-enum'
@@ -40,15 +40,19 @@ export class ServicesService {
 
   async create(dto: ServiceInputDto) {
     const { clinicId } = this.ctx.require()
+    const pricing = resolvePricing(dto)
 
     const row = await this.db.service.create({
       data: {
         clinicId,
         name: dto.name.trim(),
         category: dto.category.trim(),
-        price: dto.price,
+        price: pricing.price,
+        priceMode: pricing.priceMode,
+        minPrice: pricing.minPrice,
+        maxPrice: pricing.maxPrice,
         durationMinutes: dto.durationMinutes,
-        paymentTiming: toDb(dto.paymentTiming),
+        paymentTiming: pricing.paymentTiming,
         status: toDb(dto.status),
         loyaltyTiers: {
           create: dedupeTiers(dto.loyaltyTiers).map((tier) => ({
@@ -66,7 +70,35 @@ export class ServicesService {
 
   async update(id: string, dto: Partial<ServiceInputDto>) {
     const { clinicId } = this.ctx.require()
-    await this.assertExists(id)
+
+    const current = await this.db.service.findFirst({
+      where: { id },
+      select: {
+        price: true,
+        priceMode: true,
+        minPrice: true,
+        maxPrice: true,
+        paymentTiming: true,
+      },
+    })
+    if (!current) throw new NotFoundException('Xizmat topilmadi')
+
+    /*
+      NARX SOZLAMASI BUTUNLIGICHA TEKSHIRILADI.
+
+      PATCH faqat o'zgargan maydonni yuboradi, lekin `priceMode`,
+      oraliq va to'lov vaqti bir-biriga bog'liq. Shuning uchun
+      bazadagi holat bilan birlashtirilib, natija tekshiriladi —
+      aks holda faqat `priceMode` ni yuborib, oraliqsiz "shifokor
+      belgilaydi" xizmatini yaratib olish mumkin bo'lardi.
+    */
+    const pricing = resolvePricing({
+      priceMode: dto.priceMode ?? toApi(current.priceMode),
+      price: dto.price ?? current.price,
+      minPrice: dto.minPrice ?? current.minPrice ?? undefined,
+      maxPrice: dto.maxPrice ?? current.maxPrice ?? undefined,
+      paymentTiming: dto.paymentTiming ?? toApi(current.paymentTiming),
+    })
 
     /*
       Pog'onalar butunlay almashtiriladi, bittalab tahrirlanmaydi.
@@ -86,9 +118,12 @@ export class ServicesService {
         data: {
           name: dto.name?.trim(),
           category: dto.category?.trim(),
-          price: dto.price,
+          price: pricing.price,
+          priceMode: pricing.priceMode,
+          minPrice: pricing.minPrice,
+          maxPrice: pricing.maxPrice,
           durationMinutes: dto.durationMinutes,
-          paymentTiming: dto.paymentTiming ? toDb(dto.paymentTiming) : undefined,
+          paymentTiming: pricing.paymentTiming,
           status: dto.status ? toDb(dto.status) : undefined,
           loyaltyTiers: dto.loyaltyTiers
             ? {
@@ -140,12 +175,47 @@ export class ServicesService {
    * qarab beriladi. Tugallangan qabullar sanaladi — yozilgan,
    * lekin kelmagan qabul chegirma bermasligi kerak.
    */
-  async priceFor(serviceId: string, patientId?: string) {
+  async priceFor(serviceId: string, patientId?: string, appointmentId?: string) {
     const service = await this.db.service.findFirst({
       where: { id: serviceId },
       include: { loyaltyTiers: { orderBy: { afterVisits: 'asc' } } },
     })
     if (!service) throw new NotFoundException('Xizmat topilmadi')
+
+    /*
+      NARXNI SHIFOKOR BELGILAGAN BO'LSA — katalogda qidirmaymiz.
+
+      Summa aynan shu qabulning ko'rigida turadi. Ko'rik hali
+      yozilmagan bo'lsa `price: null` qaytadi va registrator
+      "shifokor hali belgilamagan" degan holatni ko'radi.
+
+      Sodiqlik chegirmasi bu yerda QO'LLANMAYDI: shifokor summani
+      belgilaganda bemorning holatini allaqachon hisobga oladi,
+      ustiga chegirma qo'yilsa ikki marta hisoblangan bo'lardi.
+    */
+    if (service.priceMode === 'DOCTOR_SET') {
+      const visit = appointmentId
+        ? await this.db.visit.findFirst({
+            where: { appointmentId },
+            select: { price: true },
+          })
+        : null
+
+      return {
+        serviceId: service.id,
+        serviceName: service.name,
+        basePrice: visit?.price ?? null,
+        discountPct: 0,
+        price: visit?.price ?? null,
+        visitCount: 0,
+        nextTierIn: null,
+        nextTierPct: null,
+        paymentTiming: toApi(service.paymentTiming),
+        priceMode: toApi(service.priceMode),
+        minPrice: service.minPrice,
+        maxPrice: service.maxPrice,
+      }
+    }
 
     const visitCount = patientId
       ? await this.db.appointment.count({
@@ -177,6 +247,9 @@ export class ServicesService {
       nextTierIn: next ? next.afterVisits - visitCount : null,
       nextTierPct: next ? next.discountPct : null,
       paymentTiming: toApi(service.paymentTiming),
+      priceMode: toApi(service.priceMode),
+      minPrice: service.minPrice,
+      maxPrice: service.maxPrice,
     }
   }
 
@@ -197,6 +270,59 @@ export class ServicesService {
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * Narx sozlamasini tekshirib, bazaga yoziladigan ko'rinishga keltiradi.
+ *
+ * Bitta joyda, chunki yaratish ham, tahrirlash ham xuddi shu qoidaga
+ * bo'ysunishi kerak. Ikki joyda yozilsa, biri yangilanib ikkinchisi
+ * eskirib qolardi — narx esa firibgarlikka qarshi asosiy cheklov.
+ */
+function resolvePricing(input: {
+  priceMode: 'fixed' | 'doctor_set'
+  price: number
+  minPrice?: number
+  maxPrice?: number
+  paymentTiming: 'prepaid' | 'postpaid'
+}) {
+  if (input.priceMode === 'fixed') {
+    return {
+      priceMode: 'FIXED' as const,
+      price: input.price,
+      minPrice: null,
+      maxPrice: null,
+      paymentTiming: toDb(input.paymentTiming),
+    }
+  }
+
+  const { minPrice, maxPrice } = input
+
+  if (minPrice === undefined || maxPrice === undefined) {
+    throw new BadRequestException(
+      'Narxni shifokor belgilaydigan xizmatga eng kam va eng ko‘p narx ko‘rsatilishi shart',
+    )
+  }
+  if (minPrice > maxPrice) {
+    throw new BadRequestException('Eng kam narx eng ko‘p narxdan katta bo‘lmasin')
+  }
+
+  return {
+    priceMode: 'DOCTOR_SET' as const,
+    /*
+      `price` ga eng kam narx yoziladi. Uni o'qiydigan eski joylar
+      (prognoz, hisobot) bo'sh qiymat ko'rmasin — haqiqiy pul
+      baribir `payments` dan hisoblanadi.
+    */
+    price: minPrice,
+    minPrice,
+    maxPrice,
+    /*
+      Summasi ko'rikdan oldin noma'lum xizmatni oldindan to'lab
+      bo'lmaydi. Interfeys ham buni bloklaydi, lekin qaror shu yerda.
+    */
+    paymentTiming: 'POSTPAID' as const,
+  }
+}
 
 /**
  * Bir xil `afterVisits` ikki marta kelsa — kattaroq chegirma qoladi.
@@ -225,6 +351,9 @@ function toApiService(row: ServiceWithTiers) {
     name: row.name,
     category: row.category,
     price: row.price,
+    priceMode: toApi(row.priceMode),
+    minPrice: row.minPrice,
+    maxPrice: row.maxPrice,
     durationMinutes: row.durationMinutes,
     paymentTiming: toApi(row.paymentTiming),
     loyaltyTiers: row.loyaltyTiers.map((t) => ({

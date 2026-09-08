@@ -2,7 +2,14 @@
 
 import { apiContext, delay, matches, request, USE_MOCK } from './client'
 import { getDb } from '@/mock/db'
-import type { ID, LoyaltyTier, PaymentTiming, PricePreview, Service } from '@/types/models'
+import type {
+  ID,
+  LoyaltyTier,
+  PaymentTiming,
+  PricePreview,
+  Service,
+  ServicePriceMode,
+} from '@/types/models'
 import { resolveServicePrice } from '@/types/models'
 
 // GET /services?search=&category=&status=
@@ -29,6 +36,10 @@ export interface ServiceInput {
   name: string
   category: string
   price: number
+  /** `doctor_set` bo'lsa `minPrice` va `maxPrice` majburiy */
+  priceMode: ServicePriceMode
+  minPrice?: number
+  maxPrice?: number
   durationMinutes: number
   paymentTiming: PaymentTiming
   loyaltyTiers: LoyaltyTier[]
@@ -46,6 +57,11 @@ export async function createService(input: ServiceInput): Promise<Service> {
     clinicId,
     createdAt: new Date().toISOString(),
     ...input,
+    // Serverdagi kabi: `fixed` da oraliq bo'sh, `doctor_set` da narx = eng kami
+    minPrice: input.priceMode === 'doctor_set' ? (input.minPrice ?? null) : null,
+    maxPrice: input.priceMode === 'doctor_set' ? (input.maxPrice ?? null) : null,
+    price: input.priceMode === 'doctor_set' ? (input.minPrice ?? input.price) : input.price,
+    paymentTiming: input.priceMode === 'doctor_set' ? 'postpaid' : input.paymentTiming,
   }
   db.services.insert(service)
   return delay(service, 280)
@@ -85,14 +101,19 @@ export async function deleteService(id: ID): Promise<void> {
  * server narxni qaytadan hisoblab, mijoz yuborgan summani tekshirishi
  * shart — aks holda registrator summani o'zgartirib yuborishi mumkin.
  */
-// GET /services/:id/price?patientId=
+// GET /services/:id/price?patientId=&appointmentId=
 export async function resolvePriceForPatient(
   serviceId: ID,
   patientId: ID | null,
+  /*
+    Narxni shifokor belgilaydigan xizmatda summa AYNAN shu qabulning
+    ko'rigidan keladi — katalogda uni topib bo'lmaydi.
+  */
+  appointmentId: ID | null = null,
 ): Promise<PricePreview | null> {
   if (!USE_MOCK) {
     return request<PricePreview>('GET', `/services/${serviceId}/price`, {
-      query: { patientId },
+      query: { patientId, appointmentId },
     })
   }
 
@@ -101,6 +122,30 @@ export async function resolvePriceForPatient(
 
   const service = db.services.find(serviceId, clinicId)
   if (!service) return delay(null, 60)
+
+  if (service.priceMode === 'doctor_set') {
+    const visit = appointmentId
+      ? db.visits.all(clinicId).find((v) => v.appointmentId === appointmentId)
+      : null
+
+    return delay(
+      {
+        serviceId,
+        serviceName: service.name,
+        basePrice: visit?.price ?? null,
+        discountPct: 0,
+        price: visit?.price ?? null,
+        visitCount: 0,
+        nextTierIn: null,
+        nextTierPct: null,
+        paymentTiming: service.paymentTiming,
+        priceMode: service.priceMode,
+        minPrice: service.minPrice,
+        maxPrice: service.maxPrice,
+      },
+      120,
+    )
+  }
 
   // Bemor shu xizmatdan necha marta foydalangan
   const visitCount = patientId
@@ -132,6 +177,9 @@ export async function resolvePriceForPatient(
       nextTierIn: nextTier ? nextTier.afterVisits - visitCount : null,
       nextTierPct: nextTier ? nextTier.discountPct : null,
       paymentTiming: service.paymentTiming,
+      priceMode: service.priceMode,
+      minPrice: service.minPrice,
+      maxPrice: service.maxPrice,
     },
     120,
   )

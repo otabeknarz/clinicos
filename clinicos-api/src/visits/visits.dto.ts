@@ -22,6 +22,22 @@ export class VisitInputDto {
     kartasiga tashxis yozib qo'yishi mumkin bo'lardi.
   */
 
+  /*
+    NARXNI SHIFOKOR BELGILAYDIGAN XIZMAT UCHUN SUMMA.
+
+    Xizmat `doctor_set` bo'lsa MAJBURIY va xizmatning oralig'i
+    ichida bo'lishi kerak — tekshiruv servisda, chunki oraliq
+    xizmat yozuvida turadi. `fixed` xizmatga yuborilsa rad etiladi:
+    jimgina tashlab yuborilsa, shifokor "narx yozdim" deb o'ylab
+    qolardi.
+  */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Summa butun son bo‘lishi kerak' })
+  @Min(1, { message: 'Summa noldan katta bo‘lishi kerak' })
+  @Max(1_000_000_000)
+  price?: number
+
   @IsOptional()
   @IsString()
   @MaxLength(2000)

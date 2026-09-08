@@ -272,6 +272,19 @@ enum PaymentTiming {
   POSTPAID
 }
 
+/// Narx katalogda turadimi yoki uni shifokor belgilaydimi.
+///
+/// Ba'zi xizmatning summasi ko'rikdan OLDIN ma'lum emas (jarrohlik,
+/// murakkab davolash). Katalogga bitta raqam yozib qo'yish yolg'on
+/// bo'lardi — haqiqiy summani shifokor ko'rikda aniqlaydi.
+///
+/// Egasi nazoratni yo'qotmaydi: u oraliq beradi (`minPrice`..`maxPrice`)
+/// va shifokor faqat shu oraliqda belgilaydi.
+enum ServicePriceMode {
+  FIXED
+  DOCTOR_SET
+}
+
 model Service {
   id       String @id @default(uuid())
   clinicId String @map("clinic_id")
@@ -282,6 +295,16 @@ model Service {
   durationMinutes Int           @map("duration_minutes")
   paymentTiming   PaymentTiming @default(POSTPAID) @map("payment_timing")
   status          ServiceStatus @default(ACTIVE)
+
+  priceMode ServicePriceMode @default(FIXED) @map("price_mode")
+
+  /// Shifokor belgilaydigan narxning chegaralari. FIXED da ikkalasi bo'sh.
+  ///
+  /// DOCTOR_SET da `price` ga `minPrice` yoziladi: `price` ni o'qiydigan
+  /// eski joylar (prognoz, hisobot) hech qachon bo'sh qiymat ko'rmasin.
+  /// Haqiqiy pul baribir `payments` dan hisoblanadi.
+  minPrice Int? @map("min_price")
+  maxPrice Int? @map("max_price")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -397,6 +420,15 @@ model Visit {
   diagnosis String   @default("")
   treatment String   @default("")
   notes     String   @default("")
+
+  /// Shifokor belgilagan summa. Faqat DOCTOR_SET xizmatlarda to'ladi.
+  ///
+  /// NEGA TASHRIFDA: bu shifokorning qarori, uning yozuvida turishi
+  /// kerak. Xizmatning oraliqi keyin o'zgarsa ham bu summa
+  /// o'zgarmaydi — statsionar hisobidagi bilan bir xil mantiq.
+  ///
+  /// To'lov chegarasi shu ustundan olinadi, katalog narxidan emas.
+  price Int?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

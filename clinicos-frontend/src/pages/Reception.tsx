@@ -363,9 +363,28 @@ function AttentionRow({
   */
   onPay: (item: ReceptionQueueItem | null) => void
 }) {
-  const { t } = useI18n()
+  const { t, tService } = useI18n()
   const navigate = useNavigate()
   const { attention } = data
+
+  /*
+    Qaysi ogohlantirish yoyilgan.
+
+    NEGA RO'YXAT KERAK: ilgari tugma har doim `items[0]` ni berardi.
+    Uchta to'lanmagan qabul bo'lsa, ikkinchisini bu yerdan bog'lab
+    bo'lmasdi — registrator to'lovlar sahifasiga o'tib, qabulga
+    bog'lanmagan to'lov yozardi va ogohlantirish o'chmasdi.
+  */
+  const [openKey, setOpenKey] = useState<string | null>(null)
+
+  /** Bitta bo'lsa ro'yxat ochishning ma'nosi yo'q — to'g'ridan-to'g'ri forma */
+  function openList(key: string, list: ReceptionQueueItem[]) {
+    if (list.length === 1) {
+      onPay(list[0])
+      return
+    }
+    setOpenKey((current) => (current === key ? null : key))
+  }
 
   const items = [
     attention.prepaidUnpaid.count > 0 && {
@@ -376,7 +395,8 @@ function AttentionRow({
       hint: t('reception.prepaidUnpaidHint'),
       amount: attention.prepaidUnpaid.amount,
       action: t('reception.takePayment'),
-      onClick: () => onPay(attention.prepaidUnpaid.items[0] ?? null),
+      list: attention.prepaidUnpaid.items,
+      onClick: () => openList('prepaid', attention.prepaidUnpaid.items),
     },
     attention.unpaid.count > 0 && {
       key: 'unpaid',
@@ -386,7 +406,8 @@ function AttentionRow({
       hint: '',
       amount: attention.unpaid.amount,
       action: t('reception.unpaidAction'),
-      onClick: () => onPay(attention.unpaid.items[0] ?? null),
+      list: attention.unpaid.items,
+      onClick: () => openList('unpaid', attention.unpaid.items),
     },
     attention.unconfirmed > 0 && {
       key: 'unconfirmed',
@@ -396,6 +417,7 @@ function AttentionRow({
       hint: '',
       amount: 0,
       action: t('reception.unconfirmedAction'),
+      list: [] as ReceptionQueueItem[],
       onClick: () => navigate('/appointments'),
     },
     attention.unmarkedAttendance > 0 && {
@@ -406,6 +428,7 @@ function AttentionRow({
       hint: '',
       amount: 0,
       action: t('attendance.receptionAction'),
+      list: [] as ReceptionQueueItem[],
       onClick: () => navigate('/attendance'),
     },
     attention.followUps > 0 && {
@@ -416,6 +439,7 @@ function AttentionRow({
       hint: '',
       amount: 0,
       action: t('reception.followUpsAction'),
+      list: [] as ReceptionQueueItem[],
       onClick: () => navigate('/patients'),
     },
   ].filter((item): item is Exclude<typeof item, false> => Boolean(item))
@@ -491,6 +515,45 @@ function AttentionRow({
                 </Button>
               </div>
             </div>
+
+            {/*
+              Yoyilgan ro'yxat: har bir to'lanmagan qabul alohida qator.
+
+              Tugma AYNAN SHU qabulni to'lov formasiga uzatadi, ya'ni
+              to'lov qabulga bog'lanadi va to'langach ogohlantirish
+              o'chadi. Bog'lanmagan to'lov kassaga tushib, qabulni
+              "to'lanmagan" holida qoldirardi.
+            */}
+            {openKey === item.key && item.list.length > 0 ? (
+              <ul className="hairline-t bg-fill-4">
+                {item.list.map((queued) => (
+                  <li
+                    key={queued.appointmentId}
+                    className="flex items-center gap-3 px-5 py-2.5 sm:px-6 sm:pl-[72px]"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-subhead text-label">
+                        {queued.patientName}
+                      </span>
+                      <span className="block truncate text-caption text-label-tertiary">
+                        {tService(queued.serviceName)}
+                        {queued.priceSetByDoctor
+                          ? ` · ${t('reception.priceSetByDoctor')}`
+                          : ''}
+                      </span>
+                    </span>
+
+                    <span className="shrink-0 text-subhead font-semibold tnum text-label">
+                      {moneyShort(queued.price)}
+                    </span>
+
+                    <Button size="sm" onClick={() => onPay(queued)}>
+                      {t('reception.takePayment')}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </li>
         ))}
       </ul>

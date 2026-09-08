@@ -29,6 +29,13 @@ export function PriceHint({
   const discounted = preview.discountPct > 0
   const prepaid = preview.paymentTiming === 'prepaid'
 
+  /*
+    Narxni shifokor belgilaydigan xizmatda ko'rik yozilmaguncha summa
+    yo'q. Raqam o'rniga nima kutilayotgani yoziladi — nol ko'rsatilsa
+    registrator "bepul" deb tushunib qolardi.
+  */
+  const awaitingDoctor = preview.price === null
+
   return (
     <div
       className={cn(
@@ -44,18 +51,19 @@ export function PriceHint({
         </span>
 
         <span className="flex items-baseline gap-2">
-          {discounted ? (
+          {discounted && preview.basePrice !== null ? (
             <span className="text-footnote tnum text-label-tertiary line-through">
               {money(preview.basePrice)}
             </span>
           ) : null}
           <span
             className={cn(
-              'text-title-3 font-bold tnum',
-              discounted ? 'text-ok' : 'text-label',
+              'font-bold',
+              awaitingDoctor ? 'text-subhead text-warn' : 'text-title-3 tnum',
+              discounted ? 'text-ok' : awaitingDoctor ? '' : 'text-label',
             )}
           >
-            {money(preview.price)}
+            {awaitingDoctor ? t('serviceForm.awaitingDoctorPrice') : money(preview.price!)}
           </span>
         </span>
       </div>
