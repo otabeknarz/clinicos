@@ -25,6 +25,7 @@ import {
   PlatformPatientQueryDto,
   PlatformSearchDto,
   SuspendDto,
+  TenantModulesDto,
   TenantCreateDto,
   TenantQueryDto,
   TenantUpdateDto,
@@ -195,6 +196,20 @@ export class PlatformController {
   @RequirePermission('platform.manage')
   archiveTenant(@Param() params: IdParamDto, @Body() dto: ArchiveDto) {
     return this.platform.archiveTenant(params.id, dto)
+  }
+
+  /*
+    PATCH /platform/tenants/:id/modules
+
+    Klinikada qaysi bo'limlar ishlashini belgilaydi. Bo'lim
+    o'chirilsa MA'LUMOT o'chmaydi — u shunchaki ko'rinmaydi va
+    endpointlari 403 qaytaradi. Qayta yoqilsa hammasi joyida.
+  */
+  @Patch('tenants/:id/modules')
+  @RequirePermission('platform.manage')
+  @Audit('update', 'clinic_modules')
+  setModules(@Param() params: IdParamDto, @Body() dto: TenantModulesDto) {
+    return this.platform.setModules(params.id, dto)
   }
 
   @Post('tenants/:id/suspend')

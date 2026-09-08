@@ -24,6 +24,7 @@ import {
   listImpersonations,
   listInvoices,
   listPlans,
+  setTenantModules,
 } from '@/api/platform'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Avatar } from '@/components/ui/Avatar'
@@ -49,8 +50,8 @@ import { useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
 import { useToast } from '@/store/toast-context'
-import type { Plan, Tenant } from '@/types/models'
-import { UNLIMITED } from '@/types/models'
+import type { ClinicModule, Plan, Tenant } from '@/types/models'
+import { CLINIC_MODULES, UNLIMITED } from '@/types/models'
 import { startImpersonation, suspendTenant } from '@/api/platform'
 
 /**
@@ -186,6 +187,7 @@ export function PlatformClinicDetailPage() {
             onChangePlan={() => setChangingPlan(true)}
           />
           <OwnerCard tenant={data} />
+          <ModulesCard tenant={data} onDone={() => setVersion((v) => v + 1)} />
         </div>
 
         <div className="grid content-start gap-5">
@@ -882,5 +884,70 @@ function PlanModal({
         </p>
       </div>
     </Modal>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Bo'limlar                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * KLINIKADA QAYSI BO'LIMLAR ISHLAYDI.
+ *
+ * Har klinikaga hamma bo'lim kerak emas: stomatologiyada statsionar
+ * yo'q, laboratoriyada davomat ortiqcha. O'chirilgan bo'lim o'sha
+ * klinikaning menyusida umuman ko'rinmaydi va endpointlari 403
+ * qaytaradi.
+ *
+ * O'CHIRISH MA'LUMOTNI O'CHIRMAYDI. Statsionar yopilsa, yotgan
+ * bemorlar yozuvi joyida qoladi va bo'lim qayta yoqilganda hammasi
+ * o'z o'rnida chiqadi.
+ */
+function ModulesCard({ tenant, onDone }: { tenant: Tenant; onDone: () => void }) {
+  const { t } = useI18n()
+  const toast = useToast()
+  const [saving, setSaving] = useState<string | null>(null)
+
+  async function toggle(module: ClinicModule, enabled: boolean) {
+    setSaving(module)
+    try {
+      const next = enabled
+        ? tenant.disabledModules.filter((m) => m !== module)
+        : [...tenant.disabledModules, module]
+      await setTenantModules(tenant.id, next)
+      onDone()
+    } catch {
+      toast.error(t('toast.error'))
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  return (
+    <Card className="min-w-0">
+      <CardHeader title={t('platform.modules')} subtitle={t('platform.modulesHint')} />
+
+      <ul className="mt-3 space-y-1">
+        {CLINIC_MODULES.map((module) => {
+          const enabled = !tenant.disabledModules.includes(module)
+          return (
+            <li key={module} className="flex items-center justify-between gap-3 py-1.5">
+              <span className="min-w-0">
+                <span className="block text-subhead text-label">
+                  {t(`platform.module.${module}`)}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={enabled}
+                disabled={saving !== null}
+                onChange={(e) => void toggle(module, e.target.checked)}
+                className="size-4 shrink-0 accent-[var(--color-accent)]"
+              />
+            </li>
+          )
+        })}
+      </ul>
+    </Card>
   )
 }

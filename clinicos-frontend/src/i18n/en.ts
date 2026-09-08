@@ -932,6 +932,21 @@ export const dict: Dict = {
   'platform.archivePlaceholder': 'For example: contract ended, moved to another service',
   'platform.archiveWarning':
     'Nothing is deleted: patients, visits, payments and the audit log stay. Clinic staff cannot sign in. It can be restored later.',
+  'platform.modules': 'Sections',
+  'platform.modulesHint':
+    'Which sections the clinic runs. A disabled one is absent from its menu — the data stays and comes back when it is switched on again.',
+  'platform.module.ward': 'Inpatient',
+  'platform.module.chat': 'Internal chat',
+  'platform.module.feedback': 'Patient feedback',
+  'platform.module.analytics': 'Analytics',
+  'platform.module.attendance': 'Attendance and bonuses',
+  'platform.module.cashcontrol': 'Cash control',
+  'platform.kind': 'Clinic type',
+  'platform.kindHint': 'Sections that do not fit the type are switched off right away. Each can be changed separately later.',
+  'platform.kind.general': 'General practice',
+  'platform.kind.dental': 'Dental',
+  'platform.kind.eye': 'Eye clinic',
+  'platform.kind.lab': 'Laboratory',
   'platform.restore': 'Restore',
   'platform.restoreTitle': 'Restore the clinic',
   'platform.restoreWarning':

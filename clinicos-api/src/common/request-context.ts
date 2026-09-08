@@ -20,6 +20,13 @@ export interface RequestUser {
   /** Rol DOCTOR bo'lsa — shifokor profili id'si, aks holda null */
   doctorId: string | null
   permissions: string[]
+  /**
+   * Shu klinikada o'chirilgan modullar.
+   *
+   * Ruxsatdan ALOHIDA: ruxsat "bu odam qila oladimi", modul esa
+   * "bu klinikada umuman bormi" degan savolga javob beradi.
+   */
+  disabledModules: string[]
   /*
     Platforma egasi klinika paneliga "kirgan" bo'lsa — kirish
     yozuvining id'si. Bu holatda `clinicId` o'sha klinikaniki

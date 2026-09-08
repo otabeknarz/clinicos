@@ -258,6 +258,12 @@ export function generateTenants(plans: Plan[], now: Date, r: Random): Tenant[] {
       nextInvoiceAt,
       suspendReason:
         status === 'suspended' ? 'To‘lov 30 kundan ortiq kechikkani uchun' : '',
+      /*
+        Demo klinikada hamma bo'lim yoqilgan (bo'sh ro'yxat).
+        Qolganlarining bir qismida statsionar o'chirilgan — panelda
+        turli sozlamali klinikalar ko'rinib tursin.
+      */
+      disabledModules: isDemo ? [] : r.chance(0.3) ? ['ward'] : [],
       usage: {
         doctors,
         staff,

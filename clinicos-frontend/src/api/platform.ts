@@ -25,6 +25,8 @@ import { getDb } from '@/mock/db'
 import { addDays, toISODate } from '@/lib/dates'
 import { COMPLAINT_KEYS, SERVICE_KEYS, SPECIALTIES } from '@/i18n/data'
 import type {
+  ClinicKind,
+  ClinicModule,
   ID,
   ImpersonationLog,
   Metric,
@@ -163,6 +165,8 @@ export async function createTenant(input: TenantCreateInput): Promise<TenantCrea
     subscribedAt: toISODate(new Date()),
     nextInvoiceAt: toISODate(addDays(new Date(), 30)),
     suspendReason: '',
+    // Serverdagi kabi: tur bo'yicha keraksiz bo'limlar o'chiriladi
+    disabledModules: DISABLED_BY_KIND[input.kind ?? 'general'],
     usage: { doctors: 0, staff: 0, patients: 0, users: 1, appointmentsThisMonth: 0 },
     lastActiveAt: null,
     createdAt: new Date().toISOString(),
@@ -1366,4 +1370,40 @@ export async function platformSearch(
   }
 
   return delay(hits, 180)
+}
+
+/**
+ * Klinikada qaysi bo'limlar ishlashini belgilash.
+ *
+ * O'chirilganlari yuboriladi, yoqilganlari emas. Bo'lim o'chirilsa
+ * MA'LUMOT o'chmaydi — u ko'rinmay qoladi va endpointlari 403
+ * qaytaradi. Qayta yoqilsa hammasi joyida chiqadi.
+ */
+// PATCH /platform/tenants/:id/modules
+export async function setTenantModules(
+  id: ID,
+  disabledModules: ClinicModule[],
+): Promise<Tenant> {
+  if (!USE_MOCK) {
+    return request<Tenant>('PATCH', `/platform/tenants/${id}/modules`, {
+      body: { disabledModules },
+    })
+  }
+
+  const updated = getDb().tenants.updateAcrossTenants(id, { disabledModules })
+  if (!updated) throw new Error('Klinika topilmadi')
+  return delay(updated, 260)
+}
+
+/**
+ * Klinika turiga mos boshlang'ich to'plam.
+ *
+ * Serverdagi `src/common/modules.ts` bilan bir xil bo'lishi shart —
+ * demo rejimda ham xuddi shu natija chiqsin.
+ */
+export const DISABLED_BY_KIND: Record<ClinicKind, ClinicModule[]> = {
+  general: [],
+  dental: ['ward'],
+  eye: ['ward'],
+  lab: ['ward', 'attendance', 'analytics'],
 }

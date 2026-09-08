@@ -202,11 +202,38 @@ export interface Tenant {
   nextInvoiceAt: ISODate | null
   /** To'xtatilgan bo'lsa — sababi */
   suspendReason: string
+  /**
+   * Shu klinikada O'CHIRILGAN bo'limlar.
+   *
+   * O'chirilganlari saqlanadi, yoqilganlari emas: bo'sh ro'yxat
+   * "hammasi yoqilgan" degani va keyin qo'shiladigan yangi bo'lim
+   * barcha klinikada o'z-o'zidan ishlaydi.
+   */
+  disabledModules: ClinicModule[]
   usage: TenantUsage
   /** Oxirgi marta tizimga kirilgan payt */
   lastActiveAt: ISODateTime | null
   createdAt: ISODateTime
 }
+
+/**
+ * Klinikada yoqib-o’chiriladigan bo’limlar.
+ * Serverdagi `src/common/modules.ts` bilan bir xil bo’lishi shart.
+ */
+export const CLINIC_MODULES = [
+  'ward',
+  'chat',
+  'feedback',
+  'analytics',
+  'attendance',
+  'cashcontrol',
+] as const
+
+export type ClinicModule = (typeof CLINIC_MODULES)[number]
+
+/** Yangi klinika qo’shishda tanlanadi — faqat boshlang’ich to’plam uchun */
+export const CLINIC_KINDS = ['general', 'dental', 'eye', 'lab'] as const
+export type ClinicKind = (typeof CLINIC_KINDS)[number]
 
 export type InvoiceStatus = 'paid' | 'pending' | 'overdue'
 
@@ -267,6 +294,12 @@ export interface TenantCreateInput {
   ownerPhone: string
   /** Berilmasa server kuchli parol yasaydi va bir marta qaytaradi */
   ownerPassword?: string
+  /**
+   * Klinika turi — turga mos bo'lmagan bo'limlar darrov o'chiriladi
+   * (stomatologiyada statsionar yo'q). Tur SAQLANMAYDI: u qaror emas,
+   * qulaylik — keyin har bir bo'lim alohida yoqib-o'chiriladi.
+   */
+  kind?: ClinicKind
 }
 
 /** Klinika ma'lumotlarini tahrirlash. Tarif va egasi alohida. */

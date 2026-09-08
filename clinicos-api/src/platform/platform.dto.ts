@@ -16,6 +16,7 @@ import {
   ValidateIf,
 } from 'class-validator'
 
+import { CLINIC_KINDS, CLINIC_MODULES, type ClinicKind } from '../common/modules'
 import { PageQueryDto } from '../common/pagination'
 
 export const TENANT_STATUSES = [
@@ -245,6 +246,25 @@ export class TenantCreateDto {
   */
   @IsOptional() @IsString() @MinLength(8, { message: 'Parol kamida 8 belgi' }) @MaxLength(200)
   ownerPassword?: string
+
+  /*
+    KLINIKA TURI — faqat boshlang'ich to'plam uchun.
+
+    Turga qarab keraksiz bo'limlar darrov o'chiriladi
+    (stomatologiyada statsionar yo'q). Turning o'zi SAQLANMAYDI:
+    u qaror emas, qulaylik. Platforma egasi keyin har bir bo'limni
+    alohida yoqib-o'chira oladi va tur bilan bog'lanib qolmaydi.
+  */
+  @IsOptional()
+  @IsIn([...CLINIC_KINDS])
+  kind: ClinicKind = 'general'
+}
+
+/** Klinikada qaysi bo'limlar o'chirilgani */
+export class TenantModulesDto {
+  @IsArray()
+  @IsIn([...CLINIC_MODULES], { each: true })
+  disabledModules!: string[]
 }
 
 /**

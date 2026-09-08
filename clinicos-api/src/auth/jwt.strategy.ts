@@ -58,6 +58,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         clinic: {
           select: {
             isActive: true,
+            disabledModules: true,
             subscription: { select: { status: true } },
           },
         },
@@ -122,6 +123,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     /*
+      Modullar KIRILGAN klinikaniki bo'lishi kerak, platforma
+      egasinikini emas: u boshqa klinikaga kirganda o'sha
+      klinikaning tuzilishini ko'rishi kerak.
+    */
+    const disabledModules = impersonationId
+      ? ((
+          await this.db.acrossAllClinics().clinic.findUnique({
+            where: { id: clinicId },
+            select: { disabledModules: true },
+          })
+        )?.disabledModules ?? [])
+      : user.clinic.disabledModules
+
+    /*
       Klinika ichida platforma egasining ruxsatlari ISHLAMAYDI.
       Uning o'z ro'yxati `platform.*` dan iborat va u klinika
       endpointlariga to'g'ri kelmaydi — kirgan odam hamma joyda
@@ -138,6 +153,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       role: user.role,
       doctorId: user.doctorId,
       permissions,
+      disabledModules,
       impersonationId,
     }
   }

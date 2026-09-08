@@ -21,6 +21,14 @@ model Clinic {
   timezone    String   @default("Asia/Tashkent")
   isActive    Boolean  @default(true) @map("is_active")
 
+  /// Shu klinikada O'CHIRILGAN modullar (`src/common/modules.ts`).
+  ///
+  /// O'chirilganlari saqlanadi, yoqilganlari emas: bo'sh ro'yxat
+  /// "hammasi yoqilgan" degani. Shunda mavjud klinikalar va
+  /// keyinchalik qo'shiladigan yangi modullar o'z-o'zidan ishlaydi.
+  /// Aks holda har yangi modul barcha klinikada o'chiq bo'lib qolardi.
+  disabledModules String[] @map("disabled_modules")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

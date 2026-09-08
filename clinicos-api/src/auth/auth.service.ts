@@ -7,6 +7,7 @@ import { checkClinicAccess } from '../common/clinic-access'
 import { AuditService } from '../common/audit.service'
 import { toApiClinic } from '../clinic/clinic.service'
 import { RequestContext } from '../common/request-context'
+import { isPermissionBlocked } from '../common/modules'
 import { IMPERSONATION_PERMISSIONS, resolvePermissions } from '../common/permissions'
 import { PrismaService } from '../prisma/prisma.service'
 
@@ -242,9 +243,23 @@ export class AuthService {
         mustChangePassword: user.mustChangePassword,
       },
       clinic: toApiClinic(clinicRow),
-      permissions: impersonation
+      /*
+        O'CHIRILGAN MODULNING RUXSATLARI SESSIYAGA TUSHMAYDI.
+
+        Frontend `permissions` ro'yxatiga qarab menyuni quradi va
+        tugmalarni ko'rsatadi. Modulni shu yerda kesib tashlasak,
+        butun interfeys o'z-o'zidan bo'ysunadi — har bir sahifada
+        alohida "bu modul yoqilganmi" degan shart yozish shart emas
+        va yangi sahifada u unutilmaydi.
+
+        Bu XAVFSIZLIK EMAS, ko'rinish. Haqiqiy to'siq —
+        `PermissionsGuard`, u har so'rovda modulni qaytadan
+        tekshiradi.
+      */
+      permissions: (impersonation
         ? [...IMPERSONATION_PERMISSIONS]
-        : resolvePermissions(user.role, user.extraPermissions),
+        : resolvePermissions(user.role, user.extraPermissions)
+      ).filter((permission) => !isPermissionBlocked(permission, clinicRow.disabledModules)),
     }
   }
 }

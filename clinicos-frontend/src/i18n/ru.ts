@@ -936,6 +936,21 @@ export const dict: Dict = {
     'Например: договор закончился, клиент перешёл к другому сервису',
   'platform.archiveWarning':
     'Данные НЕ УДАЛЯЮТСЯ: пациенты, визиты, платежи и журнал аудита остаются. Сотрудники клиники не смогут войти. Позже можно вернуть.',
+  'platform.modules': 'Разделы',
+  'platform.modulesHint':
+    'Какие разделы работают в клинике. Отключённый не виден в её меню — данные при этом остаются и вернутся при включении.',
+  'platform.module.ward': 'Стационар',
+  'platform.module.chat': 'Внутренний чат',
+  'platform.module.feedback': 'Отзывы пациентов',
+  'platform.module.analytics': 'Аналитика',
+  'platform.module.attendance': 'Посещаемость и премии',
+  'platform.module.cashcontrol': 'Контроль кассы',
+  'platform.kind': 'Тип клиники',
+  'platform.kindHint': 'Ненужные для этого типа разделы отключатся сразу. Потом каждый можно изменить отдельно.',
+  'platform.kind.general': 'Общая практика',
+  'platform.kind.dental': 'Стоматология',
+  'platform.kind.eye': 'Глазная клиника',
+  'platform.kind.lab': 'Лаборатория',
   'platform.restore': 'Восстановить',
   'platform.restoreTitle': 'Восстановление клиники',
   'platform.restoreWarning':

@@ -9,6 +9,7 @@ import * as argon2 from 'argon2'
 
 import { AuthService } from '../auth/auth.service'
 import { toApi, toApiDate, toApiDateTime, toDb } from '../common/api-enum'
+import { DISABLED_BY_KIND } from '../common/modules'
 import { paginated } from '../common/pagination'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
@@ -22,6 +23,7 @@ import {
   PlatformPatientQueryDto,
   PlatformSearchDto,
   SuspendDto,
+  TenantModulesDto,
   TenantCreateDto,
   TenantQueryDto,
   TenantUpdateDto,
@@ -177,6 +179,11 @@ export class PlatformService {
           name: dto.name.trim(),
           phone: dto.phone.trim(),
           address: dto.address.trim(),
+          /*
+            Tur bo'yicha keraksiz bo'limlar darrov o'chiriladi.
+            Turning o'zi saqlanmaydi — u faqat boshlang'ich to'plam.
+          */
+          disabledModules: DISABLED_BY_KIND[dto.kind] ?? [],
           /* Dushanbadan shanbagacha 09:00-18:00. Egasi keyin o'zgartiradi. */
           workingHours: {
             create: [1, 2, 3, 4, 5, 6].map((weekday) => ({
@@ -363,6 +370,35 @@ export class PlatformService {
     const row = await this.db.subscription.update({
       where: { id: sub.id },
       data: { status: 'CANCELLED', suspendReason: dto.reason.trim() },
+      include: { clinic: true, plan: true },
+    })
+    const usage = await this.usageFor([row.clinicId])
+    return toApiTenant(row, usage[row.clinicId])
+  }
+
+  /**
+   * Klinikada qaysi bo'limlar ishlashini belgilash.
+   *
+   * O'chirilganlari saqlanadi, yoqilganlari emas: bo'sh ro'yxat
+   * "hammasi yoqilgan" degani, ya'ni keyin qo'shiladigan yangi
+   * bo'lim barcha klinikada o'z-o'zidan ishlaydi.
+   *
+   * O'chirish MA'LUMOTNI O'CHIRMAYDI: statsionar yopilsa, yotgan
+   * bemorlar yozuvi joyida qoladi va bo'lim qayta yoqilganda
+   * hammasi o'z o'rnida chiqadi.
+   */
+  async setModules(id: string, dto: TenantModulesDto) {
+    const clinic = await this.db.clinic.findUnique({ where: { id } })
+    if (!clinic) throw new NotFoundException('Klinika topilmadi')
+
+    await this.db.clinic.update({
+      where: { id },
+      data: { disabledModules: dto.disabledModules },
+    })
+
+    const sub = await this.requireSubscription(id)
+    const row = await this.db.subscription.findUniqueOrThrow({
+      where: { id: sub.id },
       include: { clinic: true, plan: true },
     })
     const usage = await this.usageFor([row.clinicId])
@@ -1197,7 +1233,7 @@ function toApiTenant(
     city: string
     lastActiveAt: Date | null
     createdAt: Date
-    clinic: { name: string; logoUrl: string | null; phone: string }
+    clinic: { name: string; logoUrl: string | null; phone: string; disabledModules: string[] }
     plan: { name: string }
   },
   usage: { doctors: number; staff: number; patients: number; users: number; appointmentsThisMonth: number },

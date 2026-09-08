@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 
+import { isPermissionBlocked } from '../modules'
 import { RequestContext } from '../request-context'
 
 export const PERMISSION_KEY = 'required-permission'
@@ -39,6 +40,23 @@ export class PermissionsGuard implements CanActivate {
     if (!required) return true
 
     const user = this.ctx.require()
+
+    /*
+      IKKINCHI DARVOZA: modul shu klinikada o'chirilganmi.
+
+      Ruxsatdan alohida tekshiriladi, chunki bu boshqa savol:
+      ruxsat "bu ODAM qila oladimi", modul esa "bu KLINIKADA
+      umuman bormi". Egasida `ward.manage` bo'lishi mumkin, lekin
+      stomatologiyada statsionar yo'q.
+
+      Tekshiruv shu yerda, chunki har bir marshrutga alohida
+      belgi qo'yish kerak bo'lardi va yangi marshrutda unutilardi.
+      Ruxsat esa allaqachon e'lon qilingan.
+    */
+    if (isPermissionBlocked(required, user.disabledModules)) {
+      throw new ForbiddenException('Bu bo‘lim klinikangizda yoqilmagan')
+    }
+
     if (user.permissions.includes(required)) return true
 
     /*

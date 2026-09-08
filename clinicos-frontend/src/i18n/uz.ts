@@ -973,6 +973,21 @@ export const dict: Dict = {
   'platform.archivePlaceholder': 'Masalan: shartnoma tugadi, mijoz boshqa xizmatga o’tdi',
   'platform.archiveWarning':
     'Ma’lumot O’CHIRILMAYDI: bemorlar, tashriflar, to’lovlar va audit jurnali joyida qoladi. Klinika xodimlari tizimga kira olmaydi. Keyin qaytarish mumkin.',
+  'platform.modules': 'Bo’limlar',
+  'platform.modulesHint':
+    'Klinikada qaysi bo’limlar ishlashi. O’chirilgani menyusida ko’rinmaydi — ma’lumot esa joyida qoladi va qayta yoqilsa qaytadi.',
+  'platform.module.ward': 'Statsionar',
+  'platform.module.chat': 'Ichki chat',
+  'platform.module.feedback': 'Bemor fikri',
+  'platform.module.analytics': 'Tahlil',
+  'platform.module.attendance': 'Davomat va rag’bat',
+  'platform.module.cashcontrol': 'Kassa nazorati',
+  'platform.kind': 'Klinika turi',
+  'platform.kindHint': 'Turga mos kelmaydigan bo’limlar darrov o’chiriladi. Keyin har birini alohida o’zgartirish mumkin.',
+  'platform.kind.general': 'Umumiy davolash',
+  'platform.kind.dental': 'Stomatologiya',
+  'platform.kind.eye': 'Ko’z klinikasi',
+  'platform.kind.lab': 'Laboratoriya',
   'platform.restore': 'Tiklash',
   'platform.restoreTitle': 'Klinikani tiklash',
   'platform.restoreWarning':

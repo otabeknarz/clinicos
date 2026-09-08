@@ -30,7 +30,14 @@ import { useAsync, useDebounced } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
 import { useToast } from '@/store/toast-context'
-import type { OwnerPasswordReset, Tenant, TenantCreated, TenantStatus } from '@/types/models'
+import type {
+  ClinicKind,
+  OwnerPasswordReset,
+  Tenant,
+  TenantCreated,
+  TenantStatus,
+} from '@/types/models'
+import { CLINIC_KINDS } from '@/types/models'
 import { UNLIMITED } from '@/types/models'
 
 const STATUSES: (TenantStatus | 'all')[] = [
@@ -606,6 +613,8 @@ function NewClinicModal({
   const [address, setAddress] = useState('')
   const [city, setCity] = useState('')
   const [planId, setPlanId] = useState('')
+  /* Tur saqlanmaydi — u faqat bo’limlarning boshlang’ich to’plamini beradi */
+  const [kind, setKind] = useState<ClinicKind>('general')
   const [ownerName, setOwnerName] = useState('')
   const [ownerEmail, setOwnerEmail] = useState('')
   const [ownerPhone, setOwnerPhone] = useState('+998 ')
@@ -626,6 +635,7 @@ function NewClinicModal({
     setAddress('')
     setCity('')
     setPlanId('')
+    setKind('general')
     setOwnerName('')
     setOwnerEmail('')
     setOwnerPhone('+998 ')
@@ -642,6 +652,7 @@ function NewClinicModal({
         address: address.trim(),
         city: city.trim(),
         planId: chosenPlan,
+        kind,
         ownerName: ownerName.trim(),
         ownerEmail: ownerEmail.trim().toLowerCase(),
         ownerPhone: phoneToE164(ownerPhone),
@@ -747,6 +758,22 @@ function NewClinicModal({
           value={chosenPlan}
           onChange={(e) => setPlanId(e.target.value)}
           options={plans.map((p) => ({ value: p.id, label: p.name }))}
+        />
+
+        {/*
+          Klinika turi — bo'limlarning boshlang'ich to'plami.
+          Tur saqlanmaydi: keyin har bir bo'lim klinika kartasida
+          alohida yoqib-o'chiriladi.
+        */}
+        <Select
+          label={t('platform.kind')}
+          hint={t('platform.kindHint')}
+          value={kind}
+          onChange={(e) => setKind(e.target.value as ClinicKind)}
+          options={CLINIC_KINDS.map((value) => ({
+            value,
+            label: t(`platform.kind.${value}`),
+          }))}
         />
 
         <p className="pt-2 text-footnote font-medium text-label-secondary">
