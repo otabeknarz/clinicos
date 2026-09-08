@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { PhoneInput, SearchInput, Select, TextArea, TextInput } from '@/components/ui/Form'
-import { Modal } from '@/components/ui/Modal'
+import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { EmptyState, ErrorState } from '@/components/ui/States'
 import { DataTable, Pagination } from '@/components/ui/Table'
 import { FilterPills } from '@/components/ui/Tabs'
@@ -74,6 +74,7 @@ export function PlatformClinicsPage() {
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Tenant | null>(null)
   const [archiving, setArchiving] = useState<Tenant | null>(null)
+  const [restoring, setRestoring] = useState<Tenant | null>(null)
   const [resetting, setResetting] = useState<Tenant | null>(null)
 
   function setFilter(key: string, value: string) {
@@ -185,7 +186,24 @@ export function PlatformClinicsPage() {
             <LogIn size={15} />
           </IconButton>
 
-          {row.status === 'suspended' ? (
+          {/*
+            O'chirilgan klinikani TIKLASH. Arxivlash ogohlantirishida
+            "keyin qaytarish mumkin" deyilgan, lekin tugmasi yo'q edi:
+            `activate` faqat `suspended` da chiqardi va arxivlangan
+            klinika boshi berk ko'chaga tushib qolardi.
+          */}
+          {row.status === 'cancelled' ? (
+            <IconButton
+              label={t('platform.restore')}
+              className="hover:text-ok"
+              onClick={(e) => {
+                e.stopPropagation()
+                setRestoring(row)
+              }}
+            >
+              <Play size={15} />
+            </IconButton>
+          ) : row.status === 'suspended' ? (
             <IconButton
               label={t('platform.activate')}
               className="hover:text-ok"
@@ -201,7 +219,6 @@ export function PlatformClinicsPage() {
             <IconButton
               label={t('platform.suspend')}
               className="hover:text-bad"
-              disabled={row.status === 'cancelled'}
               onClick={(e) => {
                 e.stopPropagation()
                 setSuspending(row)
@@ -326,6 +343,25 @@ export function PlatformClinicsPage() {
         tenant={archiving}
         onClose={() => setArchiving(null)}
         onDone={() => setVersion((v) => v + 1)}
+      />
+
+      {/*
+        Tiklash — tasdiq bilan: ma'lumot o'zgarmaydi, lekin klinika
+        xodimlari yana tizimga kira boshlaydi.
+      */}
+      <ConfirmDialog
+        open={Boolean(restoring)}
+        danger={false}
+        title={t('platform.restoreTitle')}
+        description={t('platform.restoreWarning')}
+        confirmLabel={t('platform.restore')}
+        onClose={() => setRestoring(null)}
+        onConfirm={async () => {
+          if (!restoring) return
+          await activateTenant(restoring.id)
+          setRestoring(null)
+          setVersion((v) => v + 1)
+        }}
       />
 
       <ResetOwnerModal tenant={resetting} onClose={() => setResetting(null)} />

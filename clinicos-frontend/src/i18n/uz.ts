@@ -973,6 +973,10 @@ export const dict: Dict = {
   'platform.archivePlaceholder': 'Masalan: shartnoma tugadi, mijoz boshqa xizmatga o’tdi',
   'platform.archiveWarning':
     'Ma’lumot O’CHIRILMAYDI: bemorlar, tashriflar, to’lovlar va audit jurnali joyida qoladi. Klinika xodimlari tizimga kira olmaydi. Keyin qaytarish mumkin.',
+  'platform.restore': 'Tiklash',
+  'platform.restoreTitle': 'Klinikani tiklash',
+  'platform.restoreWarning':
+    'Klinika yana ishlay boshlaydi va xodimlari tizimga kira oladi. Ma’lumot allaqachon joyida edi — arxivlashda hech narsa o’chirilmagan.',
   'platform.resetOwner': 'Egasining parolini tiklash',
   'platform.resetOwnerTitle': 'Klinika egasining paroli',
   'platform.resetOwnerWarning':

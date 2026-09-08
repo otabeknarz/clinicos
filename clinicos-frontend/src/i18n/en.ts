@@ -932,6 +932,10 @@ export const dict: Dict = {
   'platform.archivePlaceholder': 'For example: contract ended, moved to another service',
   'platform.archiveWarning':
     'Nothing is deleted: patients, visits, payments and the audit log stay. Clinic staff cannot sign in. It can be restored later.',
+  'platform.restore': 'Restore',
+  'platform.restoreTitle': 'Restore the clinic',
+  'platform.restoreWarning':
+    'The clinic starts working again and its staff can sign in. The data was there all along — archiving deleted nothing.',
   'platform.resetOwner': 'Reset the owner password',
   'platform.resetOwnerTitle': 'Clinic owner password',
   'platform.resetOwnerWarning':

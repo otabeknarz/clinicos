@@ -31,7 +31,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Select, TextArea } from '@/components/ui/Form'
-import { Modal } from '@/components/ui/Modal'
+import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { ProgressBar } from '@/components/ui/Progress'
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/ui/States'
 import { INVOICE_TONE, TENANT_TONE } from './tone'
@@ -76,6 +76,7 @@ export function PlatformClinicDetailPage() {
   const [suspending, setSuspending] = useState(false)
   const [entering, setEntering] = useState(false)
   const [changingPlan, setChangingPlan] = useState(false)
+  const [restoring, setRestoring] = useState(false)
 
   if (error) return <ErrorState onRetry={reload} />
   if (loading && !data) return <CardSkeleton className="min-h-64" />
@@ -125,7 +126,22 @@ export function PlatformClinicDetailPage() {
               {t('platform.enter')}
             </Button>
 
-            {data.status === 'suspended' ? (
+            {/*
+              O'CHIRILGAN KLINIKANI TIKLASH.
+
+              Arxivlash ogohlantirishida "keyin qaytarish mumkin" deb
+              yozilgan, lekin interfeysda buni qiladigan tugma yo'q edi:
+              `activate` faqat `suspended` holatida chiqardi. Ma'lumotni
+              saqlab qo'yishning butun ma'nosi qaytara olishda.
+            */}
+            {data.status === 'cancelled' ? (
+              <Button
+                icon={<Play size={16} />}
+                onClick={() => setRestoring(true)}
+              >
+                {t('platform.restore')}
+              </Button>
+            ) : data.status === 'suspended' ? (
               <Button
                 icon={<Play size={16} />}
                 onClick={async () => {
@@ -139,7 +155,6 @@ export function PlatformClinicDetailPage() {
               <Button
                 variant="danger"
                 icon={<Pause size={16} />}
-                disabled={data.status === 'cancelled'}
                 onClick={() => setSuspending(true)}
               >
                 {t('platform.suspend')}
@@ -188,6 +203,25 @@ export function PlatformClinicDetailPage() {
       />
 
       <EnterModal tenant={entering ? data : null} onClose={() => setEntering(false)} />
+
+      {/*
+        Tiklash — tasdiq bilan. Ma’lumot o’zgarmaydi, lekin klinika
+        xodimlari yana tizimga kira boshlaydi, ya’ni bu bexosdan
+        bosiladigan tugma bo’lmasligi kerak.
+      */}
+      <ConfirmDialog
+        open={restoring}
+        danger={false}
+        title={t('platform.restoreTitle')}
+        description={t('platform.restoreWarning')}
+        confirmLabel={t('platform.restore')}
+        onClose={() => setRestoring(false)}
+        onConfirm={async () => {
+          await activateTenant(data.id)
+          setRestoring(false)
+          setVersion((v) => v + 1)
+        }}
+      />
 
       <PlanModal
         tenant={changingPlan ? data : null}
