@@ -14,7 +14,7 @@ import { ApiError, delay, request, USE_MOCK } from './client'
 import { getDb } from '@/mock/db'
 import { MAIN_CLINIC_ID } from '@/mock/seed'
 import { resolvePermissions } from '@/lib/permissions'
-import type { ID, Role, Session, User } from '@/types/models'
+import type { ClinicModule, ID, Permission, Role, Session, User } from '@/types/models'
 
 export interface LoginInput {
   email: string
@@ -54,7 +54,7 @@ export async function login(input: LoginInput): Promise<Session> {
   const session: Session = {
     user,
     clinic,
-    permissions: resolvePermissions(user.role, user.extraPermissions),
+    permissions: allowedPermissions(user.role, user.extraPermissions, user.clinicId),
     token: null,
   }
 
@@ -93,7 +93,7 @@ export async function me(userId?: string): Promise<Session | null> {
     {
       user,
       clinic,
-      permissions: resolvePermissions(user.role, user.extraPermissions),
+      permissions: allowedPermissions(user.role, user.extraPermissions, user.clinicId),
       token: null,
     },
     60,
@@ -176,4 +176,47 @@ export async function changePassword(
 export async function listUsers(): Promise<User[]> {
   if (!USE_MOCK) return request<User[]>('GET', '/users')
   return delay(getDb().users.all(MAIN_CLINIC_ID))
+}
+
+/**
+ * Rolning ruxsatlaridan o'chirilgan bo'limlarnikini olib tashlaydi.
+ *
+ * Serverda `buildSession` xuddi shu ishni qiladi: o'chirilgan
+ * bo'limning ruxsatlari sessiyaga umuman tushmaydi va menyu ham,
+ * tugmalar ham o'z-o'zidan bo'ysunadi. Demo rejimda takrorlanmasa,
+ * bo'lim o'chirilgani faqat haqiqiy backendda ko'rinardi.
+ */
+function allowedPermissions(
+  role: Role,
+  extra: Permission[] | undefined,
+  clinicId: ID,
+): Permission[] {
+  const disabled = getDb()
+    .tenants.allAcrossTenants()
+    .find((tenant) => tenant.id === clinicId)?.disabledModules
+
+  const base = resolvePermissions(role, extra)
+  if (!disabled || disabled.length === 0) return base
+
+  return base.filter((permission) => {
+    const module = MODULE_BY_PERMISSION[permission]
+    return module === undefined || !disabled.includes(module)
+  })
+}
+
+/**
+ * Ruxsat qaysi bo'limga tegishli.
+ * Serverdagi `src/common/modules.ts` bilan bir xil bo'lishi shart.
+ */
+const MODULE_BY_PERMISSION: Partial<Record<Permission, ClinicModule>> = {
+  'ward.view': 'ward',
+  'ward.manage': 'ward',
+  'chat.use': 'chat',
+  'feedback.view': 'feedback',
+  'feedback.manage': 'feedback',
+  'analytics.view': 'analytics',
+  'attendance.view': 'attendance',
+  'attendance.manage': 'attendance',
+  'bonus.manage': 'attendance',
+  'cashcontrol.view': 'cashcontrol',
 }
