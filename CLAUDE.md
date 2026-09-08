@@ -33,7 +33,7 @@ npm run dev              # nest start --watch
 
 | Command | Purpose |
 |---|---|
-| `npm run check` | typecheck → check:permissions → check:endpoints → build. Run before shipping. |
+| `npm run check` | typecheck → check:permissions → check:endpoints → check:dto → build. Run before shipping. |
 | `npm run test:isolation` | **The most important test.** Cross-tenant leak check. Needs a seeded DB. |
 | `npm run test:crud` | Write-path regression: every PATCH is sent with one field and the rest must survive. Needs a running, seeded server. |
 | `npm run check:dto` | Create/update DTO pairs must not drift. Static. |
@@ -42,6 +42,9 @@ npm run dev              # nest start --watch
 
 There is no unit-test framework — verification is these scripts. `test:isolation` and `smoke`
 both require a running/seeded database; the other checks are static.
+
+The two generator scripts (`gen:tenant-models` here, `docs:api` in the frontend) are Python and
+call `python3` — on Windows that means a `python3` on PATH, not just `py`.
 
 ### clinicos-frontend
 
@@ -57,6 +60,9 @@ npm install && npm run dev   # works with NO backend (demo mode)
 To point at a real backend: put `VITE_API_URL=http://localhost:3000` in `.env`. That single
 variable flips `USE_MOCK` in `src/api/client.ts` and every API function switches from generated
 demo data to real HTTP. The backend's `CORS_ORIGIN` must list whatever port Vite actually picked.
+
+`.claude/launch.json` starts this dev server on 5173 for the in-app browser preview — it is the
+frontend only, the API is not part of it.
 
 Demo accounts (password `demo1234` everywhere): `admin@clinicos.uz` (platform superadmin),
 `owner@shifomed.uz`, `reception@shifomed.uz`, `aziz.karimov@shifomed.uz`. The same three
@@ -116,6 +122,19 @@ log, which is created before entry. Login is audited separately (`recordLogin`),
 tenant filter, because no request context exists yet on a `@Public()` route; that one never blocks
 the login.
 
+**Deployment is Coolify** (`deploy/README.md` is the step-by-step). One project, four resources
+on one server: `clinicos-api` and `clinicos-frontend` both build from this repo with build pack
+`Dockerfile` and base directory `/clinicos-api` / `/clinicos-frontend`, plus `clinicos-postgres`
+and `clinicos-s3`. Two things that are easy to undo by accident:
+
+- `docker-entrypoint.sh` runs `prisma migrate deploy` on **every** boot — never `migrate dev`,
+  which is a development command and will recreate the database. Seeding and the first records
+  are *not* in the entrypoint; they are a one-off `npm run bootstrap` by hand.
+- The API's env vars are **runtime**, not build-time. Made build-time, `JWT_SECRET` would be
+  baked into the image history.
+
+A second, Coolify-free path (nginx + systemd) is kept in `deploy/nginx/` and `deploy/systemd/`.
+
 **MinIO is deployed from `deploy/minio/docker-compose.yaml`, not a Dockerfile** — and it must
 stay that way. A Dockerfile `VOLUME /data` creates an *anonymous* volume per container, so every
 redeploy started with empty storage and silently lost every uploaded file (this happened once).
@@ -163,6 +182,13 @@ never matches a null `doctorId`, and percent-based pay computes against zero rev
 `Staff` by `userId` and 404 without it — a brand-new clinic had two dead pages on the owner's
 first login. Migration `20260906180000_egasiga_xodim_yozuvi` backfills.
 
+**The ward (`src/ward/`) is the one module whose money has no catalog service.** `Room` / `Bed` /
+`Admission`: a bed charge is the room's `dailyRate` × days lying in, so there is no `Service` row
+to attribute it to and a naive per-service revenue report would drop a whole wing of the clinic.
+Both reports that break revenue down by service therefore fold ward payments under the single
+`WARD_KEY` / `WARD_LABEL` pair from `src/common/ward-revenue.ts` — it lives in `common/` precisely
+because two callers must agree. Day counting here is the timezone trap below.
+
 **Suspension is enforced in two places** (`common/clinic-access.ts`): at login and in
 `jwt.strategy.ts` on every request, so an already-issued 12h token stops working immediately.
 `PAST_DUE` deliberately does not block. Superadmins are exempt — their "clinic" is the platform
@@ -203,6 +229,12 @@ browser console must be re-checked server-side.
 loading/error/data triple and drops stale responses. Pages are lazy-loaded in `App.tsx`; routes
 are permission-gated there and the sidebar is built from `src/components/layout/navigation.ts`.
 
+**Every context in `src/store/` is two files on purpose** — `AuthContext.tsx` (the provider
+component) and `auth-context.ts` (the `createContext` call, the hook and the value type); same for
+theme and toast. React Fast Refresh requires a file to export *either* components *or* plain
+values; mixed, the context object is recreated on edit and the app throws "useAuth must be used
+inside AuthProvider". Keep new contexts split the same way.
+
 **i18n**: Uzbek ships in the bundle, Russian and English load on demand (`src/i18n/`). Formatting
 (`src/lib/format.ts`) follows the selected language.
 
@@ -212,10 +244,13 @@ Path alias `@/` → `src/`, configured in both `vite.config.ts` and `tsconfig.ap
 
 - **Day boundaries are the server's local midnight.** `startOfDay`/`endOfDay` use
   `setHours(0,0,0,0)`, so the reception dashboard's "today", daily attendance, shift closure,
-  cash control and ward day counting all follow the *container's* timezone. The API container
-  therefore sets `TZ=Asia/Tashkent`; without it (the default UTC) the day rolls over at 05:00
-  local and everything between midnight and 05:00 lands on the previous day. There is no
-  per-clinic timezone column — the product is single-country by design. Tests must build dates
+  cash control and ward day counting all follow the *container's* timezone. `TZ=Asia/Tashkent`
+  is **not set anywhere in the repo** — not in the Dockerfile, not in `docker-compose.yml`, not
+  in `.env.example` — so it has to be set in the deployment environment by hand; a container
+  built from this repo runs UTC, the day rolls over at 05:00 local, and everything between
+  midnight and 05:00 lands on the previous day. A `Clinic.timezone` column *does* exist
+  (`schema.prisma`, default `Asia/Tashkent`, returned by `clinic.service.ts`) but nothing reads
+  it for date math — the product is single-country by design. Tests must build dates
   in local time too: `new Date().toISOString().slice(0,10)` is UTC and disagrees with the server
   after 19:00 local, which made `test:crud` count 2 ward days instead of 3.
 - **A page can be broken while `smoke` passes.** `smoke` only flags `>= 500`, but the frontend
@@ -247,7 +282,7 @@ Path alias `@/` → `src/`, configured in both `vite.config.ts` and `tsconfig.ap
 
 | File | Contents |
 |---|---|
-| `clinicos-frontend/docs/API.md` | The endpoint contract (~134 endpoints), generated |
+| `clinicos-frontend/docs/API.md` | The endpoint contract, generated (its own header carries the current count) |
 | `clinicos-frontend/docs/DATABASE.md` | Tables, relations, and why each decision was made |
 | `clinicos-frontend/src/types/models.ts` | Request/response shapes — the frontend↔backend contract |
 | `clinicos-api/src/common/permissions.ts` | Roles and permissions (authoritative) |
