@@ -44,6 +44,7 @@ export type Permission =
   | 'payments.view'
   | 'payments.create'
   | 'payments.refund'
+  | 'debts.waive'
   | 'revenue.view'
   | 'analytics.view'
   | 'visits.view'
@@ -101,6 +102,17 @@ export const OWNER_PERMISSIONS: readonly Permission[] = [
     bo'lib qo'shiladi, eskisi joyida qoladi.
   */
   'payments.refund',
+  /*
+    Qarzni kechirish ham FAQAT egasida.
+
+    Registratorda ATAYLAB yo'q: pulni oladigan odam qarzni ham yopa
+    olsa, bemordan pulni olib, tizimda "kechirdim" deb yozib qo'yishi
+    mumkin bo'lardi — qarz ham yo'q, pul ham yo'q.
+
+    Qarzning o'zi o'chmaydi: kechirish alohida yozuv bo'lib qo'shiladi,
+    kim va qachon qilgani ko'rinadi.
+  */
+  'debts.waive',
   'visits.view',
   'ward.view',
   'ward.manage',

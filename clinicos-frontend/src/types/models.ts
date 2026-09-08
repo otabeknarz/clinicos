@@ -61,6 +61,7 @@ export type Permission =
   | 'payments.view'
   | 'payments.create'
   | 'payments.refund'
+  | 'debts.waive'
   | 'revenue.view'
   | 'analytics.view'
   | 'visits.view'
@@ -2316,11 +2317,18 @@ export interface ReceptionSummary {
     /** Tasdiqlanmagan qabullar — qo'ng'iroq qilish kerak */
     unconfirmed: number
     /**
-     * Yakunlangan, lekin to'lanmagan.
+     * Yakunlangan, lekin to'lanmagan — BUGUNGI kun bilan cheklanmagan.
      *
-     * `items` — qabullarning o'zi. Bu ro'yxatsiz "To'lov olish"
-     * tugmasi bo'sh forma ochar, yozilgan to'lov qabulga
-     * bog'lanmas va ogohlantirish o'chmasdi.
+     * Qarz kechagi ham, o'tgan haftadagi ham bo'lishi mumkin. Panelning
+     * qolgan hamma raqami bugungi, bu esa yo'q: ilgari shu ro'yxat ham
+     * bugungi edi va kechagi qarz bildirishnomada turib, panelda
+     * ko'rinmasdi.
+     *
+     * `count` — jami nechta, `items` — faqat birinchi beshtasi.
+     * Qolganini "Hammasi" havolasi Qarzdorlar sahifasida ko'rsatadi.
+     *
+     * `items` bo'lmasa "To'lov olish" tugmasi bo'sh forma ochar,
+     * yozilgan to'lov qabulga bog'lanmas va ogohlantirish o'chmasdi.
      */
     unpaid: { count: number; amount: UZS; items: ReceptionQueueItem[] }
     /**
@@ -2389,4 +2397,69 @@ export interface PricePreview {
   /** Keyingi pog'onadagi chegirma */
   nextTierPct: number | null
   paymentTiming: PaymentTiming
+}
+
+/* ------------------------------------------------------------------ */
+/* Qarzdorlik                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Qarz SAQLANMAYDI — hisoblanadi: xizmat narxi minus to'langan summa.
+ *
+ * Balans ustuni bo'lsa, u to'lov yozuvlari bilan ertami-kechmi
+ * bir-biriga to'g'ri kelmay qoladi va qaysi biri haqiqat ekani
+ * noma'lum bo'lardi.
+ */
+export interface VisitDebt {
+  appointmentId: ID
+  patientId: ID
+  patientName: string
+  patientPhone: string
+  /** To'lov formasini to'ldirilgan holda ochish uchun */
+  doctorId: ID
+  doctorName: string
+  serviceId: ID
+  serviceName: string
+  completedAt: ISODateTime
+  /** Ko'rik yakunlanganidan beri necha kun */
+  daysOverdue: number
+  total: UZS
+  paid: UZS
+  remaining: UZS
+}
+
+export interface WardDebt {
+  admissionId: ID
+  patientId: ID
+  patientName: string
+  patientPhone: string
+  roomNumber: string
+  admittedAt: ISODateTime
+  daysOverdue: number
+  total: UZS
+  paid: UZS
+  remaining: UZS
+}
+
+export interface DebtList {
+  visits: VisitDebt[]
+  ward: WardDebt[]
+  totals: { visits: UZS; ward: UZS; all: UZS }
+}
+
+/**
+ * Kechirilgan qarz.
+ *
+ * Qarzning o'zi o'chmaydi va `paymentStatus` ham o'zgarmaydi — u
+ * haqiqatan to'lanmagan. Faqat ro'yxatlar va bildirishnoma
+ * kechirilganini chiqarmaydi.
+ */
+export interface DebtWaiver {
+  id: ID
+  clinicId: ID
+  appointmentId: ID | null
+  admissionId: ID | null
+  note: string
+  createdBy: ID
+  createdAt: ISODateTime
 }

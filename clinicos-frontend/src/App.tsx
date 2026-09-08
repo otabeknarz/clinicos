@@ -57,6 +57,9 @@ const PatientsPage = lazy(() =>
 const PaymentsPage = lazy(() =>
   import('@/pages/Payments').then((m) => ({ default: m.PaymentsPage })),
 )
+const DebtsPage = lazy(() =>
+  import('@/pages/Debts').then((m) => ({ default: m.DebtsPage })),
+)
 const ReceptionPage = lazy(() =>
   import('@/pages/Reception').then((m) => ({ default: m.ReceptionPage })),
 )
@@ -417,6 +420,19 @@ function AppRoutes() {
           element={
             <Guard permission="payments.view">
               <PaymentsPage />
+            </Guard>
+          }
+        />
+
+        {/*
+          Qarzdorlar — registratorga ham, egasiga ham ochiq.
+          Registrator qarzni ko'rmasa, uni undira olmaydi.
+        */}
+        <Route
+          path="debts"
+          element={
+            <Guard permission="payments.view">
+              <DebtsPage />
             </Guard>
           }
         />

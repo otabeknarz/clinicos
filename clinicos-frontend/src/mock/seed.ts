@@ -57,6 +57,7 @@ import type {
   Staff,
   User,
   Visit,
+  DebtWaiver,
   PenaltyRule,
   PenaltyWaiver,
   ImpersonationLog,
@@ -112,6 +113,8 @@ export interface SeedData {
   tenantPatients: TenantPatient[]
   team: PlatformMember[]
   penaltyWaivers: PenaltyWaiver[]
+  /** Kechirilgan qarzlar — boshida bo'sh, egasi o'zi qo'shadi */
+  debtWaivers: DebtWaiver[]
   feedback: Feedback[]
   monthlyStats: MonthlyStat[]
   chatGroups: ChatGroup[]
@@ -874,6 +877,7 @@ export function generateSeed(seed = 20260901): SeedData {
     team,
     penaltyRules,
     penaltyWaivers: [],
+    debtWaivers: [],
     feedback,
     monthlyStats,
     chatGroups: chat.groups,

@@ -8,7 +8,7 @@ import { Prisma } from '@prisma/client'
 import { toApi, toApiDateTime, toDb } from '../common/api-enum'
 import { paginated } from '../common/pagination'
 import { RequestContext } from '../common/request-context'
-import { WARD_KEY, WARD_LABEL } from '../common/ward-revenue'
+import { WARD_KEY, WARD_LABEL, wardBalance } from '../common/ward-revenue'
 import { PrismaService } from '../prisma/prisma.service'
 import { ServicesService } from '../services/services.service'
 import {
@@ -263,19 +263,11 @@ export class PaymentsService {
       throw new BadRequestException('Bu yotqizish boshqa bemorga tegishli')
     }
 
-    const plannedDays = admission.expectedDischargeAt
-      ? inclusiveDays(admission.admittedAt, admission.expectedDischargeAt)
-      : 0
-    const stayedDays =
-      admission.status === 'PLANNED'
-        ? 0
-        : inclusiveDays(admission.admittedAt, admission.dischargedAt ?? new Date())
-
-    const cap = Math.max(plannedDays, stayedDays) * admission.dailyRate
-    const paid = admission.payments
-      .filter((p) => p.status === 'PAID')
-      .reduce((sum, p) => sum + p.amount, 0)
-    const remaining = cap - paid
+    /*
+      Hisobning O'ZI `common/ward-revenue.ts` da — qarz ro'yxati ham
+      xuddi shu javobga tayanadi. Bu yerda faqat TEKSHIRUV qoladi.
+    */
+    const { cap, remaining } = wardBalance(admission)
 
     if (remaining <= 0) {
       throw new BadRequestException('Bu yotqizish uchun to‘lov to‘liq olingan')
@@ -460,17 +452,3 @@ function addDays(date: Date, days: number): Date {
   return d
 }
 
-/**
- * Yotgan kunlar soni. KIRGAN KUNNING O'ZI HAM hisoblanadi —
- * `ward.service.ts` dagi qoida bilan bir xil bo'lishi shart,
- * aks holda ikkita joyda ikki xil summa chiqardi.
- */
-function inclusiveDays(from: Date, to: Date): number {
-  const startOfDay = (d: Date) => {
-    const x = new Date(d)
-    x.setHours(0, 0, 0, 0)
-    return x
-  }
-  const ms = startOfDay(to).getTime() - startOfDay(from).getTime()
-  return Math.max(1, Math.round(ms / 86_400_000) + 1)
-}

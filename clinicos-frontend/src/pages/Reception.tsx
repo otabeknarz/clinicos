@@ -526,6 +526,11 @@ function AttentionRow({
             */}
             {openKey === item.key && item.list.length > 0 ? (
               <ul className="hairline-t bg-fill-4">
+                {/*
+                  Ro'yxatda faqat birinchi beshtasi. Qarz bugungi kun
+                  bilan cheklanmagani uchun u uzun bo'lishi mumkin —
+                  qolgani Qarzdorlar sahifasida.
+                */}
                 {item.list.map((queued) => (
                   <li
                     key={queued.appointmentId}
@@ -537,6 +542,14 @@ function AttentionRow({
                       </span>
                       <span className="block truncate text-caption text-label-tertiary">
                         {tService(queued.serviceName)}
+                        {/*
+                          Qarz bugungi kun bilan cheklanmagani uchun
+                          yoshi ham ko'rsatiladi: 3 oylik qarz bilan
+                          bugungisi bir xil ko'rinmasligi kerak.
+                        */}
+                        {item.key === 'unpaid'
+                          ? ` · ${t('debts.days', { count: daysSince(queued.startsAt) })}`
+                          : ''}
                         {queued.priceSetByDoctor
                           ? ` · ${t('reception.priceSetByDoctor')}`
                           : ''}
@@ -552,6 +565,17 @@ function AttentionRow({
                     </Button>
                   </li>
                 ))}
+
+                {item.key === 'unpaid' && attention.unpaid.count > item.list.length ? (
+                  <li className="px-5 py-2.5 sm:px-6 sm:pl-[72px]">
+                    <Link
+                      to="/debts"
+                      className="text-caption font-medium text-accent hover:underline"
+                    >
+                      {t('debts.all', { count: attention.unpaid.count })}
+                    </Link>
+                  </li>
+                ) : null}
               </ul>
             ) : null}
           </li>
@@ -921,4 +945,9 @@ function UpcomingCard({ data, onReload }: { data: ReceptionSummary; onReload: ()
       )}
     </Card>
   )
+}
+
+/** Qabuldan beri necha kun o'tgani — qarzning yoshi */
+function daysSince(iso: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000))
 }

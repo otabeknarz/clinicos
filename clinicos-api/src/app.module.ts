@@ -17,6 +17,7 @@ import { ContextMiddleware } from './common/context.middleware'
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
 import { PermissionsGuard } from './common/guards/permissions.guard'
 import { FeedbackModule } from './feedback/feedback.module'
+import { DebtsModule } from './debts/debts.module'
 import { NotificationsModule } from './notifications/notifications.module'
 import { ForecastModule } from './forecast/forecast.module'
 import { PatientsModule } from './patients/patients.module'
@@ -45,6 +46,7 @@ import { StorageModule } from './storage/storage.module'
     ServicesModule,
     AppointmentsModule,
     PaymentsModule,
+    DebtsModule,
     ReceptionModule,
     SearchModule,
     VisitsModule,

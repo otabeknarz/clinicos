@@ -83,9 +83,19 @@ export class ReceptionService {
     const fullPrice = (a: (typeof appointments)[number]) =>
       a.service.priceMode === 'DOCTOR_SET' ? (a.visit?.price ?? 0) : a.service.price
 
-    const toQueueItem = (a: (typeof appointments)[number]) => {
+    /*
+      To'langan summa QAYSI jadvaldan olinishi chaqiruvchidan keladi.
+
+      Navbat bugungi qabullarnikini ishlatadi, qarz ro'yxati esa
+      o'zinikini — ular boshqa-boshqa so'rovdan keladi. Ilgari bitta
+      jadval edi va eski qarzga "hech narsa to'lanmagan" deb qarardi.
+    */
+    const toQueueItem = (
+      a: (typeof appointments)[number],
+      paidMap: Map<string | null, number> = paidByAppointment,
+    ) => {
       const prepaid = a.service.paymentTiming === 'PREPAID'
-      const paid = paidByAppointment.get(a.id) ?? 0
+      const paid = paidMap.get(a.id) ?? 0
       return {
         appointmentId: a.id,
         patientId: a.patientId,
@@ -115,17 +125,76 @@ export class ReceptionService {
       .filter((a) => a.status === 'CHECKED_IN')
       // Eng uzoq kutgan tepada — registrator "kim keyingi" deb o'ylamasin
       .sort((x, y) => (x.checkedInAt?.getTime() ?? 0) - (y.checkedInAt?.getTime() ?? 0))
-      .map(toQueueItem)
+      .map((a) => toQueueItem(a))
 
     const upcoming = appointments
       .filter((a) => a.status === 'SCHEDULED' || a.status === 'CONFIRMED')
-      .map(toQueueItem)
+      .map((a) => toQueueItem(a))
 
     /* --- E'tibor talab qiladiganlar --- */
 
-    const unpaidRows = appointments.filter(
-      (a) => a.status === 'COMPLETED' && a.paymentStatus !== 'PAID',
+    /*
+      QARZ BUGUNGI KUN BILAN CHEKLANMAYDI.
+
+      Yuqoridagi so'rov faqat BUGUNGI qabullarni oladi va u shunday
+      bo'lib qolishi kerak: "bugun 47 qabul", navbat va kassa —
+      hammasi bugungi. Qarz esa boshqa savol: kechagi ham, o'tgan
+      haftadagi ham to'lanmagan bo'lishi mumkin.
+
+      Ilgari bu ro'yxat ham bugungi qabullardan yig'ilardi, bildirishnoma
+      esa hamma vaqtni sanardi — kechagi qarz bildirishnomada turib,
+      panelda ko'rinmasdi.
+
+      Shuning uchun ALOHIDA so'rov. Ikkalasini birlashtirmang: bitta
+      so'rovga yig'ilsa, kunlik raqamlar buziladi.
+    */
+    const outstanding = await this.db.appointment.findMany({
+      where: {
+        status: 'COMPLETED',
+        paymentStatus: { not: 'PAID' },
+        debtWaiver: { is: null },
+      },
+      include: {
+        patient: { select: { id: true, fullName: true, phone: true } },
+        doctor: { select: { id: true, fullName: true } },
+        service: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            paymentTiming: true,
+            priceMode: true,
+          },
+        },
+        visit: { select: { price: true } },
+      },
+      // Eng eskisi tepada
+      orderBy: { completedAt: 'asc' },
+      take: 200,
+    })
+
+    const outstandingPaidRows = await this.db.payment.groupBy({
+      by: ['appointmentId'],
+      where: {
+        status: 'PAID',
+        appointmentId: { in: outstanding.map((a) => a.id) },
+      },
+      _sum: { amount: true },
+    })
+    const outstandingPaid = new Map(
+      outstandingPaidRows.map((r) => [r.appointmentId, r._sum.amount ?? 0]),
     )
+
+    /*
+      Shifokor summani belgilamagan bo'lsa qarz emas — hech kim hech
+      qancha qarzdor emas, chunki summa aytilmagan.
+    */
+    const unpaidRows = outstanding.filter((a) => {
+      const total =
+        a.service.priceMode === 'DOCTOR_SET' ? a.visit?.price : a.service.price
+      if (total === null || total === undefined) return false
+      return total - (outstandingPaid.get(a.id) ?? 0) > 0
+    })
     const prepaidUnpaidRows = appointments.filter(
       (a) =>
         a.service.paymentTiming === 'PREPAID' &&
@@ -135,8 +204,10 @@ export class ReceptionService {
         a.paymentStatus !== 'PAID',
     )
 
-    const owed = (a: (typeof appointments)[number]) =>
-      Math.max(0, fullPrice(a) - (paidByAppointment.get(a.id) ?? 0))
+    const owed = (
+      a: (typeof appointments)[number],
+      paidMap: Map<string | null, number> = paidByAppointment,
+    ) => Math.max(0, fullPrice(a) - (paidMap.get(a.id) ?? 0))
 
     const [followUps, staffTotal, markedToday, shift, cashRows] = await Promise.all([
       this.db.followUp.count({
@@ -183,15 +254,20 @@ export class ReceptionService {
           natijada `appointment.paymentStatus` o'zgarmay,
           ogohlantirish o'sha joyda turaverardi.
         */
+        /*
+          `count` — jami nechta qarz bor, `items` esa faqat birinchi
+          beshtasi. Interfeys qolganini "Hammasi" havolasi bilan
+          Qarzdorlar sahifasiga uzatadi.
+        */
         unpaid: {
           count: unpaidRows.length,
-          amount: unpaidRows.reduce((sum, a) => sum + owed(a), 0),
-          items: unpaidRows.map(toQueueItem),
+          amount: unpaidRows.reduce((sum, a) => sum + owed(a, outstandingPaid), 0),
+          items: unpaidRows.slice(0, 5).map((a) => toQueueItem(a, outstandingPaid)),
         },
         prepaidUnpaid: {
           count: prepaidUnpaidRows.length,
           amount: prepaidUnpaidRows.reduce((sum, a) => sum + owed(a), 0),
-          items: prepaidUnpaidRows.map(toQueueItem),
+          items: prepaidUnpaidRows.map((a) => toQueueItem(a)),
         },
         unmarkedAttendance: Math.max(0, staffTotal - markedToday),
         followUps,

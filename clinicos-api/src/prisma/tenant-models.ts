@@ -22,6 +22,7 @@ export const TENANT_MODELS = new Set<string>([
   'BonusRule',
   'ChatGroup',
   'ChatMessage',
+  'DebtWaiver',
   'Doctor',
   'Feedback',
   'FollowUp',

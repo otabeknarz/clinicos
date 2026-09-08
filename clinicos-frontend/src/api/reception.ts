@@ -99,9 +99,29 @@ export async function getReceptionSummary(userId: string): Promise<ReceptionSumm
 
   const unconfirmed = todayAppointments.filter((a) => a.status === 'scheduled').length
 
-  const unpaidRows = todayAppointments.filter(
-    (a) => a.status === 'completed' && a.paymentStatus !== 'paid',
+  /*
+    QARZ BUGUNGI KUN BILAN CHEKLANMAYDI.
+
+    Panelning qolgan hamma raqami bugungi, bu esa yo'q: qarz kechagi
+    ham, o'tgan haftadagi ham bo'lishi mumkin. Ilgari bu ro'yxat ham
+    bugungi qabullardan yig'ilardi va kechagi qarz bildirishnomada
+    turib, panelda ko'rinmasdi.
+  */
+  const waivedAppointments = new Set(
+    db.debtWaivers.all(clinicId).map((w) => w.appointmentId),
   )
+
+  const unpaidRows = db.appointments
+    .all(clinicId)
+    .filter(
+      (a) =>
+        a.status === 'completed' &&
+        a.paymentStatus !== 'paid' &&
+        !waivedAppointments.has(a.id),
+    )
+    // Eng eskisi tepada
+    .sort((a, b) => (a.completedAt ?? a.startsAt).localeCompare(b.completedAt ?? b.startsAt))
+
   const unpaidAmount = unpaidRows.reduce(
     (sum, a) => sum + (services.get(a.serviceId)?.price ?? 0),
     0,
@@ -176,7 +196,8 @@ export async function getReceptionSummary(userId: string): Promise<ReceptionSumm
       unpaid: {
         count: unpaidRows.length,
         amount: unpaidAmount,
-        items: unpaidRows.map(toItem),
+        // Faqat birinchi beshtasi — qolgani Qarzdorlar sahifasida
+        items: unpaidRows.slice(0, 5).map(toItem),
       },
       prepaidUnpaid: {
         count: prepaidUnpaidRows.length,

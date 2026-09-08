@@ -39,7 +39,16 @@ export class NotificationsService {
       }),
       permissions.includes('payments.view')
         ? this.db.appointment.count({
-            where: { status: 'COMPLETED', paymentStatus: { not: 'PAID' } },
+            where: {
+              status: 'COMPLETED',
+              paymentStatus: { not: 'PAID' },
+              /*
+                Kechirilgan qarz sanalmaydi. Aks holda u ro'yxatdan
+                tushardi-yu, bildirishnomada qolib ketardi — va u
+                hech qachon o'chmasdi.
+              */
+              debtWaiver: { is: null },
+            },
           })
         : Promise.resolve(0),
       this.db.followUp.count({

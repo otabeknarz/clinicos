@@ -711,6 +711,107 @@ async function main() {
     }
   }
 
+  /* ---------------- Qarzdorlik ---------------- */
+  /*
+    Qarz SAQLANMAYDI — narx minus to'langan summa. Shuning uchun
+    qisman to'lov qarzni o'zi kamaytiradi, to'liq to'lov esa uni
+    ro'yxatdan o'zi olib tashlaydi.
+  */
+  console.log('\nQarzdorlik')
+  if (patientId && serviceId) {
+    const me = await call('GET', '/auth/me', doctor)
+    const ownDoctorId = me.data?.user?.doctorId
+
+    const appt = await call('POST', '/appointments', reception, {
+      patientId,
+      doctorId: ownDoctorId,
+      serviceId,
+      startsAt: new Date(Date.now() + 180_000).toISOString(),
+    })
+    const debtApptId: string | undefined = appt.data?.id
+    check('qabul yaratildi', appt.status < 300, short(appt.data))
+
+    if (debtApptId) {
+      await call('POST', '/visits', doctor, {
+        appointmentId: debtApptId,
+        diagnosis: 'qarz sinovi',
+      })
+
+      // Xizmat narxi 222 000 — yarmini to'laymiz
+      const part = await call('POST', '/payments', reception, {
+        patientId,
+        doctorId: ownDoctorId,
+        serviceId,
+        appointmentId: debtApptId,
+        amount: 111_000,
+        method: 'cash',
+      })
+      check('qisman to‘lov yozildi', part.status < 300, short(part.data))
+
+      const partial = await call('GET', `/appointments/${debtApptId}`, reception)
+      check(
+        '  qabul “qisman” bo‘ldi',
+        partial.data?.paymentStatus === 'partial',
+        `holat: ${partial.data?.paymentStatus}`,
+      )
+
+      const debts = await call('GET', '/debts', reception)
+      check('qarz ro‘yxati ochildi', debts.status === 200, short(debts.data))
+      const listed = (debts.data?.visits ?? []).find(
+        (d: { appointmentId: string }) => d.appointmentId === debtApptId,
+      )
+      check('  ro‘yxatda chiqdi', Boolean(listed), short(debts.data?.totals))
+      check(
+        '  qolgan summa to‘g‘ri',
+        listed?.remaining === 111_000,
+        `qolgan: ${listed?.remaining}, to‘langan: ${listed?.paid}`,
+      )
+
+      /*
+        Kechirish FAQAT egasida. Pulni oladigan odam qarzni ham yopa
+        olsa, pulni o'ziga olib "kechirdim" deb yozib qo'yishi mumkin.
+      */
+      const byReception = await call('POST', '/debts/waive', reception, {
+        appointmentId: debtApptId,
+        note: 'registrator urinishi',
+      })
+      check('registrator kechira OLMADI', byReception.status === 403, short(byReception.data))
+
+      const byOwner = await call('POST', '/debts/waive', owner, {
+        appointmentId: debtApptId,
+        note: 'bemor topilmadi',
+      })
+      check('egasi kechirdi', byOwner.status < 300, short(byOwner.data))
+
+      const twice = await call('POST', '/debts/waive', owner, {
+        appointmentId: debtApptId,
+        note: 'ikkinchi marta',
+      })
+      check('  ikkinchi marta kechirib bo‘lmadi', twice.status === 409, short(twice.data))
+
+      const after = await call('GET', '/debts', reception)
+      const stillListed = (after.data?.visits ?? []).some(
+        (d: { appointmentId: string }) => d.appointmentId === debtApptId,
+      )
+      check('  ro‘yxatdan YO‘QOLDI', !stillListed, short(after.data?.totals))
+
+      /*
+        Kechirilgan qarz bildirishnomada ham sanalmasligi kerak —
+        aks holda u hech qachon o'chmasdi.
+      */
+      const notifications = await call('GET', '/notifications', reception)
+      const pending = (notifications.data ?? []).find(
+        (n: { kind: string }) => n.kind === 'pending_payments',
+      )
+      const summary = await call('GET', '/reception/summary', reception)
+      check(
+        '  bildirishnoma soni panel bilan mos',
+        (pending?.count ?? 0) === (summary.data?.attention?.unpaid?.count ?? 0),
+        `bildirishnoma: ${pending?.count}, panel: ${summary.data?.attention?.unpaid?.count}`,
+      )
+    }
+  }
+
   /* ---------------- Egasining o'z sahifalari ---------------- */
   /*
     "Mening profilim" va "Mening ish jadvalim" xodim yozuviga

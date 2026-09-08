@@ -62,6 +62,8 @@ const OWNER_PERMISSIONS: Permission[] = [
   'payments.view',
   // Qaytarish faqat egasida — registrator o'z kamomadini yopa olmasin
   'payments.refund',
+  // Qarzni kechirish ham: pulni oladigan odam qarzni yopa olmasin
+  'debts.waive',
   'revenue.view',
   'analytics.view',
   'visits.view',
