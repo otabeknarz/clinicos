@@ -41,6 +41,7 @@ export const TENANT_MODELS = new Set<string>([
   'Subscription',
   'User',
   'Visit',
+  'VisitImage',
   'WorkingHour',
 ])
 

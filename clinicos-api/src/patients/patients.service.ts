@@ -221,6 +221,12 @@ export class PatientsService {
       orderBy: { visitedAt: 'desc' },
       include: {
         doctor: { select: { id: true, fullName: true, specialty: true } },
+        /*
+          Rasmlar bemor kartasida ko'rinadi — shifokor eski rentgenni
+          shu yerdan ochadi. `imageUrl` da kalit yotadi, uni
+          `SignedUrlInterceptor` havolaga o'giradi.
+        */
+        images: { select: { id: true, imageUrl: true }, orderBy: { createdAt: 'asc' } },
       },
     })
     return rows.map((v) => ({
@@ -230,6 +236,8 @@ export class PatientsService {
       patientId: v.patientId,
       doctorId: v.doctorId,
       visitedAt: toApiDateTime(v.visitedAt)!,
+      price: v.price,
+      images: v.images,
       complaint: v.complaint,
       diagnosis: v.diagnosis,
       treatment: v.treatment,

@@ -29,6 +29,13 @@ export interface VisitInput {
    * yuborilsa rad etiladi.
    */
   price?: number
+  /**
+   * Rasm KALITLARI — `POST /uploads/visits` qaytargan qiymatlar.
+   *
+   * Ko'pi bilan 10 ta. Rasm faqat shu paytda biriktiriladi: tashrif
+   * yozuvi keyin o'zgarmaydi.
+   */
+  imageKeys?: string[]
   complaint: string
   diagnosis: string
   treatment: string
@@ -54,6 +61,15 @@ export async function createVisit(input: VisitInput): Promise<Visit> {
     doctorId: input.doctorId,
     visitedAt: now,
     price: input.price ?? null,
+    /*
+      Demo rejimda "kalit" sifatida data URL keladi (avatarlardagidek),
+      shuning uchun uni to'g'ridan-to'g'ri havola sifatida ishlatsa
+      bo'ladi. Haqiqiy backendda server imzolangan havola qaytaradi.
+    */
+    images: (input.imageKeys ?? []).map((key, i) => ({
+      id: `vim_${Date.now()}_${i}`,
+      imageUrl: key,
+    })),
     complaint: input.complaint,
     diagnosis: input.diagnosis,
     treatment: input.treatment,

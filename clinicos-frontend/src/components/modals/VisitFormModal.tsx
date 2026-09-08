@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
-import { ShieldAlert } from 'lucide-react'
+import { ImagePlus, ShieldAlert, X } from 'lucide-react'
+
+/** Bitta tashrifga biriktiriladigan eng ko'p rasm — serverdagi chegara bilan bir xil */
+const MAX_IMAGES = 10
 
 import { createVisit } from '@/api/visits'
-import { Button } from '@/components/ui/Button'
+import { uploadImage } from '@/api/uploads'
+import { cn } from '@/lib/cn'
+import { prepareMedicalImage } from '@/lib/image'
+import { Button, IconButton } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { TextArea, TextInput } from '@/components/ui/Form'
 import { addDays, toISODate } from '@/lib/dates'
@@ -54,10 +60,22 @@ export function VisitFormModal({
   const maxPrice = appointment?.service.maxPrice ?? 0
   const [price, setPrice] = useState('')
 
+  /*
+    BIRIKTIRILGAN RASMLAR.
+
+    Rasm tanlangan zahoti serverga yuboriladi va KALIT qaytadi;
+    yozuv saqlanganda faqat kalitlar ketadi. Shuning uchun bu yerda
+    ikkalasi ham saqlanadi: `preview` — darhol ko'rsatish uchun,
+    `key` — yozuvga yoziladigan qiymat.
+  */
+  const [images, setImages] = useState<{ preview: string; key: string }[]>([])
+  const [uploading, setUploading] = useState(false)
+
   useEffect(() => {
     if (!open) return
     setTouched(false)
     setPrice('')
+    setImages([])
     setComplaint('')
     setDiagnosis('')
     setTreatment('')
@@ -73,6 +91,7 @@ export function VisitFormModal({
       patientId: appointment.patient.id,
       doctorId: appointment.doctor.id,
       price: doctorSet ? Number(price) : undefined,
+      imageKeys: images.map((image) => image.key),
       complaint: complaint.trim(),
       diagnosis: diagnosis.trim(),
       treatment: treatment.trim(),
@@ -99,6 +118,45 @@ export function VisitFormModal({
             max: money(maxPrice),
           })
         : undefined
+
+  /**
+   * Tanlangan rasmlarni yuklaydi.
+   *
+   * Har biri alohida yuboriladi: bittasi yiqilsa qolganlari
+   * saqlanib qoladi va shifokor faqat o'shani qayta tanlaydi.
+   */
+  async function pickImages(files: FileList | null) {
+    if (!files || files.length === 0) return
+
+    const room = MAX_IMAGES - images.length
+    if (room <= 0) {
+      toast.error(t('visit.imagesFull', { count: MAX_IMAGES }))
+      return
+    }
+
+    setUploading(true)
+    try {
+      for (const file of Array.from(files).slice(0, room)) {
+        const prepared = await prepareMedicalImage(file)
+        if (!prepared.ok || !prepared.blob) {
+          toast.error(t('visit.imageBad'))
+          continue
+        }
+        try {
+          const uploaded = await uploadImage('visits', prepared.blob, prepared.dataUrl)
+          setImages((current) => [
+            ...current,
+            { preview: prepared.dataUrl, key: uploaded.key },
+          ])
+        } catch {
+          // Fayl xotirasi sozlanmagan bo'lsa server 503 qaytaradi
+          toast.error(t('visit.imageFailed'))
+        }
+      }
+    } finally {
+      setUploading(false)
+    }
+  }
 
   async function submit() {
     setTouched(true)
@@ -191,6 +249,66 @@ export function VisitFormModal({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />
+
+        {/*
+          --- Rasmlar ---
+
+          Ixtiyoriy. Rasm faqat SHU PAYTDA biriktiriladi: yozuv
+          saqlangach o'zgarmaydi, shuning uchun keyin qo'shib
+          bo'lmaydi. Buni izohda aytib qo'yamiz.
+        */}
+        <div>
+          <p className="text-footnote font-medium text-label-secondary">
+            {t('visit.images')}
+          </p>
+          <p className="mt-0.5 text-caption text-label-tertiary">
+            {t('visit.imagesHint')}
+          </p>
+
+          <div className="mt-2 flex flex-wrap gap-2">
+            {images.map((image, index) => (
+              <div key={image.key} className="relative">
+                <img
+                  src={image.preview}
+                  alt=""
+                  className="size-20 rounded-[10px] object-cover"
+                />
+                <IconButton
+                  label={t('action.delete')}
+                  className="absolute -right-1.5 -top-1.5 size-6 rounded-full bg-bad text-white hover:bg-bad"
+                  onClick={() =>
+                    setImages((current) => current.filter((_, i) => i !== index))
+                  }
+                >
+                  <X size={12} />
+                </IconButton>
+              </div>
+            ))}
+
+            {images.length < MAX_IMAGES ? (
+              <label
+                className={cn(
+                  'grid size-20 cursor-pointer place-items-center rounded-[10px]',
+                  'bg-sunken text-label-tertiary hover:text-label',
+                  uploading && 'pointer-events-none opacity-50',
+                )}
+              >
+                <ImagePlus size={20} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    void pickImages(e.target.files)
+                    // Bir xil faylni qayta tanlash ishlasin
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            ) : null}
+          </div>
+        </div>
 
         {/* --- Takroriy tashrif --- */}
         <div className="rounded-[14px] bg-sunken p-4">

@@ -633,6 +633,8 @@ export function generateSeed(seed = 20260901): SeedData {
           doctorId: doctor.id,
           visitedAt: iso(visitedAt),
           price: doctorPrice,
+          // Demo ma'lumotda rasm yo'q — ular faqat qo'lda biriktiriladi
+          images: [],
           complaint,
           diagnosis: DIAGNOSIS_BY_COMPLAINT[complaint] ?? '',
           treatment: r.pick(TREATMENTS),

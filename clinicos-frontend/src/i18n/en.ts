@@ -178,6 +178,12 @@ export const dict: Dict = {
   'visit.price': 'Amount to pay',
   'visit.priceHint': 'You set the price for this service: {min} — {max}',
   'visit.priceRangeError': 'The amount must be between {min} and {max}',
+  'visit.images': 'Images',
+  'visit.imagesHint':
+    'Optional: X-ray, tooth photo, lab form. Attached now only — the record does not change after it is saved.',
+  'visit.imagesFull': 'At most {count} images',
+  'visit.imageBad': 'That file is not an image, or it is too large',
+  'visit.imageFailed': 'The image did not upload — file storage may not be configured',
   'visit.complaint': 'Complaint',
   'visit.complaintPh': 'What the patient reports',
   'visit.diagnosis': 'Diagnosis',

@@ -179,6 +179,12 @@ export const dict: Dict = {
   'visit.price': 'Сумма к оплате',
   'visit.priceHint': 'Стоимость этой услуги определяете вы: {min} — {max}',
   'visit.priceRangeError': 'Сумма должна быть в диапазоне {min} — {max}',
+  'visit.images': 'Снимки',
+  'visit.imagesHint':
+    'Необязательно: рентген, снимок зуба, бланк анализа. Прикрепляются только сейчас — после сохранения запись не меняется.',
+  'visit.imagesFull': 'Не более {count} снимков',
+  'visit.imageBad': 'Это не изображение или файл слишком большой',
+  'visit.imageFailed': 'Снимок не загрузился — возможно, хранилище не настроено',
   'visit.complaint': 'Жалоба',
   'visit.complaintPh': 'На что жалуется пациент',
   'visit.diagnosis': 'Диагноз',

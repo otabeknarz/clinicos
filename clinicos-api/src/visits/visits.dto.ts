@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer'
 import {
+  ArrayMaxSize,
+  IsArray,
   IsDateString,
   IsIn,
   IsInt,
@@ -37,6 +39,22 @@ export class VisitInputDto {
   @Min(1, { message: 'Summa noldan katta bo‘lishi kerak' })
   @Max(1_000_000_000)
   price?: number
+
+  /*
+    TASHRIFGA BIRIKTIRILGAN RASMLAR — fayl KALITLARI.
+
+    Rasm avval `POST /uploads/visits` ga yuboriladi va kalit qaytadi;
+    shu kalit bu yerga keladi. Ikki qadam ataylab: forma bekor
+    qilinsa fayl yozuvga bog'lanmay qoladi.
+
+    Har bir kalit joriy klinikanikimi — servisda tekshiriladi.
+  */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10, { message: 'Bitta tashrifga 10 tadan ortiq rasm biriktirilmaydi' })
+  @IsString({ each: true })
+  @MaxLength(500, { each: true })
+  imageKeys: string[] = []
 
   @IsOptional()
   @IsString()

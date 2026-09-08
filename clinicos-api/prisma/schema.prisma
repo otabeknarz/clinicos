@@ -440,9 +440,38 @@ model Visit {
   patient     Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
   doctor      Doctor      @relation(fields: [doctorId], references: [id], onDelete: Restrict)
   followUps   FollowUp[]
+  images      VisitImage[]
 
   @@index([clinicId, patientId, visitedAt])
   @@map("visits")
+}
+
+/// Tashrifga biriktirilgan rasm (rentgen, tish surati, tahlil varaqasi).
+///
+/// MAXFIY TIBBIY MA'LUMOT: `visits.view` bilan yuradi, ya'ni
+/// registratorga hech qachon ko'rinmaydi.
+///
+/// `imageUrl` da HAVOLA emas, KALIT yotadi
+/// (`clinics/<id>/visits/<uuid>.jpg`). Nomi `Url` bilan tugagani
+/// muhim — `SignedUrlInterceptor` aynan shu qoidaga qarab uni
+/// qisqa muddatli imzolangan havolaga o'giradi.
+///
+/// NEGA ALOHIDA JADVAL, `Visit` da massiv EMAS: interseptor satrni
+/// imzolaydi, massivni emas. Alohida jadval bilan u hech qanday
+/// o'zgarishsiz ishlaydi.
+model VisitImage {
+  id       String @id @default(uuid())
+  clinicId String @map("clinic_id")
+  visitId  String @map("visit_id")
+
+  imageUrl String @map("image_url")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, visitId])
+  @@map("visit_images")
 }
 
 /* ================================================================

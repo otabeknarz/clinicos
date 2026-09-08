@@ -934,6 +934,14 @@ export interface Visit {
    * qolganida null. To'lov chegarasi shu raqamdan olinadi.
    */
   price: UZS | null
+  /**
+   * Tashrifga biriktirilgan rasmlar (rentgen, tish surati, tahlil).
+   *
+   * MAXFIY: `visits.view` bilan yuradi, registratorga ko'rinmaydi.
+   * `imageUrl` javobda qisqa muddatli imzolangan havola bo'ladi —
+   * bazada esa kalit yotadi.
+   */
+  images: VisitImage[]
   /** Shikoyat / murojaat sababi */
   complaint: string
   diagnosis: string
@@ -941,6 +949,12 @@ export interface Visit {
   treatment: string
   notes: string
   createdAt: ISODateTime
+}
+
+export interface VisitImage {
+  id: ID
+  /** Imzolangan havola (15 daqiqa) */
+  imageUrl: string
 }
 
 export interface VisitExpanded extends Visit {

@@ -190,6 +190,12 @@ export const dict: Dict = {
   'visit.price': 'To’lov summasi',
   'visit.priceHint': 'Bu xizmatning narxini siz belgilaysiz: {min} — {max}',
   'visit.priceRangeError': 'Summa {min} va {max} oralig’ida bo’lishi kerak',
+  'visit.images': 'Rasmlar',
+  'visit.imagesHint':
+    'Ixtiyoriy: rentgen, tish surati, tahlil varaqasi. Faqat hozir biriktiriladi — yozuv saqlangach o’zgarmaydi.',
+  'visit.imagesFull': 'Ko’pi bilan {count} ta rasm',
+  'visit.imageBad': 'Bu fayl rasm emas yoki juda katta',
+  'visit.imageFailed': 'Rasm yuklanmadi — fayl xotirasi sozlanmagan bo’lishi mumkin',
   'visit.complaint': 'Shikoyat',
   'visit.complaintPh': 'Bemor nimadan shikoyat qilmoqda',
   'visit.diagnosis': 'Tashxis',

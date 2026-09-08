@@ -11,8 +11,14 @@ import { FileInterceptor } from '@nestjs/platform-express'
 
 import { StorageService } from './storage.service'
 
-/** Yuklash mumkin bo'lgan turlar va ular qaysi papkaga tushadi */
-const KINDS = ['avatars', 'logos'] as const
+/**
+ * Yuklash mumkin bo'lgan turlar va ular qaysi papkaga tushadi.
+ *
+ * `visits` — tashrifga biriktiriladigan rasm (rentgen, tish surati).
+ * U MAXFIY TIBBIY MA'LUMOT: bucket yopiq, kalit klinika papkasida
+ * yotadi va javobda faqat `visits.view` bori uchun havolaga o'giriladi.
+ */
+const KINDS = ['avatars', 'logos', 'visits'] as const
 type Kind = (typeof KINDS)[number]
 
 /**

@@ -5,12 +5,23 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
-import { Prisma, Visit } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 
 import { toApi, toApiDate, toApiDateTime } from '../common/api-enum'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
+import { StorageService } from '../storage/storage.service'
 import { FollowUpPatchDto, VisitInputDto } from './visits.dto'
+
+/**
+ * Rasmlar har doim yozuv bilan birga qaytadi.
+ *
+ * Alohida so’rov qilinmaydi: bitta tashrifda o’n tadan oshmaydi va
+ * ular yozuvning bir qismi — tashxis matni bilan bir xil maxfiylikda.
+ */
+const VISIT_EXPAND = {
+  images: { select: { id: true, imageUrl: true }, orderBy: { createdAt: 'asc' } },
+} satisfies Prisma.VisitInclude
 
 /**
  * TASHRIFLAR — TIBBIY YOZUV.
@@ -28,6 +39,7 @@ export class VisitsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
+    private readonly storage: StorageService,
   ) {}
 
   private get db() {
@@ -84,6 +96,15 @@ export class VisitsService {
 
     const price = resolveVisitPrice(appointment.service, dto.price)
 
+    /*
+      Kalit shakli DTO da tekshirilgan, lekin shakl to'g'ri bo'la
+      turib boshqa klinikanikini yuborish mumkin. Bazada begona
+      kalit yotishining o'zi xato — shuning uchun bu yerda.
+    */
+    for (const key of dto.imageKeys) {
+      this.storage.assertOwnKey(key)
+    }
+
     const now = new Date()
 
     const visit = await this.db.$transaction(async (tx) => {
@@ -99,7 +120,11 @@ export class VisitsService {
           diagnosis: dto.diagnosis,
           treatment: dto.treatment,
           notes: dto.notes,
+          images: {
+            create: dto.imageKeys.map((key) => ({ clinicId, imageUrl: key })),
+          },
         },
+        include: VISIT_EXPAND,
       })
 
       await tx.appointment.update({
@@ -135,6 +160,7 @@ export class VisitsService {
   async get(id: string) {
     const row = await this.db.visit.findFirst({
       where: { AND: [{ id }, this.doctorScope()] },
+      include: VISIT_EXPAND,
     })
     if (!row) throw new NotFoundException('Tashrif topilmadi')
     return toApiVisit(row)
@@ -143,6 +169,7 @@ export class VisitsService {
   async byAppointment(appointmentId: string) {
     const row = await this.db.visit.findFirst({
       where: { AND: [{ appointmentId }, this.doctorScope()] },
+      include: VISIT_EXPAND,
     })
     return row ? toApiVisit(row) : null
   }
@@ -266,7 +293,9 @@ function resolveVisitPrice(
   return price
 }
 
-function toApiVisit(row: Visit) {
+type VisitRow = Prisma.VisitGetPayload<{ include: typeof VISIT_EXPAND }>
+
+function toApiVisit(row: VisitRow) {
   return {
     id: row.id,
     clinicId: row.clinicId,

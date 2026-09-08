@@ -81,3 +81,55 @@ export async function prepareAvatar(file: File): Promise<ImageResult> {
     return { ok: false, dataUrl: '', blob: null, error: 'decode' }
   }
 }
+
+/** Tibbiy rasm uchun eng katta tomon */
+const MAX_MEDICAL_SIZE = 1600
+
+/**
+ * Tashrifga biriktiriladigan rasmni tayyorlaydi.
+ *
+ * `prepareAvatar` DAN FARQI — KESMAYDI. Avatar markazdan kvadrat
+ * qilib kesiladi, chunki portretda yuz markazda bo'ladi. Rentgen yoki
+ * tish suratini kesish esa tashxis uchun kerak bo'lgan qismini olib
+ * tashlashi mumkin. Shuning uchun nisbat saqlanadi.
+ *
+ * O'lcham ham kattaroq: 256 pikselda rentgenni o'qib bo'lmaydi.
+ */
+export async function prepareMedicalImage(file: File): Promise<ImageResult> {
+  if (!file.type.startsWith('image/')) {
+    return { ok: false, dataUrl: '', blob: null, error: 'type' }
+  }
+  if (file.size > MAX_FILE_BYTES) {
+    return { ok: false, dataUrl: '', blob: null, error: 'size' }
+  }
+
+  try {
+    const bitmap = await createImageBitmap(file)
+
+    // Nisbatni saqlab, eng katta tomonni chegaraga tushiramiz
+    const scale = Math.min(1, MAX_MEDICAL_SIZE / Math.max(bitmap.width, bitmap.height))
+    const width = Math.round(bitmap.width * scale)
+    const height = Math.round(bitmap.height * scale)
+
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return { ok: false, dataUrl: '', blob: null, error: 'decode' }
+
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(bitmap, 0, 0, width, height)
+    bitmap.close()
+
+    // Canvas orqali o'tgani uchun EXIF (jumladan joylashuv) tushib qoladi
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', QUALITY),
+    )
+    if (!blob) return { ok: false, dataUrl: '', blob: null, error: 'decode' }
+
+    return { ok: true, dataUrl: canvas.toDataURL('image/jpeg', QUALITY), blob }
+  } catch {
+    return { ok: false, dataUrl: '', blob: null, error: 'decode' }
+  }
+}
