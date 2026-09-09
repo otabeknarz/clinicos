@@ -57,6 +57,22 @@ import { monthlyFromTerm, termTotal } from '@/types/models'
 /* Klinikalar                                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * O'chirilmagan klinikalar.
+ *
+ * Serverdagi `LIVE_CLINIC` filtrining nusxasi. BITTA JOYDA, chunki
+ * uch joyda kerak: statistika, analitika va qidiruv — uch marta
+ * yozilsa, biri unutilib qolardi (aynan shu bo'lgan edi).
+ *
+ * Arxivlangan (`cancelled`) klinika bu yerga KIRADI: u "ketgan
+ * mijoz", o'chirilgan emas.
+ */
+function livingTenants() {
+  return getDb()
+    .tenants.allAcrossTenants()
+    .filter((tenant) => !tenant.deletedAt)
+}
+
 export interface TenantQuery {
   search?: string
   /** `deleted` — obuna holati emas, o'chirilganlarni ko'rish uchun alohida filtr */
@@ -566,7 +582,15 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   if (!USE_MOCK) return request<PlatformStats>('GET', '/platform/stats')
 
   const db = getDb()
-  const tenants = db.tenants.allAcrossTenants()
+  /*
+    O'CHIRILGAN KLINIKA STATISTIKAGA KIRMAYDI.
+
+    U ro'yxatdan chiqib ketgan, demak raqamlardan ham chiqishi
+    kerak: aks holda panel o'zi bilan zid bo'ladi — "e'tibor
+    bering" da allaqachon yo'q klinika "to'xtatilgan" bo'lib
+    turadi va oylik daromadga uning puli qo'shilib kelaveradi.
+  */
+  const tenants = livingTenants()
   const plans = db.plans.allAcrossTenants()
   const invoices = db.tenantInvoices.allAcrossTenants()
 
@@ -1155,7 +1179,8 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
   if (!USE_MOCK) return request<PlatformAnalytics>('GET', '/platform/analytics')
 
   const db = getDb()
-  const tenants = db.tenants.allAcrossTenants()
+  /* O'chirilganlar analitikaga ham kirmaydi — sabab `getPlatformStats` da */
+  const tenants = livingTenants()
   const doctors = db.tenantDoctors.allAcrossTenants()
   const patients = db.tenantPatients.allAcrossTenants()
 
@@ -1367,8 +1392,8 @@ export async function platformSearch(
   const LIMIT = 5
 
   if (scope === 'all' || scope === 'clinic') {
-    db.tenants
-      .allAcrossTenants()
+    /* O'chirilgan klinika qidiruvda ham chiqmaydi */
+    livingTenants()
       .filter(
         (t) =>
           t.name.toLowerCase().includes(needle) ||

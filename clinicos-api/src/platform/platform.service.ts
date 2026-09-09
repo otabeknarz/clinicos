@@ -57,6 +57,24 @@ function generatePassword(): string {
 /** Ish haqi fondi taxminan aylanmaning yarmi */
 const PAYROLL_SHARE = 0.5
 
+/**
+ * O'CHIRILMAGAN KLINIKA.
+ *
+ * O'chirilgan klinika ro'yxatdan chiqadi — demak statistikadan ham
+ * chiqishi kerak. Aks holda panel o'zi bilan zid bo'lardi: ro'yxatda
+ * 26 ta klinika, "e'tibor bering" da esa allaqachon yo'q bo'lgan
+ * klinika "to'xtatilgan" bo'lib turadi. Eng yomoni oylik daromadda
+ * edi — o'chirilgan mijozning puli hamon MRR ga qo'shilib kelardi.
+ *
+ * BITTA JOYDA, chunki uch so'rov shu shartga tayanadi: statistika,
+ * analitika va qidiruv. Uch marta yozilsa, biri unutilib qolardi —
+ * aynan shu bo'lgan edi.
+ *
+ * Arxivlangan (`CANCELLED`) klinika bu yerga KIRADI: u "ketgan
+ * mijoz", statistikada ketganlar ulushi bo'lib hisoblanadi.
+ */
+const LIVE_CLINIC = { clinic: { deletedAt: null } } as const
+
 @Injectable()
 export class PlatformService {
   constructor(
@@ -1053,7 +1071,10 @@ export class PlatformService {
   /* ---------------- Statistika ---------------- */
 
   async stats() {
-    const subs = await this.db.subscription.findMany({ include: { plan: true } })
+    const subs = await this.db.subscription.findMany({
+      where: LIVE_CLINIC,
+      include: { plan: true },
+    })
 
     const count = (s: string) => subs.filter((x) => x.status === s).length
     const paying = subs.filter((s) => s.status === 'ACTIVE' || s.status === 'PAST_DUE')
@@ -1205,7 +1226,7 @@ export class PlatformService {
         },
       }),
       this.db.subscription.findMany({
-        where: { status: { in: ['ACTIVE', 'PAST_DUE'] } },
+        where: { AND: [LIVE_CLINIC, { status: { in: ['ACTIVE', 'PAST_DUE'] } }] },
         include: { clinic: { select: { id: true, name: true } }, plan: true },
       }),
     ])
@@ -1309,10 +1330,15 @@ export class PlatformService {
     if (dto.scope === 'all' || dto.scope === 'clinic') {
       const rows = await this.db.subscription.findMany({
         where: {
-          OR: [
-            { clinic: { name: { contains: needle, mode: 'insensitive' } } },
-            { city: { contains: needle, mode: 'insensitive' } },
-            { ownerName: { contains: needle, mode: 'insensitive' } },
+          AND: [
+            LIVE_CLINIC,
+            {
+              OR: [
+                { clinic: { name: { contains: needle, mode: 'insensitive' } } },
+                { city: { contains: needle, mode: 'insensitive' } },
+                { ownerName: { contains: needle, mode: 'insensitive' } },
+              ],
+            },
           ],
         },
         include: { clinic: { select: { name: true } }, plan: { select: { name: true } } },
