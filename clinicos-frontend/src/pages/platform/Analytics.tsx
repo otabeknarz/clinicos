@@ -13,7 +13,6 @@ import {
 import { getPlatformAnalytics } from '@/api/platform'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Avatar } from '@/components/ui/Avatar'
-import { Badge } from '@/components/ui/Badge'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { ProgressBar } from '@/components/ui/Progress'
@@ -355,20 +354,33 @@ function DoctorsCard({ data }: { data: PlatformAnalytics }) {
 
               <Avatar name={doctor.fullName} size="xs" />
 
+              {/*
+                Reyting IKKINCHI QATORDA, mutaxassislik yonida.
+
+                To'rtinchi ustun bo'lib turganda ismga 90px qolib,
+                "Anvar Hak..." bo'lardi — reytingi bor shifokorning
+                ismi esa reytingdan muhimroq.
+              */}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-subhead font-medium text-label">
                   {doctor.fullName}
                 </span>
-                <span className="block truncate text-caption text-label-tertiary">
-                  {tSpecialty(doctor.specialty)} · {doctor.tenantName}
+                <span className="flex items-center gap-1.5 text-caption text-label-tertiary">
+                  {doctor.rating !== null ? (
+                    <span
+                      className={cn(
+                        'shrink-0 font-semibold tnum',
+                        doctor.rating >= 4.5 ? 'text-ok' : 'text-label-secondary',
+                      )}
+                    >
+                      ★ {doctor.rating.toFixed(1)}
+                    </span>
+                  ) : null}
+                  <span className="min-w-0 truncate">
+                    {tSpecialty(doctor.specialty)} · {doctor.tenantName}
+                  </span>
                 </span>
               </span>
-
-              {doctor.rating !== null ? (
-                <Badge tone={doctor.rating >= 4.5 ? 'ok' : 'neutral'}>
-                  {doctor.rating.toFixed(1)}
-                </Badge>
-              ) : null}
 
               <span className="shrink-0 text-right">
                 <span className="block text-footnote font-semibold tnum text-label">
@@ -436,20 +448,22 @@ function PaidDoctorsCard({ data }: { data: PlatformAnalytics }) {
 
                 <Avatar name={doctor.fullName} size="xs" />
 
+              {/* To'lov turi ham ikkinchi qatorga — sabab yuqoridagidek */}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-subhead font-medium text-label">
                     {doctor.fullName}
                   </span>
-                  <span className="block truncate text-caption text-label-tertiary">
-                    {tSpecialty(doctor.specialty)} · {doctor.tenantName}
+                  <span className="flex items-center gap-1.5 text-caption text-label-tertiary">
+                    <span className="shrink-0 font-medium text-label-secondary">
+                      {doctor.payType === 'salary'
+                        ? t('staff.payType.salary')
+                        : `${doctor.percentRate}%`}
+                    </span>
+                    <span className="min-w-0 truncate">
+                      {tSpecialty(doctor.specialty)} · {doctor.tenantName}
+                    </span>
                   </span>
                 </span>
-
-                <Badge tone="neutral">
-                  {doctor.payType === 'salary'
-                    ? t('staff.payType.salary')
-                    : `${doctor.percentRate}%`}
-                </Badge>
 
                 <span className="shrink-0 text-right">
                   <span className="block text-footnote font-semibold tnum text-label">

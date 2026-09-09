@@ -4,19 +4,24 @@ import {
   ArrowRight,
   Building2,
   CircleDollarSign,
+  Database,
+  Layers,
   LogIn,
+  Receipt,
   TrendingDown,
   TrendingUp,
   UserPlus,
+  UsersRound,
 } from 'lucide-react'
 
 import { getPlatformStats, listImpersonations } from '@/api/platform'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardHeader } from '@/components/ui/Card'
+import { Hero, QuickAccess, StatStrip } from '@/components/ui/Hero'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { ProgressBar } from '@/components/ui/Progress'
-import { CardSkeleton, EmptyState, ErrorState } from '@/components/ui/States'
+import { CardSkeleton, EmptyState, ErrorState, Skeleton } from '@/components/ui/States'
 import { cn } from '@/lib/cn'
 import {
   compactNumber,
@@ -56,7 +61,97 @@ export function PlatformHomePage() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {/*
+            TELEFONDA BOSHQACHA BOSH BLOK — klinika panelidagi kabi.
+
+            To'rtta KPI karta telefonda 300px joy olardi va "E'tibor
+            bering" ro'yxati — platforma egasining birinchi ish
+            qiladigan joyi — birinchi ekranga tushmasdi.
+          */}
+          <div className="space-y-4 md:hidden">
+            {loading ? (
+              <Skeleton className="h-[124px] rounded-[22px]" />
+            ) : (
+              <Hero
+                eyebrow={t('platform.mrr')}
+                value={data ? compactNumber(data.mrr.value) : '—'}
+                unit={currencyLabel()}
+                meta={
+                  data && data.mrr.changePct !== null ? (
+                    <span className="tnum">
+                      {data.mrr.changePct >= 0 ? '+' : ''}
+                      {percent(data.mrr.changePct, 1)} {t('platform.vsLastMonth')}
+                    </span>
+                  ) : null
+                }
+                to="/platform/analytics"
+              />
+            )}
+
+            {loading ? (
+              <Skeleton className="h-[104px] rounded-[20px]" />
+            ) : (
+              <StatStrip
+                items={[
+                  {
+                    key: 'paying',
+                    label: t('platform.payingClinics'),
+                    value: data
+                      ? groupDigits(data.tenants.active + data.tenants.pastDue)
+                      : '—',
+                    icon: <Building2 size={12} />,
+                    tone: 'accent',
+                  },
+                  {
+                    key: 'new',
+                    label: t('platform.newThisMonth'),
+                    value: data ? groupDigits(data.newThisMonth.value) : '—',
+                    icon: <UserPlus size={12} />,
+                    tone: 'brand',
+                  },
+                  {
+                    key: 'churn',
+                    label: t('platform.churnRate'),
+                    value: data ? percent(data.churnRate, 1) : '—',
+                    icon: <TrendingDown size={12} />,
+                    tone: data && data.churnRate > 0 ? 'bad' : 'neutral',
+                  },
+                ]}
+              />
+            )}
+
+            <QuickAccess
+              title={t('dash.quickAccess')}
+              items={[
+                {
+                  key: 'invoices',
+                  to: '/platform/invoices',
+                  label: t('platform.invoices'),
+                  icon: <Receipt size={20} />,
+                },
+                {
+                  key: 'plans',
+                  to: '/platform/plans',
+                  label: t('platform.plans'),
+                  icon: <Layers size={20} />,
+                },
+                {
+                  key: 'team',
+                  to: '/platform/team',
+                  label: t('team.title'),
+                  icon: <UsersRound size={20} />,
+                },
+                {
+                  key: 'data',
+                  to: '/platform/data',
+                  label: t('data.title'),
+                  icon: <Database size={20} />,
+                },
+              ]}
+            />
+          </div>
+
+          <div className="hidden grid-cols-2 gap-4 md:grid lg:grid-cols-4">
             <KpiCard
               loading={loading}
               icon={<CircleDollarSign size={17} />}
@@ -200,12 +295,27 @@ function AttentionRow({ data }: { data: PlatformStats }) {
                 {item.icon}
               </span>
 
-              <span className="min-w-0 flex-1 truncate text-subhead font-medium text-label">
-                {item.title}
+              {/*
+                Telefonda summa IKKINCHI QATORDA.
+
+                Yonma-yon turganda sarlavhaga 150px qolib, "8 ta
+                hisob to'lan..." bo'lardi — gap esa nima uchun
+                e'tibor berish kerakligini aytadi, ya'ni kesilsa
+                qatorning ma'nosi qolmaydi.
+              */}
+              <span className="min-w-0 flex-1">
+                <span className="block text-subhead font-medium leading-snug text-label">
+                  {item.title}
+                </span>
+                {item.amount > 0 ? (
+                  <span className="mt-0.5 block text-caption font-semibold tnum text-label-secondary sm:hidden">
+                    {moneyShort(item.amount)}
+                  </span>
+                ) : null}
               </span>
 
               {item.amount > 0 ? (
-                <span className="text-subhead font-semibold tnum text-label">
+                <span className="hidden shrink-0 text-subhead font-semibold tnum text-label sm:block">
                   {moneyShort(item.amount)}
                 </span>
               ) : null}
