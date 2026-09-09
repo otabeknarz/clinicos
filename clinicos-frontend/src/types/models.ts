@@ -270,6 +270,11 @@ export interface Tenant {
   termMonths: number
   /** Obuna paytidagi chegirma foizi — "nega bu narx" degan savolga javob */
   discountPct: number
+  /**
+   * SHU KLINIKAGA ALOHIDA kelishilgan foiz. `null` — muddatning
+   * umumiysi amalda. Muddat almashtirilganda ham saqlanadi.
+   */
+  customDiscountPct: number | null
   usage: TenantUsage
   /** Oxirgi marta tizimga kirilgan payt */
   lastActiveAt: ISODateTime | null
@@ -362,6 +367,11 @@ export interface TenantCreateInput {
   kind?: ClinicKind
   /** Necha oyga obuna. Muddatga biriktirilgan chegirma narxga qo'llanadi. */
   termMonths?: number
+  /**
+   * SHU KLINIKAGA ALOHIDA chegirma — kelishilgan mijoz yoki katta
+   * brend uchun. Berilmasa muddatning umumiy chegirmasi qo'llanadi.
+   */
+  discountPct?: number
 }
 
 /** Klinika ma'lumotlarini tahrirlash. Tarif va egasi alohida. */

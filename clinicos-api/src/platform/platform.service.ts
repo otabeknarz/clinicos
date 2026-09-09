@@ -192,7 +192,7 @@ export class PlatformService {
       Hisob OYLIK emas, MUDDAT bo'yicha chiqadi: 6 oyga obuna
       bo'lgan mijozdan har oy pul so'ralmaydi.
     */
-    const discountPct = await this.discountFor(dto.termMonths)
+    const discountPct = await this.discountFor(dto.termMonths, dto.discountPct)
     const termEnd = new Date(now)
     termEnd.setMonth(termEnd.getMonth() + dto.termMonths)
 
@@ -281,6 +281,8 @@ export class PlatformService {
           termPrice: termTotal(plan.basePrice, dto.termMonths, discountPct),
           termMonths: dto.termMonths,
           discountPct,
+          /* Kelishilgan foiz — muddat almashsa ham qolishi uchun */
+          customDiscountPct: dto.discountPct ?? null,
           subscribedAt: now,
           nextInvoiceAt: termEnd,
           ownerName: dto.ownerName.trim(),
@@ -528,7 +530,13 @@ export class PlatformService {
    * uchun chiqarilgan hisob o'zgarmaydi. Aks holda mijoz
    * allaqachon ko'rgan summa o'zgarib qolardi.
    */
-  async changePlan(id: string, planId: string, termMonths?: number) {
+  async changePlan(
+    id: string,
+    planId: string,
+    termMonths?: number,
+    /* `undefined` — tegmaymiz, `null` — kelishuvni bekor qilamiz */
+    discountPct?: number | null,
+  ) {
     const sub = await this.requireSubscription(id)
     const plan = await this.db.plan.findUnique({ where: { id: planId } })
     if (!plan) throw new NotFoundException('Tarif topilmadi')
@@ -539,15 +547,26 @@ export class PlatformService {
       narxga qo'llash noto'g'ri bo'lardi.
     */
     const months = termMonths ?? sub.termMonths
-    const discountPct = await this.discountFor(months)
+    /*
+      Kelishilgan chegirma SAQLANADI: yangisi berilmasa obunadagisi
+      ishlatiladi, aks holda tarif almashtirilganda mijoz bilan
+      kelishilgan shart jimgina yo'qolib ketardi. Ataylab `null`
+      yuborilsa — kelishuv bekor, muddatning umumiysiga qaytadi.
+    */
+    const custom =
+      discountPct === undefined
+        ? (sub.customDiscountPct ?? undefined)
+        : (discountPct ?? undefined)
+    const applied = await this.discountFor(months, custom)
 
     const row = await this.db.subscription.update({
       where: { id: sub.id },
       data: {
         planId: plan.id,
-        termPrice: termTotal(plan.basePrice, months, discountPct),
+        termPrice: termTotal(plan.basePrice, months, applied),
         termMonths: months,
-        discountPct,
+        discountPct: applied,
+        customDiscountPct: custom ?? null,
       },
       include: { clinic: true, plan: true },
     })
@@ -587,12 +606,19 @@ export class PlatformService {
   }
 
   /**
-   * Muddatning chegirmasi. Muddat topilmasa yoki o'chirilgan bo'lsa — 0.
+   * Qo'llanadigan chegirma foizi.
    *
-   * Xato o'rniga nolga tushadi: chegirma yo'qligi to'g'ri narx,
-   * xato esa klinika ochilishini butunlay to'xtatib qo'yardi.
+   * KLINIKAGA ALOHIDA belgilangani USTUN: kelishuv umumiy jadvaldan
+   * kuchliroq. Aks holda muddat chegirmasi keyin o'zgartirilganda
+   * kelishilgan mijozning narxi ham siljib ketardi.
+   *
+   * Alohida belgilanmagan bo'lsa muddatniki olinadi; muddat
+   * topilmasa yoki o'chirilgan bo'lsa — 0. Xato o'rniga nolga
+   * tushadi: chegirma yo'qligi to'g'ri narx, xato esa klinika
+   * ochilishini butunlay to'xtatib qo'yardi.
    */
-  private async discountFor(months: number): Promise<number> {
+  private async discountFor(months: number, custom?: number): Promise<number> {
+    if (custom !== undefined) return custom
     const term = await this.db.billingTerm.findUnique({ where: { months } })
     return term && term.isActive ? term.discountPct : 0
   }
@@ -1357,7 +1383,13 @@ export class PlatformService {
     const sub = await this.db.subscription.findFirst({
       where: { OR: [{ id }, { clinicId: id }] },
       /* `termMonths` — tarif almashtirilganda muddat berilmasa kerak bo'ladi */
-      select: { id: true, clinicId: true, termMonths: true },
+      select: {
+        id: true,
+        clinicId: true,
+        termMonths: true,
+        /* Kelishilgan chegirma tarif almashtirilganda kerak bo'ladi */
+        customDiscountPct: true,
+      },
     })
     if (!sub) throw new NotFoundException('Klinika topilmadi')
     return sub
@@ -1375,6 +1407,7 @@ function toApiTenant(
     termPrice: number
     termMonths: number
     discountPct: number
+    customDiscountPct: number | null
     trialEndsAt: Date | null
     subscribedAt: Date | null
     nextInvoiceAt: Date | null
@@ -1417,6 +1450,8 @@ function toApiTenant(
     /* Necha oyga obuna va o’sha paytdagi chegirma — “nega bu narx” degan savolga javob */
     termMonths: row.termMonths,
     discountPct: row.discountPct,
+    /* Alohida kelishilgan foiz. `null` — muddatning umumiysi amalda. */
+    customDiscountPct: row.customDiscountPct,
     /* Shu klinikada o'chirilgan bo'limlar — platforma paneli shuni belgilaydi */
     disabledModules: row.clinic.disabledModules,
     /* O'chirilgan bo'lsa — qachon va nima uchun. Arxivdan alohida holat. */

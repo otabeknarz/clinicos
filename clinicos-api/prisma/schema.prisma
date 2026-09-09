@@ -1357,6 +1357,18 @@ model Subscription {
   /// degan savolga javob beradi.
   discountPct Int @default(0) @map("discount_pct")
 
+  /// SHU KLINIKAGA ALOHIDA belgilangan chegirma.
+  ///
+  /// `null` — muddatning umumiy chegirmasi (`BillingTerm`) amal
+  /// qiladi. Son turgan bo'lsa, u umumiysidan USTUN: kelishilgan
+  /// mijozga, sherikka yoki katta brendga alohida shart beriladi.
+  ///
+  /// NEGA `discountPct` NING O'ZI YETMAYDI: u obuna paytida
+  /// muzlatilgan NATIJA. Muddat almashtirilganda chegirma qaytadan
+  /// hisoblanadi va kelishilgan foiz yo'qolib ketardi — bu ustun
+  /// esa "bu klinikada shunday kelishilgan" degan QARORNI saqlaydi.
+  customDiscountPct Int? @map("custom_discount_pct")
+
   trialEndsAt   DateTime? @map("trial_ends_at") @db.Date
   subscribedAt  DateTime? @map("subscribed_at") @db.Date
   nextInvoiceAt DateTime? @map("next_invoice_at") @db.Date

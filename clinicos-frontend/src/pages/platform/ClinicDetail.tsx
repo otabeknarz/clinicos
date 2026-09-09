@@ -32,7 +32,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
-import { Select, TextArea } from '@/components/ui/Form'
+import { Select, TextArea, TextInput } from '@/components/ui/Form'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { ProgressBar } from '@/components/ui/Progress'
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/ui/States'
@@ -257,6 +257,22 @@ function SubscriptionCard({
       label: t('platform.termPrice', { count: tenant.termMonths }),
       value: money(tenant.termPrice),
     },
+    /*
+      Chegirma faqat BOR bo'lsa ko'rsatiladi. Alohida kelishilgani
+      belgilab qo'yiladi: "nega bu narx" degan savolga javob shu.
+    */
+    ...(tenant.discountPct > 0
+      ? [
+          {
+            key: 'discount',
+            label: t('platform.discount'),
+            value:
+              tenant.customDiscountPct === null
+                ? `${tenant.discountPct}%`
+                : `${tenant.discountPct}% · ${t('platform.customDiscountTag')}`,
+          },
+        ]
+      : []),
     {
       key: 'since',
       label: t('platform.subscribedAt'),
@@ -802,6 +818,12 @@ function PlanModal({
   const toast = useToast()
   const [planId, setPlanId] = useState('')
   const [termMonths, setTermMonths] = useState(3)
+  /*
+    KLINIKAGA ALOHIDA chegirma. Bo'sh — muddatning umumiy foizi;
+    nol esa "chegirmasiz" degan alohida qaror, shuning uchun matn
+    saqlanadi, son emas.
+  */
+  const [discount, setDiscount] = useState('')
   const [saving, setSaving] = useState(false)
   const [ready, setReady] = useState<string | null>(null)
 
@@ -812,18 +834,37 @@ function PlanModal({
     setReady(tenant.id)
     setPlanId(tenant.planId)
     setTermMonths(tenant.termMonths)
+    setDiscount(
+      tenant.customDiscountPct === null ? '' : String(tenant.customDiscountPct),
+    )
   }
 
   const selected = plans.find((p) => p.id === planId)
   const term = terms?.find((row) => row.months === termMonths)
+  /* Maydon bo'sh qolsa muddatning umumiy foizi ishlaydi */
+  const termDiscount = term?.discountPct ?? 0
+  const appliedDiscount = discount.trim() === '' ? termDiscount : Number(discount)
+  const wasDiscount =
+    tenant?.customDiscountPct === null || tenant === null
+      ? ''
+      : String(tenant.customDiscountPct)
   const changed =
-    tenant !== null && (planId !== tenant.planId || termMonths !== tenant.termMonths)
+    tenant !== null &&
+    (planId !== tenant.planId ||
+      termMonths !== tenant.termMonths ||
+      discount.trim() !== wasDiscount)
 
   async function submit() {
     if (!tenant || !changed) return
     setSaving(true)
     try {
-      await changeTenantPlan(tenant.id, planId, termMonths)
+      await changeTenantPlan(
+        tenant.id,
+        planId,
+        termMonths,
+        /* Bo'sh maydon — kelishuvni BEKOR qilish, tegmaslik emas */
+        discount.trim() === '' ? null : Number(discount),
+      )
       toast.success(t('toast.saved'))
       onDone()
       onClose()
@@ -881,13 +922,30 @@ function PlanModal({
           }))}
         />
 
+        {/*
+          KLINIKAGA ALOHIDA chegirma — kelishilgan mijoz yoki katta
+          brend uchun. Bo'sh qoldirilsa muddatning umumiy foizi
+          ishlaydi va maydon majburiy emas.
+        */}
+        <TextInput
+          label={t('platform.customDiscount')}
+          hint={t('platform.customDiscountHint', { pct: termDiscount })}
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={100}
+          suffix="%"
+          value={discount}
+          onChange={(e) => setDiscount(e.target.value)}
+        />
+
         {/* Muddat uchun jami summa — mijoz bir marta to'laydigan raqam */}
         {selected && term ? (
           <p className="rounded-[10px] bg-sunken px-4 py-3 text-footnote text-label-secondary">
             {t('platform.termTotal', {
               months: term.months,
               total: money(
-                termTotal(selected.basePrice, term.months, term.discountPct),
+                termTotal(selected.basePrice, term.months, appliedDiscount),
               ),
             })}
           </p>

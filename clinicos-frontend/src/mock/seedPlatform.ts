@@ -284,6 +284,8 @@ export function generateTenants(plans: Plan[], now: Date, r: Random): Tenant[] {
         return {
           termMonths: months,
           discountPct,
+          /* Seedda alohida kelishuv yo'q — muddatning umumiy foizi */
+          customDiscountPct: null,
           /* Obuna paytida muzlatilgan jami summa */
           termPrice: termTotal(plan.basePrice, months, discountPct),
         }

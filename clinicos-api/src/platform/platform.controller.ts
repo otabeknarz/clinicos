@@ -270,7 +270,7 @@ export class PlatformController {
   @Post('tenants/:id/plan')
   @RequirePermission('platform.manage')
   changePlan(@Param() params: IdParamDto, @Body() dto: ChangePlanDto) {
-    return this.platform.changePlan(params.id, dto.planId, dto.termMonths)
+    return this.platform.changePlan(params.id, dto.planId, dto.termMonths, dto.discountPct)
   }
 
   /*

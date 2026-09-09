@@ -936,6 +936,96 @@ async function main() {
     })
   }
 
+  /* ---------------- Klinikaga alohida chegirma ---------------- */
+  /*
+    KELISHILGAN FOIZ MUDDATNIKIDAN USTUN va muddat almashtirilganda
+    ham saqlanadi. Aks holda katta brend bilan kelishilgan shart
+    keyingi tarif o'zgarishida jimgina yo'qolib ketardi.
+
+    Sinov `Salomat` klinikasida: `Shifo Med` qolgan sinovlarda
+    ishlatiladi. Oxirida obuna o'z holiga qaytariladi.
+  */
+  console.log('
+Klinikaga alohida chegirma (platforma)')
+  {
+    const rows = items(
+      (await call('GET', '/platform/tenants?page=1&pageSize=100', tokens.admin)).data,
+    )
+    const target = rows.find((x: { name: string }) => String(x.name).includes('Salomat'))
+    check('Salomat klinikasi topildi', Boolean(target), 'seed ishlaganmi?')
+
+    const plansForTerm = items(
+      (await call('GET', '/platform/plans', tokens.admin)).data,
+    )
+    const plan = plansForTerm.find((p: { id: string }) => p.id === target?.planId)
+    check('  obunadagi tarif topildi', Boolean(plan), short(target?.planId))
+
+    if (target && plan) {
+      const was = { planId: target.planId, termMonths: target.termMonths }
+
+      const set = await call('POST', `/platform/tenants/${target.id}/plan`, tokens.admin, {
+        planId: plan.id,
+        termMonths: 6,
+        discountPct: 35,
+      })
+      check('alohida chegirma qo‘llandi', set.data?.discountPct === 35, short(set.data))
+      check(
+        '  narx 35% bo‘yicha',
+        set.data?.termPrice === Math.round(((plan.basePrice * 6) / 3) * 0.65),
+        `narx: ${set.data?.termPrice}`,
+      )
+
+      /* Muddat almashadi, chegirma berilmaydi — kelishuv qolishi kerak */
+      const kept = await call('POST', `/platform/tenants/${target.id}/plan`, tokens.admin, {
+        planId: plan.id,
+        termMonths: 12,
+      })
+      check(
+        'muddat almashdi, kelishuv QOLDI',
+        kept.data?.discountPct === 35 && kept.data?.customDiscountPct === 35,
+        short(kept.data),
+      )
+      check(
+        '  narx yangi muddatga qayta hisoblandi',
+        kept.data?.termPrice === Math.round(((plan.basePrice * 12) / 3) * 0.65),
+        `narx: ${kept.data?.termPrice}`,
+      )
+
+      const tooBig = await call('POST', `/platform/tenants/${target.id}/plan`, tokens.admin, {
+        planId: plan.id,
+        discountPct: 101,
+      })
+      check('  100 dan katta RAD ETILDI', tooBig.status === 400, `status: ${tooBig.status}`)
+
+      /*
+        `null` — kelishuvni BEKOR qilish. Usiz maydonni tozalab
+        bo'lmasdi: eski foiz jimgina qolib ketardi.
+      */
+      const cleared = await call('POST', `/platform/tenants/${target.id}/plan`, tokens.admin, {
+        planId: plan.id,
+        termMonths: 6,
+        discountPct: null,
+      })
+      check(
+        'null yuborilsa kelishuv BEKOR bo‘ldi',
+        cleared.data?.customDiscountPct === null,
+        short(cleared.data),
+      )
+      check(
+        '  muddat chegirmasiga qaytdi',
+        cleared.data?.discountPct === (sixMonths?.discountPct ?? 0),
+        `foiz: ${cleared.data?.discountPct}`,
+      )
+
+      /* O'z holiga qaytaramiz */
+      await call('POST', `/platform/tenants/${target.id}/plan`, tokens.admin, {
+        planId: was.planId,
+        termMonths: was.termMonths,
+        discountPct: target.customDiscountPct,
+      })
+    }
+  }
+
   /* ---------------- Klinikani o'chirish (platforma) ---------------- */
   /*
     O'CHIRISH va ARXIVLASH — ikki xil amal.

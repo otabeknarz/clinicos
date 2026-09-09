@@ -165,10 +165,16 @@ export async function createTenant(input: TenantCreateInput): Promise<TenantCrea
   const db = getDb()
   const plan = db.plans.all().find((p) => p.id === input.planId)
   const termMonths = input.termMonths ?? 3
-  /* Chegirma muddatga biriktirilgan — serverdagi kabi shu yerda topiladi */
+  /*
+    Chegirma muddatga biriktirilgan — serverdagi kabi shu yerda
+    topiladi. Klinikaga alohida foiz berilgan bo'lsa u USTUN.
+  */
+  const customDiscountPct = input.discountPct ?? null
   const termDiscountPct =
+    customDiscountPct ??
     db.billingTerms.allAcrossTenants().find((term) => term.months === termMonths)
-      ?.discountPct ?? 0
+      ?.discountPct ??
+    0
   const tenant: Tenant = {
     id: db.tenants.nextId('clinic'),
     name: input.name,
@@ -192,6 +198,7 @@ export async function createTenant(input: TenantCreateInput): Promise<TenantCrea
     deletedReason: '',
     termMonths,
     discountPct: termDiscountPct,
+    customDiscountPct,
     usage: { doctors: 0, staff: 0, patients: 0, users: 1, appointmentsThisMonth: 0 },
     lastActiveAt: null,
     createdAt: new Date().toISOString(),
@@ -314,10 +321,16 @@ export async function changeTenantPlan(
   planId: ID,
   /** Berilmasa obunadagi hozirgi muddat qoladi */
   termMonths?: number,
+  /*
+    Klinikaga alohida chegirma. Berilmasa obunadagi kelishuv
+    qoladi; `null` esa uni ATAYLAB bekor qiladi va muddatning
+    umumiy foiziga qaytaradi.
+  */
+  discountPct?: number | null,
 ): Promise<Tenant> {
   if (!USE_MOCK) {
     return request<Tenant>('POST', `/platform/tenants/${id}/plan`, {
-      body: { planId, termMonths },
+      body: { planId, termMonths, discountPct },
     })
   }
 
@@ -327,20 +340,26 @@ export async function changeTenantPlan(
 
   /*
     Chegirma HAR DOIM qaytadan hisoblanadi: tarif almashgach eski
-    foizni yangi narxga qo’llash noto’g’ri bo’lardi.
+    foizni yangi narxga qo’llash noto’g’ri bo’lardi. Klinikaga
+    alohida kelishilgani esa saqlanadi — u qaror, hisob emas.
   */
   const current = db.tenants.allAcrossTenants().find((tenant) => tenant.id === id)
   const months = termMonths ?? current?.termMonths ?? 3
-  const discountPct =
+  const custom =
+    discountPct === undefined ? (current?.customDiscountPct ?? null) : discountPct
+  const applied =
+    custom ??
     db.billingTerms.allAcrossTenants().find((term) => term.months === months)
-      ?.discountPct ?? 0
+      ?.discountPct ??
+    0
 
   const updated = db.tenants.updateAcrossTenants(id, {
     planId: plan.id,
     planName: plan.name,
-    termPrice: termTotal(plan.basePrice, months, discountPct),
+    termPrice: termTotal(plan.basePrice, months, applied),
     termMonths: months,
-    discountPct,
+    discountPct: applied,
+    customDiscountPct: custom,
   })
   if (!updated) throw new Error('Klinika topilmadi')
   return delay(updated, 300)

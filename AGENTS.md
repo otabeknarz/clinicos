@@ -234,7 +234,14 @@ term**, frozen at subscribe time with the discount already applied; anything tha
 figure (MRR, ARR) divides with `monthlyFromTerm()`. The frontend has to agree exactly on the
 rounding — `termTotal`/`monthlyFromTerm` are duplicated in `src/types/models.ts` and a drift there
 shows as a panel figure that disagrees with the invoice. Discounts hang off the **term**
-(`BillingTerm`), not the plan, so "6 months — 10%" applies to every plan at once.
+(`BillingTerm`), not the plan, so "6 months — 10%" applies to every plan at once — unless a
+clinic has a negotiated rate of its own (`Subscription.customDiscountPct`), which wins.
+That column exists separately from `discountPct` because `discountPct` is the frozen *result*:
+changing the term recomputes it, and a rate agreed with a large brand would vanish on the next
+plan change. `POST /platform/tenants/:id/plan` therefore reads three states from `discountPct`
+in the body — absent means "leave the agreement alone", `null` cancels it back to the term's
+rate, a number sets a new one. Without the `null` case, clearing the field in the UI would
+silently keep the old rate.
 
 **Debt is computed, never stored.** `GET /debts` derives it as price − payments, in two lists
 (appointments and admissions). A stored balance column would drift from the payment rows and then

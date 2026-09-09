@@ -1249,8 +1249,13 @@ model Subscription {
   /// Necha oyga obuna: 3, 6 yoki 12
   termMonths Int @default(3) @map("term_months")
 
-  /// Obuna paytidagi chegirma foizi
+  /// Obuna paytidagi chegirma foizi (qo'llangan NATIJA)
   discountPct Int @default(0) @map("discount_pct")
+
+  /// Shu klinikaga ALOHIDA kelishilgan foiz. `null` — muddatning
+  /// umumiy chegirmasi amal qiladi. Muddat almashtirilganda ham
+  /// saqlanadi, chunki bu hisob emas, QAROR.
+  customDiscountPct Int? @map("custom_discount_pct")
 
   trialEndsAt   DateTime? @map("trial_ends_at") @db.Date
   subscribedAt  DateTime? @map("subscribed_at") @db.Date

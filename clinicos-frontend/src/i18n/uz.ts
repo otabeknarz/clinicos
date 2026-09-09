@@ -931,6 +931,11 @@ export const dict: Dict = {
   'platform.planInactive': 'Sotuvda emas',
   'platform.basePrice': '3 oylik narx',
   'platform.termPrice': '{count} oy uchun narx',
+  'platform.discount': 'Chegirma',
+  /* Klinikaga alohida kelishilgan foiz — muddatning umumiysidan ustun */
+  'platform.customDiscount': 'Klinikaga alohida chegirma',
+  'platform.customDiscountHint': 'Bo’sh qoldirilsa muddat chegirmasi ({pct}%) qo’llanadi',
+  'platform.customDiscountTag': 'alohida kelishuv',
   'platform.emptyUnlimited': 'Bo’sh qoldirilsa — cheksiz',
   'platform.features': 'Imkoniyatlar',
   'platform.editPlanHint': 'Yangi narx keyingi hisobdan boshlab qo’llanadi',

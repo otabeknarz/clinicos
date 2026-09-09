@@ -86,6 +86,26 @@ export class ChangePlanDto {
   @Type(() => Number)
   @IsIn([...TERM_MONTHS])
   termMonths?: number
+
+  /*
+    SHU KLINIKAGA ALOHIDA chegirma — kelishilgan mijoz, sherik yoki
+    katta brend uchun. U muddatning umumiy foizidan USTUN turadi va
+    muddat almashtirilganda ham saqlanib qoladi.
+
+    UCH XIL QIYMAT, UCH XIL MA'NO:
+      berilmadi — obunadagi kelishuv o'z holicha qoladi
+      `null`    — kelishuv BEKOR, muddatning umumiysiga qaytadi
+      son       — yangi kelishilgan foiz
+
+    `null` alohida kerak: usiz egasi maydonni tozalaganda eski foiz
+    jimgina qolib ketardi va chegirmani bekor qilib bo'lmasdi.
+  */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Chegirma butun son bo‘lishi kerak' })
+  @Min(0, { message: 'Chegirma 0 dan kichik bo‘lmaydi' })
+  @Max(100, { message: 'Chegirma 100% dan oshmaydi' })
+  discountPct?: number | null
 }
 
 /** To'lov muddatining chegirmasi */
@@ -334,6 +354,19 @@ export class TenantCreateDto {
   @Type(() => Number)
   @IsIn([...TERM_MONTHS])
   termMonths: number = 3
+
+  /*
+    SHU KLINIKAGA ALOHIDA chegirma — kelishilgan mijoz, sherik yoki
+    katta brend uchun. Berilmasa muddatning umumiy chegirmasi
+    qo'llanadi; berilsa u undan USTUN turadi va muddat
+    almashtirilganda ham saqlanib qoladi.
+  */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Chegirma butun son bo‘lishi kerak' })
+  @Min(0, { message: 'Chegirma 0 dan kichik bo‘lmaydi' })
+  @Max(100, { message: 'Chegirma 100% dan oshmaydi' })
+  discountPct?: number
 }
 
 /** Klinikada qaysi bo'limlar o'chirilgani */

@@ -39,7 +39,7 @@ import { DataTable, Pagination } from '@/components/ui/Table'
 import { FilterPills } from '@/components/ui/Tabs'
 import { TENANT_TONE } from './tone'
 import { cn } from '@/lib/cn'
-import { dateRelative, groupDigits, moneyShort, phoneToE164 } from '@/lib/format'
+import { dateRelative, groupDigits, money, moneyShort, phoneToE164 } from '@/lib/format'
 import { useAsync, useDebounced } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
@@ -51,7 +51,7 @@ import type {
   TenantCreated,
   TenantStatus,
 } from '@/types/models'
-import { CLINIC_KINDS } from '@/types/models'
+import { CLINIC_KINDS, termTotal } from '@/types/models'
 import { UNLIMITED } from '@/types/models'
 
 /*
@@ -682,7 +682,8 @@ function NewClinicModal({
   onDone,
 }: {
   open: boolean
-  plans: { id: string; name: string }[]
+  /* `basePrice` — chegirmali summani ko'rsatib turish uchun */
+  plans: { id: string; name: string; basePrice: number }[]
   onClose: () => void
   onDone: () => void
 }) {
@@ -697,6 +698,12 @@ function NewClinicModal({
   /* Tur saqlanmaydi — u faqat bo’limlarning boshlang’ich to’plamini beradi */
   const [kind, setKind] = useState<ClinicKind>('general')
   const [termMonths, setTermMonths] = useState(3)
+  /*
+    KLINIKAGA ALOHIDA chegirma. Bo'sh — muddatning umumiy foizi
+    qo'llanadi; nol esa "chegirmasiz" degan alohida qaror, shuning
+    uchun matn saqlanadi, son emas.
+  */
+  const [discount, setDiscount] = useState('')
 
   const { data: terms } = useAsync(() => listBillingTerms(), [])
   const [ownerName, setOwnerName] = useState('')
@@ -706,6 +713,11 @@ function NewClinicModal({
   const [created, setCreated] = useState<TenantCreated | null>(null)
 
   const chosenPlan = planId || plans[0]?.id || ''
+  const planRow = plans.find((p) => p.id === chosenPlan)
+  /* Muddatning umumiy foizi — maydon bo'sh qolganda shu ishlaydi */
+  const termDiscount =
+    (terms ?? []).find((row) => row.months === termMonths)?.discountPct ?? 0
+  const appliedDiscount = discount.trim() === '' ? termDiscount : Number(discount)
   const valid =
     name.trim().length > 1 &&
     address.trim().length > 1 &&
@@ -721,6 +733,7 @@ function NewClinicModal({
     setPlanId('')
     setKind('general')
     setTermMonths(3)
+    setDiscount('')
     setOwnerName('')
     setOwnerEmail('')
     setOwnerPhone('+998 ')
@@ -739,6 +752,7 @@ function NewClinicModal({
         planId: chosenPlan,
         kind,
         termMonths,
+        discountPct: discount.trim() === '' ? undefined : Number(discount),
         ownerName: ownerName.trim(),
         ownerEmail: ownerEmail.trim().toLowerCase(),
         ownerPhone: phoneToE164(ownerPhone),
@@ -862,6 +876,33 @@ function NewClinicModal({
                 : t('platform.termMonths', { count: row.months }),
           }))}
         />
+
+        {/*
+          KLINIKAGA ALOHIDA chegirma — kelishilgan mijoz yoki katta
+          brend uchun. Bo'sh qoldirilsa muddatning umumiy foizi
+          ishlaydi, shuning uchun maydon majburiy emas.
+        */}
+        <TextInput
+          label={t('platform.customDiscount')}
+          hint={t('platform.customDiscountHint', { pct: termDiscount })}
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={100}
+          suffix="%"
+          value={discount}
+          onChange={(e) => setDiscount(e.target.value)}
+        />
+
+        {/* Mijoz bir marta to'laydigan summa — chegirma bilan */}
+        {planRow ? (
+          <p className="rounded-[10px] bg-sunken px-4 py-3 text-footnote text-label-secondary">
+            {t('platform.termTotal', {
+              months: termMonths,
+              total: money(termTotal(planRow.basePrice, termMonths, appliedDiscount)),
+            })}
+          </p>
+        ) : null}
 
         {/*
           Klinika turi — bo'limlarning boshlang'ich to'plami.
