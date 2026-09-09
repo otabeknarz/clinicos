@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { AppLayout } from '@/components/layout/AppLayout'
+import { CabinetLayout } from '@/components/layout/CabinetLayout'
 import { Spinner } from '@/components/ui/Button'
 import { ForbiddenState } from '@/components/ui/States'
 import { I18nProvider } from '@/i18n'
@@ -14,6 +15,11 @@ import type { Permission } from '@/types/models'
 
 import { DashboardPage } from '@/pages/Dashboard'
 import { LoginPage } from '@/pages/Login'
+import { CabinetDebtPage } from '@/pages/cabinet/CabinetDebt'
+import { CabinetHomePage } from '@/pages/cabinet/CabinetHome'
+import { CabinetVisitsPage } from '@/pages/cabinet/CabinetVisits'
+import { PatientProvider } from '@/store/PatientContext'
+import { usePatient } from '@/store/patient-context'
 import { NotFoundPage } from '@/pages/NotFound'
 
 /**
@@ -131,9 +137,16 @@ export default function App() {
       <I18nProvider>
         <ToastProvider>
           <AuthProvider>
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
+            {/*
+              Bemor sessiyasi XODIMNIKIDAN ALOHIDA — izohi
+              `patient-context.ts` da. Ikkalasi bir vaqtda ochiq
+              tursa ham bir-biriga aralashmaydi.
+            */}
+            <PatientProvider>
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </PatientProvider>
           </AuthProvider>
         </ToastProvider>
       </I18nProvider>
@@ -203,13 +216,35 @@ function HomePage() {
 
 function AppRoutes() {
   const { session, ready } = useAuth()
+  const patient = usePatient()
 
   // Sessiya tiklanguncha bo'sh ekran ko'rsatmaymiz — kichik yuklagich
-  if (!ready) {
+  if (!ready || !patient.ready) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-canvas text-label-tertiary">
         <Spinner className="h-6 w-6" />
       </div>
+    )
+  }
+
+  /*
+    BEMOR KABINETI — XODIM MARSHRUTLARIDAN OLDIN.
+
+    Bemor sessiyasi ochiq bo'lsa, ilova butunlay boshqa daraxtga
+    o'tadi: xodim sahifalari umuman ro'yxatga olinmaydi. Ya'ni
+    chegara marshrut qo'riqchisida emas, TUZILISHDA — unutib
+    qo'yiladigan tekshiruv qolmaydi.
+  */
+  if (patient.profile) {
+    return (
+      <Routes>
+        <Route element={<CabinetLayout />}>
+          <Route path="/cabinet" element={<CabinetHomePage />} />
+          <Route path="/cabinet/visits" element={<CabinetVisitsPage />} />
+          <Route path="/cabinet/debt" element={<CabinetDebtPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/cabinet" replace />} />
+      </Routes>
     )
   }
 

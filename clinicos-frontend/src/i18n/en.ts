@@ -1272,4 +1272,27 @@ export const dict: Dict = {
   'shift.closed': 'Shift closed',
   'shift.warning':
     'Once handed over it cannot be changed. Any difference goes into the owner report.',
+
+  /* ---------------- Patient cabinet ---------------- */
+  'cabinet.home': 'Home',
+  'cabinet.visits': 'Visits',
+  'cabinet.debt': 'Balance',
+  'cabinet.debtTotal': 'Outstanding',
+  'cabinet.debtHint': 'Payable at the clinic desk',
+  'cabinet.debtBreakdown': 'What for',
+  'cabinet.partlyPaid': '{paid} paid of {total}',
+  'cabinet.payHint':
+    'Payment is taken at the clinic desk. Ask reception if anything is unclear.',
+  'cabinet.noDebt': 'Nothing outstanding',
+  'cabinet.noDebtHint': 'All visits are paid.',
+  'cabinet.nextVisit': 'Next appointment',
+  'cabinet.noNext': 'Not booked',
+  'cabinet.noNextHint': 'Contact reception to book an appointment.',
+  'cabinet.visitCount': 'Visits',
+  'cabinet.recentVisits': 'Recent visits',
+  'cabinet.noVisits': 'No visits yet',
+  'cabinet.noVisitsHint': 'The record appears here after your appointment.',
+  'cabinet.visitFallback': 'Doctor visit',
+  'cabinet.medicalNotice': 'Medical information — visible only to you',
+  'cabinet.demoAccount': 'Patient',
 }

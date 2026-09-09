@@ -1277,4 +1277,27 @@ export const dict: Dict = {
   'shift.closed': 'Смена закрыта',
   'shift.warning':
     'После сдачи изменить нельзя. Расхождение попадёт в отчёт владельца клиники.',
+
+  /* ---------------- Личный кабинет пациента ---------------- */
+  'cabinet.home': 'Главная',
+  'cabinet.visits': 'Визиты',
+  'cabinet.debt': 'Долг',
+  'cabinet.debtTotal': 'Неоплаченная сумма',
+  'cabinet.debtHint': 'Оплачивается в кассе клиники',
+  'cabinet.debtBreakdown': 'За что',
+  'cabinet.partlyPaid': 'оплачено {paid} из {total}',
+  'cabinet.payHint':
+    'Оплата производится в кассе клиники. С вопросами обращайтесь в регистратуру.',
+  'cabinet.noDebt': 'Долга нет',
+  'cabinet.noDebtHint': 'Все визиты оплачены.',
+  'cabinet.nextVisit': 'Следующий приём',
+  'cabinet.noNext': 'Не записаны',
+  'cabinet.noNextHint': 'Для записи обратитесь в регистратуру.',
+  'cabinet.visitCount': 'Визиты',
+  'cabinet.recentVisits': 'Последние визиты',
+  'cabinet.noVisits': 'Визитов нет',
+  'cabinet.noVisitsHint': 'Запись появится после приёма врача.',
+  'cabinet.visitFallback': 'Приём врача',
+  'cabinet.medicalNotice': 'Медицинские данные — видны только вам',
+  'cabinet.demoAccount': 'Пациент',
 }

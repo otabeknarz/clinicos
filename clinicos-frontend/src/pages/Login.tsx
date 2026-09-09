@@ -9,7 +9,9 @@ import { PLATFORM_EMAIL_DOMAIN } from '@/components/ui/EmailLocalInput'
 import { TextInput } from '@/components/ui/Form'
 import { cn } from '@/lib/cn'
 import { useI18n } from '@/i18n'
+import { getDb } from '@/mock/db'
 import { useAuth } from '@/store/auth-context'
+import { usePatient } from '@/store/patient-context'
 
 /**
  * Kirish sahifasi.
@@ -22,12 +24,27 @@ import { useAuth } from '@/store/auth-context'
 export function LoginPage() {
   const { t } = useI18n()
   const { session, login, loading, error } = useAuth()
+  const { enter } = usePatient()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [touched, setTouched] = useState(false)
 
   if (session) return <Navigate to="/" replace />
+
+  /**
+   * Demo bemor sifatida kabinetga kirish.
+   *
+   * Tashrifi BOR bemor tanlanadi — aks holda kabinet bo'm-bo'sh
+   * ochilib, nima ko'rsatishini tushunib bo'lmasdi.
+   */
+  async function enterCabinet() {
+    const db = getDb()
+    const withVisits = new Set(db.visits.all().map((v) => v.patientId))
+    const target =
+      db.patients.all().find((p) => withVisits.has(p.id)) ?? db.patients.all()[0]
+    if (target) await enter(target.id)
+  }
 
   const emailError = touched && !email.trim() ? t('valid.required') : undefined
   const passwordError = touched && !password ? t('valid.required') : undefined
@@ -181,6 +198,37 @@ export function LoginPage() {
                 </span>
               </button>
             ))}
+
+            {/*
+              BEMOR KABINETI — boshqa turdagi kirish.
+
+              Bemor xodim emas: uning parol bilan kiradigan hisobi
+              yo'q va bo'lmaydi ham. Haqiqiy ishlashda u Telegram
+              mini app orqali kiradi — bot `initData` ni yuboradi,
+              server uni tekshiradi va bemor tokenini qaytaradi.
+              Bu tugma o'sha yo'lning demo ko'rinishi.
+            */}
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => void enterCabinet()}
+              className={cn(
+                'card squircle card-interactive flex items-center justify-between gap-3 px-4 py-3 text-left',
+                'disabled:pointer-events-none disabled:opacity-50',
+              )}
+            >
+              <span className="min-w-0">
+                <span className="block text-subhead font-medium text-label">
+                  {t('cabinet.demoAccount')}
+                </span>
+                <span className="block truncate text-caption text-label-tertiary">
+                  {t('cabinet.medicalNotice')}
+                </span>
+              </span>
+              <span className="shrink-0 text-caption font-medium text-accent">
+                {t('auth.submit')}
+              </span>
+            </button>
           </div>
         </div>
         )}

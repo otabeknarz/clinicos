@@ -2604,3 +2604,73 @@ export interface DebtWaiver {
   createdBy: ID
   createdAt: ISODateTime
 }
+
+/* ------------------------------------------------------------------ */
+/* Bemor kabineti                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * BEMORNING O'Z KABINETI — xodimlar paneliga hech qanday aloqasi yo'q.
+ *
+ * Bu shakllar ATAYLAB alohida: `PatientWithStats`, `VisitExpanded` va
+ * `VisitDebt` — xodimlar uchun tuzilgan va ular ichida bemor ko'rmasligi
+ * kerak narsalar bor (ichki izoh, boshqa bemorlarning ismi, qarzdorning
+ * telefoni). Ularni qayta ishlatib, keraksiz maydonni "ko'rsatmaslik"
+ * bilan cheklansak, kelajakda qo'shilgan har bir yangi maydon bemorga
+ * o'z-o'zidan ochilib ketardi. Shuning uchun bu yerda faqat ATAYLAB
+ * ochilgan maydonlar turadi.
+ */
+export interface CabinetProfile {
+  patientId: ID
+  fullName: string
+  phone: string
+  /** Qaysi klinikaning bemori */
+  clinicName: string
+  visitCount: number
+  lastVisitAt: ISODate | null
+  /** Keyingi rejalashtirilgan qabul. `null` — yozilmagan. */
+  nextAppointment: {
+    id: ID
+    startsAt: ISODateTime
+    doctorName: string
+    serviceName: string
+  } | null
+  /** Jami to'lanmagan summa */
+  debtTotal: UZS
+}
+
+/**
+ * Bemor ko'radigan tashrif yozuvi.
+ *
+ * IZOH (`Visit.notes`) ATAYLAB YO'Q. U shifokorning ichki eslatmasi —
+ * "bemor bilan gaplashish qiyin", "qarzini so'rash kerak" kabi narsalar
+ * yoziladigan joy. Bemorga ochilsa, shifokor u yerga rostini yozishni
+ * to'xtatadi va yozuvning ma'nosi qolmaydi.
+ */
+export interface CabinetVisit {
+  id: ID
+  visitedAt: ISODateTime
+  doctorName: string
+  serviceName: string | null
+  complaint: string
+  diagnosis: string
+  treatment: string
+  /** Rentgen, tahlil varaqasi — imzolangan havolalar */
+  images: VisitImage[]
+}
+
+/** Bemorning bitta to'lanmagan qabuli */
+export interface CabinetDebtItem {
+  appointmentId: ID
+  serviceName: string
+  doctorName: string
+  completedAt: ISODateTime
+  total: UZS
+  paid: UZS
+  remaining: UZS
+}
+
+export interface CabinetDebt {
+  items: CabinetDebtItem[]
+  total: UZS
+}

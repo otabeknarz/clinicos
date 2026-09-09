@@ -1326,4 +1326,27 @@ export const dict: Dict = {
   'shift.closed': 'Smena yopildi',
   'shift.warning':
     'Topshirilgandan keyin o’zgartirib bo’lmaydi. Farq bo’lsa, u klinika egasining hisobotiga tushadi.',
+
+  /* ---------------- Bemor kabineti ---------------- */
+  'cabinet.home': 'Bosh sahifa',
+  'cabinet.visits': 'Tashriflar',
+  'cabinet.debt': 'Qarz',
+  'cabinet.debtTotal': 'To’lanmagan summa',
+  'cabinet.debtHint': 'Klinika kassasida to’lanadi',
+  'cabinet.debtBreakdown': 'Nima uchun',
+  'cabinet.partlyPaid': '{paid} to’langan, jami {total}',
+  'cabinet.payHint':
+    'To’lovni klinika kassasida amalga oshirasiz. Savol bo’lsa registraturaga murojaat qiling.',
+  'cabinet.noDebt': 'Qarzingiz yo’q',
+  'cabinet.noDebtHint': 'Barcha tashriflar to’langan.',
+  'cabinet.nextVisit': 'Keyingi qabul',
+  'cabinet.noNext': 'Yozilmagan',
+  'cabinet.noNextHint': 'Qabulga yozilish uchun registraturaga murojaat qiling.',
+  'cabinet.visitCount': 'Tashriflar',
+  'cabinet.recentVisits': 'So’nggi tashriflar',
+  'cabinet.noVisits': 'Tashrif yo’q',
+  'cabinet.noVisitsHint': 'Shifokor ko’rigidan keyin yozuv shu yerda ko’rinadi.',
+  'cabinet.visitFallback': 'Shifokor ko’rigi',
+  'cabinet.medicalNotice': 'Tibbiy ma’lumot — faqat sizga ko’rinadi',
+  'cabinet.demoAccount': 'Bemor',
 }
