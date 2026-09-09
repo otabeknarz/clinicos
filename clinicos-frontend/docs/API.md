@@ -3006,7 +3006,7 @@ db.billingTerms.all().find((term) => term.months === months)?.discountPct ?? 0
 const updated = db.tenants.updateAcrossTenants(id, {
 planId: plan.id,
 planName: plan.name,
-pricePerMonth: Math.round((plan.pricePerMonth * (100 - discountPct)) / 100),
+termPrice: termTotal(plan.basePrice, months, discountPct),
 termMonths: months,
 discountPct,
 })

@@ -20,7 +20,7 @@ import type {
   TenantPatient,
   TenantStatus,
 } from '@/types/models'
-import { UNLIMITED } from '@/types/models'
+import { termTotal, UNLIMITED } from '@/types/models'
 import { addDays, toISODate } from '@/lib/dates'
 import { FEMALE_NAMES, MALE_NAMES, OPERATOR_CODES, SURNAME_STEMS } from './names'
 import { COMPLAINT_KEYS, SPECIALTIES } from '@/i18n/data'
@@ -114,7 +114,7 @@ export function generatePlans(now: Date): Plan[] {
       id: 'plan_starter',
       tier: 'starter',
       name: 'Boshlang‘ich',
-      pricePerMonth: 1_200_000,
+      basePrice: 3_600_000,
       limits: { doctors: 3, staff: 10 },
       // Kichik klinikaga statsionar ham, kassa nazorati ham kerak emas
       features: ['chat'],
@@ -125,7 +125,7 @@ export function generatePlans(now: Date): Plan[] {
       id: 'plan_standard',
       tier: 'standard',
       name: 'Standart',
-      pricePerMonth: 2_500_000,
+      basePrice: 7_500_000,
       limits: { doctors: 10, staff: 40 },
       features: ['ward', 'analytics', 'staff', 'chat'],
       isActive: true,
@@ -135,7 +135,7 @@ export function generatePlans(now: Date): Plan[] {
       id: 'plan_premium',
       tier: 'premium',
       name: 'Premium',
-      pricePerMonth: 4_500_000,
+      basePrice: 13_500_000,
       limits: { doctors: UNLIMITED, staff: UNLIMITED },
       features: ['ward', 'analytics', 'cashControl', 'staff', 'chat', 'api'],
       isActive: true,
@@ -258,7 +258,6 @@ export function generateTenants(plans: Plan[], now: Date, r: Random): Tenant[] {
       status,
       planId: plan.id,
       planName: plan.name,
-      pricePerMonth: plan.pricePerMonth,
       trialEndsAt,
       subscribedAt,
       nextInvoiceAt,
@@ -281,7 +280,13 @@ export function generateTenants(plans: Plan[], now: Date, r: Random): Tenant[] {
       ...(() => {
         const months = isDemo ? 6 : r.pick([3, 6, 12])
         /* Chegirma muddatdan kelib chiqadi — seed ham shu qoidaga bo'ysunadi */
-        return { termMonths: months, discountPct: TERM_DISCOUNT[months] ?? 0 }
+        const discountPct = TERM_DISCOUNT[months] ?? 0
+        return {
+          termMonths: months,
+          discountPct,
+          /* Obuna paytida muzlatilgan jami summa */
+          termPrice: termTotal(plan.basePrice, months, discountPct),
+        }
       })(),
       usage: {
         doctors,
@@ -311,6 +316,11 @@ export function generateTenants(plans: Plan[], now: Date, r: Random): Tenant[] {
  *
  * Faqat to'layotgan klinikalarga yoziladi: sinovdagi klinikaga hisob
  * chiqarilmaydi, ketganiga esa ketganidan keyin chiqarilmaydi.
+ *
+ * HISOB HAR OY EMAS, HAR MUDDATDA chiqadi: olti oyga obuna bo'lgan
+ * klinika yiliga ikki marta to'laydi. Oyma-oy chiqarilsa, muddat
+ * summasi o'n ikki marta takrorlanib, yillik daromad bir necha
+ * barobar ko'p ko'rinardi.
  */
 export function generateInvoices(
   tenants: Tenant[],
@@ -325,12 +335,13 @@ export function generateInvoices(
 
     const subscribed = new Date(tenant.subscribedAt)
 
-    for (let back = 11; back >= 0; back--) {
+    const step = tenant.termMonths
+    for (let back = Math.floor(11 / step) * step; back >= 0; back -= step) {
       const month = new Date(now.getFullYear(), now.getMonth() - back, 1)
       if (month < subscribed) continue
 
       // Ketgan klinikaga ketganidan keyin hisob chiqarilmaydi
-      if (tenant.status === 'cancelled' && back < 2) continue
+      if (tenant.status === 'cancelled' && back < step) continue
 
       const period = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`
       const issuedAt = toISODate(month)
@@ -352,7 +363,7 @@ export function generateInvoices(
                 ? 'paid'
                 : 'pending'
               : 'pending'
-      } else if (tenant.status === 'past_due' && back <= 1) {
+      } else if (tenant.status === 'past_due' && back === step) {
         status = 'overdue'
       }
 
@@ -363,7 +374,7 @@ export function generateInvoices(
         tenantName: tenant.name,
         period,
         planName: tenant.planName,
-        amount: tenant.pricePerMonth,
+        amount: tenant.termPrice,
         status,
         issuedAt,
         dueAt,

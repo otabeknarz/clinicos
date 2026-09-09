@@ -1280,7 +1280,17 @@ model Plan {
   tier PlanTier @unique
   name String
 
-  pricePerMonth Int @map("price_per_month")
+  /// ASOSIY NARX — UCH OYLIK.
+  ///
+  /// Tariflar uch oydan boshlab sotiladi, shuning uchun e'lon qilingan
+  /// narx ham uch oylik. Uzunroq muddat shundan chiqadi: 6 oy = ×2,
+  /// 12 oy = ×4, ustiga muddatning chegirmasi.
+  ///
+  /// NEGA OYLIK EMAS: oylik saqlansa, uch oylik narxni kiritish uchun
+  /// uchga bo'lish kerak bo'lardi — 2 000 000 / 3 butun songa
+  /// bo'linmaydi va ko'rsatilgan raqam kiritilganidan farq qilardi.
+  basePrice Int @map("base_price")
+
   /// -1 = cheksiz
   limitDoctors  Int @map("limit_doctors")
   limitStaff    Int @map("limit_staff")
@@ -1333,13 +1343,12 @@ model Subscription {
   planId String       @map("plan_id")
   plan   Plan         @relation(fields: [planId], references: [id], onDelete: Restrict)
 
-  /// Narx obuna paytida muzlatiladi — tarif narxi ko'tarilsa,
-  /// mavjud mijozning hisobi o'z-o'zidan oshib ketmasligi kerak.
+  /// Muddat uchun JAMI summa — mijoz bir marta to'laydigan pul.
   ///
-  /// CHEGIRMA ALLAQACHON QO'LLANGAN: bu mijoz haqiqatan to'laydigan
-  /// oylik summa. Chegirma foizi keyin o'zgarsa ham bu raqam
-  /// o'zgarmaydi — xuddi tarif narxi kabi.
-  pricePerMonth Int @map("price_per_month")
+  /// Obuna paytida muzlatiladi: tarif narxi ko'tarilsa ham mavjud
+  /// mijozning hisobi o'z-o'zidan oshib ketmasligi kerak. Chegirma
+  /// ham allaqachon qo'llangan.
+  termPrice Int @map("term_price")
 
   /// Necha oyga obuna bo'lgan: 3, 6 yoki 12. Hisob shu davrga chiqadi.
   termMonths Int @default(3) @map("term_months")

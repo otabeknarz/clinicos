@@ -2,6 +2,7 @@ import 'dotenv/config'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient, Role } from '@prisma/client'
 import * as argon2 from 'argon2'
+import { termTotal } from '../src/common/billing'
 
 /**
  * Boshlang'ich ma'lumot.
@@ -124,7 +125,7 @@ async function main() {
       data: {
         tier: 'STARTER',
         name: 'Boshlang‘ich',
-        pricePerMonth: 1_200_000,
+        basePrice: 3_600_000,
         limitDoctors: 3,
         limitStaff: 10,
         features: ['analytics'],
@@ -134,7 +135,7 @@ async function main() {
       data: {
         tier: 'STANDARD',
         name: 'Standart',
-        pricePerMonth: 2_500_000,
+        basePrice: 7_500_000,
         limitDoctors: 10,
         limitStaff: 40,
         features: ['analytics', 'staff', 'cashControl', 'chat'],
@@ -144,7 +145,7 @@ async function main() {
       data: {
         tier: 'PREMIUM',
         name: 'Premium',
-        pricePerMonth: 4_500_000,
+        basePrice: 13_500_000,
         // -1 = cheksiz
         limitDoctors: -1,
         limitStaff: -1,
@@ -174,6 +175,10 @@ async function main() {
   for (const [index, tenant] of [a, b].entries()) {
     const plan = plans[index === 0 ? 1 : 0]
 
+    /* Birinchisi 6 oyga (10% chegirma bilan), ikkinchisi 3 oyga */
+    const termMonths = index === 0 ? 6 : 3
+    const discountPct = index === 0 ? 10 : 0
+
     const sub = await db.subscription.create({
       data: {
         clinicId: tenant.id,
@@ -181,10 +186,9 @@ async function main() {
         planId: plan.id,
         // Narx obuna paytida MUZLATILADI — tarif qimmatlashsa
         // mavjud mijozning hisobi o'z-o'zidan oshib ketmasin
-        pricePerMonth: plan.pricePerMonth,
-        /* Birinchisi 6 oyga (10% chegirma bilan), ikkinchisi 3 oyga */
-        termMonths: index === 0 ? 6 : 3,
-        discountPct: index === 0 ? 10 : 0,
+        termPrice: termTotal(plan.basePrice, termMonths, discountPct),
+        termMonths,
+        discountPct,
         subscribedAt: new Date('2025-06-15'),
         trialEndsAt: new Date('2025-06-14'),
         nextInvoiceAt: nextMonth,
@@ -200,7 +204,7 @@ async function main() {
         subscriptionId: sub.id,
         period: today.toISOString().slice(0, 7),
         planName: plan.name,
-        amount: plan.pricePerMonth,
+        amount: sub.termPrice,
         status: index === 0 ? 'PAID' : 'PENDING',
         issuedAt: today,
         dueAt: nextMonth,

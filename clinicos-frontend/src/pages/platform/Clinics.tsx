@@ -139,7 +139,7 @@ export function PlatformClinicsPage() {
         <div>
           <p className="text-footnote text-label">{row.planName}</p>
           <p className="text-caption tnum text-label-tertiary">
-            {moneyShort(row.pricePerMonth)}/{t('platform.perMonth')}
+            {moneyShort(row.termPrice)}/{row.termMonths} {t('platform.monthsShort')}
           </p>
         </div>
       ),

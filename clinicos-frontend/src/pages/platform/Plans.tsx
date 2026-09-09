@@ -117,10 +117,10 @@ function PlanCard({ plan, onEdit }: { plan: Plan; onEdit: () => void }) {
 
       <p className="mt-4 flex items-baseline gap-1.5">
         <span className="text-title-1 font-bold tnum text-label">
-          {money(plan.pricePerMonth)}
+          {money(plan.basePrice)}
         </span>
         <span className="text-footnote text-label-tertiary">
-          / {t('platform.perMonth')}
+          / {t('platform.perTerm')}
         </span>
       </p>
 
@@ -217,7 +217,7 @@ function EditModal({
   // Forma qiymatlarini tanlangan tarifdan olamiz
   if (plan && ready !== plan.id) {
     setReady(plan.id)
-    setPrice(String(plan.pricePerMonth))
+    setPrice(String(plan.basePrice))
     setDoctors(plan.limits.doctors === UNLIMITED ? '' : String(plan.limits.doctors))
     setStaff(plan.limits.staff === UNLIMITED ? '' : String(plan.limits.staff))
     setFeatures(plan.features)
@@ -228,7 +228,7 @@ function EditModal({
     setSaving(true)
     try {
       await updatePlan(plan.id, {
-        pricePerMonth: Number(price) || 0,
+        basePrice: Number(price) || 0,
         limits: {
           doctors: doctors.trim() === '' ? UNLIMITED : Number(doctors),
           staff: staff.trim() === '' ? UNLIMITED : Number(staff),
@@ -273,7 +273,7 @@ function EditModal({
     >
       <div className="space-y-4 pb-2">
         <TextInput
-          label={t('platform.pricePerMonth')}
+          label={t('platform.basePrice')}
           type="number"
           inputMode="numeric"
           min={0}
@@ -453,7 +453,7 @@ function TermMatrix({ plans, onSaved }: { plans: Plan[]; onSaved: () => void }) 
                 {plans.map((plan) => (
                   <td key={plan.id} className="px-4 py-3">
                     <span className="tnum text-label">
-                      {money(termTotal(plan.pricePerMonth, term.months, term.discountPct))}
+                      {money(termTotal(plan.basePrice, term.months, term.discountPct))}
                     </span>
                   </td>
                 ))}

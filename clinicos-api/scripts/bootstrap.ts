@@ -108,7 +108,7 @@ async function bootstrapPlatform() {
         {
           tier: PlanTier.STARTER,
           name: 'Boshlang‘ich',
-          pricePerMonth: 1_200_000,
+          basePrice: 3_600_000,
           limitDoctors: 3,
           limitStaff: 10,
           features: ['analytics'],
@@ -116,7 +116,7 @@ async function bootstrapPlatform() {
         {
           tier: PlanTier.STANDARD,
           name: 'Standart',
-          pricePerMonth: 2_500_000,
+          basePrice: 7_500_000,
           limitDoctors: 10,
           limitStaff: 40,
           features: ['analytics', 'staff', 'cashControl', 'chat'],
@@ -124,7 +124,7 @@ async function bootstrapPlatform() {
         {
           tier: PlanTier.PREMIUM,
           name: 'Premium',
-          pricePerMonth: 4_500_000,
+          basePrice: 13_500_000,
           limitDoctors: 40,
           limitStaff: 150,
           features: ['analytics', 'staff', 'cashControl', 'chat', 'ward', 'forecast'],
@@ -328,7 +328,7 @@ async function bootstrapClinic() {
         Narx obuna paytida MUZLATILADI: tarif keyin qimmatlashsa,
         mavjud mijozning hisobi o'z-o'zidan oshib ketmasin.
       */
-      pricePerMonth: plan.pricePerMonth,
+      termPrice: plan.basePrice,
       subscribedAt: now,
       nextInvoiceAt: nextMonth,
       ownerName,

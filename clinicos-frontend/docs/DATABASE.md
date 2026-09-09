@@ -1212,7 +1212,9 @@ model Plan {
   tier PlanTier @unique
   name String
 
-  pricePerMonth Int @map("price_per_month")
+  /// ASOSIY NARX — UCH OYLIK. Uzunroq muddat shundan chiqadi:
+  /// 6 oy = ×2, 12 oy = ×4, ustiga muddatning chegirmasi.
+  basePrice Int @map("base_price")
   /// -1 = cheksiz
   limitDoctors  Int @map("limit_doctors")
   limitStaff    Int @map("limit_staff")
@@ -1240,9 +1242,15 @@ model Subscription {
   planId String       @map("plan_id")
   plan   Plan         @relation(fields: [planId], references: [id], onDelete: Restrict)
 
-  /// Narx obuna paytida muzlatiladi — tarif narxi ko'tarilsa,
-  /// mavjud mijozning hisobi o'z-o'zidan oshib ketmasligi kerak.
-  pricePerMonth Int @map("price_per_month")
+  /// Muddat uchun JAMI summa — mijoz bir marta to'laydigan pul.
+  /// Obuna paytida muzlatiladi va chegirma allaqachon qo'llangan.
+  termPrice Int @map("term_price")
+
+  /// Necha oyga obuna: 3, 6 yoki 12
+  termMonths Int @default(3) @map("term_months")
+
+  /// Obuna paytidagi chegirma foizi
+  discountPct Int @default(0) @map("discount_pct")
 
   trialEndsAt   DateTime? @map("trial_ends_at") @db.Date
   subscribedAt  DateTime? @map("subscribed_at") @db.Date

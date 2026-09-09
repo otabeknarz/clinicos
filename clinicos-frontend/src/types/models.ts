@@ -145,25 +145,42 @@ export interface BillingTerm {
 }
 
 /**
- * Muddat uchun jami summa: oylik narx × oylar × (100 − chegirma).
+ * ASOSIY MUDDAT — UCH OY.
  *
- * Serverdagi `discountedMonthly` bilan bir xil yaxlitlash — panelda
- * ko’ringan raqam hisobdagisidan farq qilmasligi kerak.
+ * Tarif uch oydan boshlab sotiladi, shuning uchun `basePrice` ham
+ * uch oylik. Qolgan muddatlar undan ko‘paytiriladi: 6 oy = ×2,
+ * 12 oy = ×4.
  */
-export function termTotal(
-  pricePerMonth: UZS,
-  months: number,
-  discountPct: number,
-): UZS {
-  return Math.round((pricePerMonth * (100 - discountPct)) / 100) * months
+export const BASE_TERM_MONTHS = 3
+
+/**
+ * Muddat uchun jami summa — mijoz bir marta to‘laydigan pul.
+ *
+ * Serverdagi `termTotal` (`src/common/billing.ts`) bilan bir xil
+ * bo‘lishi shart: panelda ko’ringan raqam hisobdagisidan farq
+ * qilmasligi kerak. Yaxlitlash faqat oxirida.
+ */
+export function termTotal(basePrice: UZS, months: number, discountPct: number): UZS {
+  const full = (basePrice * months) / BASE_TERM_MONTHS
+  return Math.round((full * (100 - discountPct)) / 100)
+}
+
+/**
+ * Oylik daromad (MRR) uchun: muddat summasini oyga bo‘lamiz.
+ *
+ * Hisobot raqami, hisob-faktura emas — yaxlitlash bu yerda xavfsiz.
+ */
+export function monthlyFromTerm(termPrice: UZS, termMonths: number): UZS {
+  if (termMonths <= 0) return 0
+  return Math.round(termPrice / termMonths)
 }
 
 export interface Plan {
   id: ID
   tier: PlanTier
   name: string
-  /** Oylik narx */
-  pricePerMonth: UZS
+  /** UCH OYLIK narx. Boshqa muddatlar shundan hisoblanadi — `termTotal`. */
+  basePrice: UZS
   /**
    * Chegaralar. `UNLIMITED` (-1) — cheklanmagan.
    *
@@ -222,7 +239,8 @@ export interface Tenant {
   status: TenantStatus
   planId: ID
   planName: string
-  pricePerMonth: UZS
+  /** Muddat uchun MUZLATILGAN jami summa (oylik emas) */
+  termPrice: UZS
   /** Sinov muddati tugash sanasi. `null` — sinovda emas. */
   trialEndsAt: ISODate | null
   /** Birinchi to'lov sanasi. `null` — hali to'lamagan. */

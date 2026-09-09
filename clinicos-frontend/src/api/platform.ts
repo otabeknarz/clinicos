@@ -51,6 +51,7 @@ import type {
   PlatformSearchHit,
   PlatformSearchScope,
 } from '@/types/models'
+import { monthlyFromTerm, termTotal } from '@/types/models'
 
 /* ------------------------------------------------------------------ */
 /* Klinikalar                                                          */
@@ -163,6 +164,11 @@ export async function createTenant(input: TenantCreateInput): Promise<TenantCrea
 
   const db = getDb()
   const plan = db.plans.all().find((p) => p.id === input.planId)
+  const termMonths = input.termMonths ?? 3
+  /* Chegirma muddatga biriktirilgan — serverdagi kabi shu yerda topiladi */
+  const termDiscountPct =
+    db.billingTerms.allAcrossTenants().find((term) => term.months === termMonths)
+      ?.discountPct ?? 0
   const tenant: Tenant = {
     id: db.tenants.nextId('clinic'),
     name: input.name,
@@ -175,7 +181,7 @@ export async function createTenant(input: TenantCreateInput): Promise<TenantCrea
     status: 'active',
     planId: input.planId,
     planName: plan?.name ?? '',
-    pricePerMonth: plan?.pricePerMonth ?? 0,
+    termPrice: termTotal(plan?.basePrice ?? 0, termMonths, termDiscountPct),
     trialEndsAt: null,
     subscribedAt: toISODate(new Date()),
     nextInvoiceAt: toISODate(addDays(new Date(), 30)),
@@ -184,11 +190,8 @@ export async function createTenant(input: TenantCreateInput): Promise<TenantCrea
     disabledModules: DISABLED_BY_KIND[input.kind ?? 'general'],
     deletedAt: null,
     deletedReason: '',
-    termMonths: input.termMonths ?? 3,
-    /* Chegirma muddatga biriktirilgan — serverdagi kabi shu yerda topiladi */
-    discountPct:
-      getDb().billingTerms.all().find((term) => term.months === (input.termMonths ?? 3))
-        ?.discountPct ?? 0,
+    termMonths,
+    discountPct: termDiscountPct,
     usage: { doctors: 0, staff: 0, patients: 0, users: 1, appointmentsThisMonth: 0 },
     lastActiveAt: null,
     createdAt: new Date().toISOString(),
@@ -329,12 +332,13 @@ export async function changeTenantPlan(
   const current = db.tenants.allAcrossTenants().find((tenant) => tenant.id === id)
   const months = termMonths ?? current?.termMonths ?? 3
   const discountPct =
-    db.billingTerms.all().find((term) => term.months === months)?.discountPct ?? 0
+    db.billingTerms.allAcrossTenants().find((term) => term.months === months)
+      ?.discountPct ?? 0
 
   const updated = db.tenants.updateAcrossTenants(id, {
     planId: plan.id,
     planName: plan.name,
-    pricePerMonth: Math.round((plan.pricePerMonth * (100 - discountPct)) / 100),
+    termPrice: termTotal(plan.basePrice, months, discountPct),
     termMonths: months,
     discountPct,
   })
@@ -354,7 +358,8 @@ export async function listPlans(): Promise<Plan[]> {
 
 export interface PlanInput {
   name: string
-  pricePerMonth: UZS
+  /** UCH OYLIK narx */
+  basePrice: UZS
   limits: Plan['limits']
   features: Plan['features']
   isActive: boolean
@@ -564,7 +569,7 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   const payingNow = tenants.filter(
     (t) => t.status === 'active' || t.status === 'past_due',
   )
-  const mrrValue = payingNow.reduce((sum, t) => sum + t.pricePerMonth, 0)
+  const mrrValue = payingNow.reduce((sum, t) => sum + monthlyFromTerm(t.termPrice, t.termMonths), 0)
 
   /*
     O'tgan oy MRR — AYNAN SHU o'lchov bilan, bir oy oldingi holatda:
@@ -581,7 +586,7 @@ export async function getPlatformStats(): Promise<PlatformStats> {
     .filter((t) => t.subscribedAt !== null && t.subscribedAt <= lastMonthEndKey)
     // O'sha paytda hali ketmagan va to'xtatilmaganlar
     .filter((t) => t.status !== 'cancelled')
-    .reduce((sum, t) => sum + t.pricePerMonth, 0)
+    .reduce((sum, t) => sum + monthlyFromTerm(t.termPrice, t.termMonths), 0)
 
   const newThisMonth = tenants.filter(
     (t) => t.createdAt.slice(0, 7) === thisMonth,
@@ -617,7 +622,7 @@ export async function getPlatformStats(): Promise<PlatformStats> {
       planId: plan.id,
       planName: plan.name,
       count: rows.length,
-      mrr: rows.reduce((sum, t) => sum + t.pricePerMonth, 0),
+      mrr: rows.reduce((sum, t) => sum + monthlyFromTerm(t.termPrice, t.termMonths), 0),
     }
   })
 
@@ -1151,7 +1156,7 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
 
   const ourRevenue = tenants
     .filter((t) => t.status === 'active' || t.status === 'past_due')
-    .reduce((sum, t) => sum + t.pricePerMonth, 0)
+    .reduce((sum, t) => sum + monthlyFromTerm(t.termPrice, t.termMonths), 0)
 
   /*
     O'tgan oy bilan solishtirish uchun bir oy oldin ro'yxatda
@@ -1164,7 +1169,7 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
   const turnoverPrev = before.reduce((sum, t) => sum + turnoverOf(t), 0)
   const ourRevenuePrev = before
     .filter((t) => t.status === 'active' || t.status === 'past_due')
-    .reduce((sum, t) => sum + t.pricePerMonth, 0)
+    .reduce((sum, t) => sum + monthlyFromTerm(t.termPrice, t.termMonths), 0)
 
   /* --- Tarix --- */
 
@@ -1180,7 +1185,7 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
       period,
       turnover: monthTurnover,
       profit: Math.round(monthTurnover * (1 - PAYROLL_SHARE)),
-      ourRevenue: live.reduce((sum, t) => sum + t.pricePerMonth, 0),
+      ourRevenue: live.reduce((sum, t) => sum + monthlyFromTerm(t.termPrice, t.termMonths), 0),
     })
   }
 
@@ -1500,7 +1505,7 @@ export async function undeleteTenant(id: ID): Promise<Tenant> {
 // GET /platform/billing-terms
 export async function listBillingTerms(): Promise<BillingTerm[]> {
   if (!USE_MOCK) return request<BillingTerm[]>('GET', '/platform/billing-terms')
-  return delay(getDb().billingTerms.all(), 140)
+  return delay(getDb().billingTerms.allAcrossTenants(), 140)
 }
 
 /**
@@ -1519,7 +1524,7 @@ export async function updateBillingTerm(
     return request<BillingTerm>('PATCH', `/platform/billing-terms/${id}`, { body: patch })
   }
 
-  const updated = getDb().billingTerms.update(id, patch)
+  const updated = getDb().billingTerms.updateAcrossTenants(id, patch)
   if (!updated) throw new Error('Muddat topilmadi')
   return delay(updated, 220)
 }

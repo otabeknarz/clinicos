@@ -864,8 +864,32 @@ async function main() {
     })
     check('  noto‘g‘ri chegara RAD ETILDI', bad.status === 400, `status: ${bad.status}`)
 
+    /*
+      NARX UCH OYLIK. Egasi kiritgan raqam AYNAN shu holda qaytishi
+      kerak — uchga bo'lib saqlansa, 2 000 000 kabi son butun
+      bo'linmay, ekranda boshqa raqam chiqib qolardi.
+    */
+    const wasPrice = somePlan.basePrice
+    const priced = await call('PATCH', `/platform/plans/${somePlan.id}`, tokens.admin, {
+      basePrice: 2_000_000,
+    })
+    check('3 oylik narx saqlandi', priced.data?.basePrice === 2_000_000, short(priced.data))
+
+    const rereadPrice = await call('GET', '/platform/plans', tokens.admin)
+    const pricedAgain = items(rereadPrice.data).find(
+      (p: { id: string }) => p.id === somePlan.id,
+    )
+    check(
+      '  bazada ham 2 000 000',
+      pricedAgain?.basePrice === 2_000_000,
+      `narx: ${pricedAgain?.basePrice}`,
+    )
+
     /* O'z holiga qaytaramiz */
-    await call('PATCH', `/platform/plans/${somePlan.id}`, tokens.admin, { limits: before })
+    await call('PATCH', `/platform/plans/${somePlan.id}`, tokens.admin, {
+      limits: before,
+      basePrice: wasPrice,
+    })
   }
 
   /* ---------------- To'lov muddatlari (platforma) ---------------- */

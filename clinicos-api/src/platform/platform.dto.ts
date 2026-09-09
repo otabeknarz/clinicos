@@ -121,8 +121,16 @@ export class PlanInputDto {
   @IsOptional() @IsString() @MinLength(2) @MaxLength(100)
   name?: string
 
+  /*
+    NARX UCH OYLIK, OYLIK EMAS.
+
+    Tarif uch oydan boshlab sotiladi, shuning uchun e'lon qilingan
+    narx ham uch oylik. Oylik saqlansa, egasi kiritgan uch oylik
+    summani uchga bo'lish kerak bo'lardi va 2 000 000 kabi son
+    butun bo'linmay, ekranda boshqa raqam chiqib qolardi.
+  */
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1_000_000_000)
-  pricePerMonth?: number
+  basePrice?: number
 
   /*
     CHEGARALAR JAVOB BILAN BIR XIL SHAKLDA.

@@ -253,8 +253,9 @@ function SubscriptionCard({
     { key: 'plan', label: t('platform.plan'), value: tenant.planName },
     {
       key: 'price',
-      label: t('platform.pricePerMonth'),
-      value: money(tenant.pricePerMonth),
+      /* Muddat uchun jami summa — mijoz bir marta to'lagan raqam */
+      label: t('platform.termPrice', { count: tenant.termMonths }),
+      value: money(tenant.termPrice),
     },
     {
       key: 'since',
@@ -416,7 +417,7 @@ function UsageCard({ tenant, plans }: { tenant: Tenant; plans: Plan[] }) {
     <Card className="min-w-0">
       <CardHeader
         title={t('platform.usage')}
-        subtitle={plan ? `${plan.name} · ${money(plan.pricePerMonth)}` : undefined}
+        subtitle={plan ? `${plan.name} · ${money(plan.basePrice)}` : undefined}
       />
 
       <ul className="mt-5 space-y-4">
@@ -859,7 +860,7 @@ function PlanModal({
           onChange={(e) => setPlanId(e.target.value)}
           options={plans.map((p) => ({
             value: p.id,
-            label: `${p.name} — ${money(p.pricePerMonth)}`,
+            label: `${p.name} — ${money(p.basePrice)}`,
           }))}
         />
 
@@ -886,7 +887,7 @@ function PlanModal({
             {t('platform.termTotal', {
               months: term.months,
               total: money(
-                termTotal(selected.pricePerMonth, term.months, term.discountPct),
+                termTotal(selected.basePrice, term.months, term.discountPct),
               ),
             })}
           </p>

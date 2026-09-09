@@ -224,6 +224,18 @@ asked for, which is a filter value, not a subscription status. Both keep every r
 The deleted check sits in `clinic-access.ts` *before* the subscription check, because a clinic can
 be deleted without ever being archived.
 
+**A plan's price is a THREE-MONTH price, not a monthly one** (`Plan.basePrice`,
+`clinicos-api/src/common/billing.ts`). Subscriptions start at three months, so the advertised
+number is the three-month number; longer terms multiply out of it (6 = ×2, 12 = ×4) and the
+term's discount is applied last — `termTotal()`. Storing a monthly price was rejected because the
+owner types the three-month figure and 2,000,000 / 3 does not divide evenly, so the number shown
+back would differ from the number typed. `Subscription.termPrice` is likewise the **total for the
+term**, frozen at subscribe time with the discount already applied; anything that wants a monthly
+figure (MRR, ARR) divides with `monthlyFromTerm()`. The frontend has to agree exactly on the
+rounding — `termTotal`/`monthlyFromTerm` are duplicated in `src/types/models.ts` and a drift there
+shows as a panel figure that disagrees with the invoice. Discounts hang off the **term**
+(`BillingTerm`), not the plan, so "6 months — 10%" applies to every plan at once.
+
 **Debt is computed, never stored.** `GET /debts` derives it as price − payments, in two lists
 (appointments and admissions). A stored balance column would drift from the payment rows and then
 nobody could say which one was true. `DebtWaiver` writes off a hopeless debt without touching the

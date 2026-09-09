@@ -9,6 +9,7 @@ import * as argon2 from 'argon2'
 
 import { AuthService } from '../auth/auth.service'
 import { toApi, toApiDate, toApiDateTime, toDb } from '../common/api-enum'
+import { monthlyFromTerm, termTotal } from '../common/billing'
 import { DISABLED_BY_KIND } from '../common/modules'
 import { paginated } from '../common/pagination'
 import { RequestContext } from '../common/request-context'
@@ -272,11 +273,12 @@ export class PlatformService {
           */
           /*
             Chegirma SHU YERDA qo'llanadi va natija muzlatiladi:
-            `pricePerMonth` — mijoz haqiqatan to'laydigan oylik summa.
+            `termPrice` — mijoz shu muddat uchun bir marta
+            to'laydigan JAMI summa (oylik emas).
             Foizning o'zi ham saqlanadi, "nega bu narx" degan savolga
             javob bo'lishi uchun.
           */
-          pricePerMonth: discountedMonthly(plan.pricePerMonth, discountPct),
+          termPrice: termTotal(plan.basePrice, dto.termMonths, discountPct),
           termMonths: dto.termMonths,
           discountPct,
           subscribedAt: now,
@@ -543,7 +545,7 @@ export class PlatformService {
       where: { id: sub.id },
       data: {
         planId: plan.id,
-        pricePerMonth: discountedMonthly(plan.pricePerMonth, discountPct),
+        termPrice: termTotal(plan.basePrice, months, discountPct),
         termMonths: months,
         discountPct,
       },
@@ -598,7 +600,7 @@ export class PlatformService {
   /* ---------------- Tariflar ---------------- */
 
   async listPlans() {
-    const rows = await this.db.plan.findMany({ orderBy: { pricePerMonth: 'asc' } })
+    const rows = await this.db.plan.findMany({ orderBy: { basePrice: 'asc' } })
     return rows.map(toApiPlan)
   }
 
@@ -615,7 +617,7 @@ export class PlatformService {
       where: { id },
       data: {
         name: dto.name?.trim(),
-        pricePerMonth: dto.pricePerMonth,
+        basePrice: dto.basePrice,
         limitDoctors: dto.limits?.doctors,
         limitStaff: dto.limits?.staff,
         features: dto.features,
@@ -1029,7 +1031,7 @@ export class PlatformService {
 
     const count = (s: string) => subs.filter((x) => x.status === s).length
     const paying = subs.filter((s) => s.status === 'ACTIVE' || s.status === 'PAST_DUE')
-    const mrr = paying.reduce((sum, s) => sum + s.pricePerMonth, 0)
+    const mrr = paying.reduce((sum, s) => sum + monthlyFromTerm(s.termPrice, s.termMonths), 0)
 
     const monthStart = new Date()
     monthStart.setDate(1)
@@ -1061,7 +1063,7 @@ export class PlatformService {
     for (const s of paying) {
       const acc = byPlanMap.get(s.planId) ?? { planName: s.plan.name, count: 0, mrr: 0 }
       acc.count += 1
-      acc.mrr += s.pricePerMonth
+      acc.mrr += monthlyFromTerm(s.termPrice, s.termMonths)
       byPlanMap.set(s.planId, acc)
     }
 
@@ -1183,7 +1185,7 @@ export class PlatformService {
     ])
 
     const turnover = payments.reduce((s, p) => s + p.amount, 0)
-    const ourRevenue = subs.reduce((s, x) => s + x.pricePerMonth, 0)
+    const ourRevenue = subs.reduce((s, x) => s + monthlyFromTerm(x.termPrice, x.termMonths), 0)
 
     const byClinic = new Map<
       string,
@@ -1370,7 +1372,7 @@ function toApiTenant(
     clinicId: string
     status: string
     planId: string
-    pricePerMonth: number
+    termPrice: number
     termMonths: number
     discountPct: number
     trialEndsAt: Date | null
@@ -1407,7 +1409,7 @@ function toApiTenant(
     status: toApi(row.status),
     planId: row.planId,
     planName: row.plan.name,
-    pricePerMonth: row.pricePerMonth,
+    termPrice: row.termPrice,
     trialEndsAt: toApiDate(row.trialEndsAt),
     subscribedAt: toApiDate(row.subscribedAt),
     nextInvoiceAt: toApiDate(row.nextInvoiceAt),
@@ -1431,7 +1433,7 @@ function toApiPlan(row: Plan) {
     id: row.id,
     tier: toApi(row.tier),
     name: row.name,
-    pricePerMonth: row.pricePerMonth,
+    basePrice: row.basePrice,
     limits: { doctors: row.limitDoctors, staff: row.limitStaff },
     features: row.features,
     isActive: row.isActive,
@@ -1485,17 +1487,6 @@ function toApiMember(row: {
     lastActiveAt: toApiDateTime(row.lastActiveAt),
     createdAt: toApiDateTime(row.createdAt)!,
   }
-}
-
-/**
- * Chegirma qo'llangan oylik narx.
- *
- * Bitta joyda, chunki uch joyda kerak: obuna ochilganda, tarif
- * almashtirilganda va platforma panelidagi jadvalda. Uch marta
- * yozilsa, yaxlitlash bir-biridan farq qilib qolardi.
- */
-function discountedMonthly(pricePerMonth: number, discountPct: number): number {
-  return Math.round((pricePerMonth * (100 - discountPct)) / 100)
 }
 
 function toApiBillingTerm(row: {
