@@ -22,6 +22,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
+import { Hero, StatStrip } from '@/components/ui/Hero'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { Stars } from '@/components/ui/Stars'
 import { CardSkeleton, EmptyState, ErrorState, Skeleton } from '@/components/ui/States'
@@ -120,7 +121,58 @@ function KpiRow({ doctorId }: { doctorId: string }) {
   const stats = data?.stats
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <>
+      {/*
+        TELEFONDA: bugungi qabullar soni to'q kartada, qolganlari
+        bitta qatorda.
+
+        Shifokorning kuni bitta savoldan boshlanadi — "bugun nechta
+        bemor?". To'rtta karta ustma-ust turganda javob uchinchi
+        kartada, oyning ko'rsatkichlari orasida yo'qolib ketardi.
+      */}
+      <div className="space-y-4 md:hidden">
+        {loading ? (
+          <Skeleton className="h-[124px] rounded-[22px]" />
+        ) : (
+          <Hero
+            eyebrow={t('doctors.appointmentsToday')}
+            value={stats ? groupDigits(stats.appointmentsToday) : '—'}
+            meta={stats ? t('common.last30d') : null}
+          />
+        )}
+
+        {loading ? (
+          <Skeleton className="h-[104px] rounded-[20px]" />
+        ) : (
+          <StatStrip
+            items={[
+              {
+                key: 'completed',
+                label: t('staff.metric.completed'),
+                value: stats ? groupDigits(stats.completedThisMonth) : '—',
+                icon: <CheckCircle2 size={12} />,
+                tone: 'ok',
+              },
+              {
+                key: 'patients',
+                label: t('doctors.patientsMonth'),
+                value: stats ? groupDigits(stats.patientsThisMonth) : '—',
+                icon: <UserRound size={12} />,
+                tone: 'brand',
+              },
+              {
+                key: 'noshow',
+                label: t('analytics.noShowRate'),
+                value: stats ? percent(stats.noShowRate, 1) : '—',
+                icon: <UserX size={12} />,
+                tone: stats && stats.noShowRate > 0 ? 'bad' : 'neutral',
+              },
+            ]}
+          />
+        )}
+      </div>
+
+    <div className="hidden grid-cols-2 gap-4 md:grid lg:grid-cols-4">
       <KpiCard
         loading={loading}
         icon={<CalendarCheck size={17} />}
@@ -153,6 +205,7 @@ function KpiRow({ doctorId }: { doctorId: string }) {
         caption={t('common.last30d')}
       />
     </div>
+    </>
   )
 }
 
@@ -249,15 +302,30 @@ function TodayCard() {
                       <span className="block truncate text-subhead font-medium text-label">
                         {appointment.patient.fullName}
                       </span>
-                      <span className="block truncate text-caption text-label-tertiary">
-                        {tService(appointment.service.name)}
+                      {/*
+                        Telefonda holat nishoni SHU QATORDA, xizmat
+                        nomi yonida. Yonma-yon turganda bemor ismiga
+                        110px qolib "Rayhona..." bo'lardi — shifokor
+                        uchun esa navbatdagi ism eng muhim so'z.
+                      */}
+                      <span className="mt-0.5 flex items-center gap-2">
+                        <span className="min-w-0 truncate text-caption text-label-tertiary">
+                          {tService(appointment.service.name)}
+                        </span>
+                        <span className="shrink-0 sm:hidden">
+                          <Badge tone={APPOINTMENT_TONE[appointment.status]} dot>
+                            {t(APPOINTMENT_LABEL[appointment.status])}
+                          </Badge>
+                        </span>
                       </span>
                     </span>
                   </button>
 
-                  <Badge tone={APPOINTMENT_TONE[appointment.status]} dot>
-                    {t(APPOINTMENT_LABEL[appointment.status])}
-                  </Badge>
+                  <span className="hidden shrink-0 sm:block">
+                    <Badge tone={APPOINTMENT_TONE[appointment.status]} dot>
+                      {t(APPOINTMENT_LABEL[appointment.status])}
+                    </Badge>
+                  </span>
 
                   {done ? null : (
                     <div className="flex shrink-0 items-center gap-2">

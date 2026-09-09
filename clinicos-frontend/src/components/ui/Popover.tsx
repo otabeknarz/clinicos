@@ -9,6 +9,21 @@ import { cn } from '@/lib/cn'
  * Tashqariga bosilsa yoki Escape bosilsa yopiladi.
  * Apple uslubi: material fon (xiralashuv), yumshoq soya, kichik radius.
  */
+/*
+  Telefonda panel EKRANGA BOG'LANADI, tugmaga emas.
+
+  ILDIZI: panel `absolute right-0` bilan tugmaning o'ng chetiga
+  tiralardi. Tugma ekranning o'ng chekkasida, panel esa 320px —
+  ya'ni uning chap cheti ekrandan tashqarida qolardi va
+  bildirishnomalar matni yarmida kesilardi. Kenglikni `92vw` qilish
+  ham yordam bermasdi: masofa VIEWPORT dan emas, TUGMADAN
+  o'lchanadi.
+
+  Shu chegaradan pastda panel `fixed` bo'lib, ikki chetdan 12px
+  qoldirib cho'ziladi — qayerda turishidan qat'i nazar sig'adi.
+*/
+const NARROW = 640
+
 export function Popover({
   trigger,
   children,
@@ -25,6 +40,8 @@ export function Popover({
 }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  /* Tor ekranda panel tepasi tugmaning ostiga qo'yiladi */
+  const [narrowTop, setNarrowTop] = useState<number | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -36,11 +53,28 @@ export function Popover({
       if (e.key === 'Escape') setOpen(false)
     }
 
+    /*
+      O'lchov OCHILGANDA olinadi va oyna o'lchami o'zgarsa qaytadan.
+      Skroll kerak emas: bu paneller yopishqoq yuqori panelda turadi,
+      ya'ni sahifa surilganda tugma joyidan qimirlamaydi.
+    */
+    const measure = () => {
+      if (window.innerWidth >= NARROW) {
+        setNarrowTop(null)
+        return
+      }
+      const rect = rootRef.current?.getBoundingClientRect()
+      setNarrowTop(rect ? rect.bottom + 8 : null)
+    }
+    measure()
+
     document.addEventListener('pointerdown', onPointerDown)
     document.addEventListener('keydown', onKey)
+    window.addEventListener('resize', measure)
     return () => {
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('keydown', onKey)
+      window.removeEventListener('resize', measure)
     }
   }, [open])
 
@@ -50,12 +84,26 @@ export function Popover({
 
       {open ? (
         <div
+          style={narrowTop === null ? undefined : { top: narrowTop }}
           className={cn(
-            'absolute top-[calc(100%+8px)] z-40',
-            align === 'end' ? 'right-0' : 'left-0',
-            width,
-            'animate-scale-in origin-top rounded-[16px] p-1.5',
+            'z-40 animate-scale-in rounded-[16px] p-1.5',
             'material-thick shadow-popover',
+            narrowTop === null
+              ? cn(
+                  'absolute top-[calc(100%+8px)] origin-top',
+                  align === 'end' ? 'right-0' : 'left-0',
+                  width,
+                )
+              : /*
+                  Ikki chetdan 12px — panel qayerdagi tugmadan
+                  ochilishidan qat'i nazar ekranga sig'adi.
+                */
+                'fixed inset-x-3 origin-top',
+            /*
+              Uzun ro'yxat (bildirishnomalar) ekranni to'ldirib
+              yubormasin: qolgan balandlikda skroll qiladi.
+            */
+            'max-h-[min(70dvh,32rem)] overflow-y-auto scroll-slim',
           )}
         >
           {children({ close: () => setOpen(false) })}
