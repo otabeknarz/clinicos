@@ -192,6 +192,9 @@ export const dict: Dict = {
 
   /* --- Tashrif yozuvi (shifokor) --- */
   'visit.title': 'Tashrif yozuvi',
+  'visit.editTitle': 'Tashrifni tuzatish',
+  'visit.imagesEditHint':
+    'Rasmni qo’shish yoki olib tashlash mumkin. O’zgarish jurnalda qayd etiladi.',
   'visit.price': 'To’lov summasi',
   'visit.priceHint': 'Bu xizmatning narxini siz belgilaysiz: {min} — {max}',
   'visit.priceRangeError': 'Summa {min} va {max} oralig’ida bo’lishi kerak',

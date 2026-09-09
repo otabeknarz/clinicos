@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**150 ta endpoint.**
+**151 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -666,6 +666,19 @@ createVisit(input: VisitInput): Promise<Visit>
 
 ```ts
 getVisit(id: ID): Promise<Visit | null>
+```
+
+### `PATCH /visits/:id`
+
+Yozilgan tashrifni tuzatish.
+
+Xato tashxis kartochkada turgani — yozuv umuman yo'qligidan
+xavfliroq: keyingi shifokor unga ishonadi. Server faqat O'Z
+yozuvini tahrirlashga ruxsat beradi va o'zgarishni jurnalga
+yozadi.
+
+```ts
+updateVisit(id: ID, patch: { imageKeys?: string[] complaint?: string diagnosis?: string treatment?: string notes?: string price?: number }): Promise<Visit>
 ```
 
 ### `GET /appointments/:id/visit`

@@ -88,6 +88,63 @@ export class VisitInputDto {
   followUpReason: string = ''
 }
 
+/**
+ * Yozib bo'lingan tashrifni TUZATISH.
+ *
+ * NEGA BOR: shifokor tashxisni xato yozib qo'yishi yoki biror
+ * narsani unutib qoldirishi mumkin. Kartochkada noto'g'ri tashxis
+ * turgani — yozuv umuman yo'qligidan xavfliroq: keyingi shifokor
+ * unga ishonadi.
+ *
+ * ATAYLAB YO'Q: appointmentId — tashrifni boshqa qabulga ko'chirib
+ * bo'lmaydi. Bu qabulning bemori va shifokori bilan bog'liq, ya'ni
+ * ko'chirish yozuvni butunlay boshqa odamnikiga aylantirardi.
+ *
+ * ATAYLAB YO'Q: followUpDate, followUpReason — takroriy tashrif
+ * alohida yozuv (`FollowUp`) va uning o'z tahrirlash yo'li bor
+ * (`PATCH /follow-ups/:id`). Shu yerdan ham o'zgartirilsa, ikkita
+ * manba bir-biriga zid qolardi.
+ *
+ * O'ZGARISH IZ QOLDIRADI: marshrut `@Audit` bilan belgilangan, ya'ni
+ * kim va qachon tuzatgani jurnalda qoladi. Tibbiy yozuvni jimgina
+ * almashtirib bo'lmaydi.
+ */
+export class UpdateVisitDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Summa butun son bo‘lishi kerak' })
+  @Min(1, { message: 'Summa noldan katta bo‘lishi kerak' })
+  @Max(1_000_000_000)
+  price?: number
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10, { message: 'Bitta tashrifga 10 tadan ortiq rasm biriktirilmaydi' })
+  @IsString({ each: true })
+  @MaxLength(500, { each: true })
+  imageKeys?: string[]
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  complaint?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  diagnosis?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  treatment?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notes?: string
+}
+
 export class FollowUpsQueryDto {
   @IsOptional()
   @Type(() => Number)

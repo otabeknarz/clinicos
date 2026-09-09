@@ -53,6 +53,23 @@ export async function createVisit(input: VisitInput): Promise<Visit> {
   const db = getDb()
   const now = new Date().toISOString()
 
+  /*
+    Serverdagi qoidalarning nusxasi — demo rejim ham bir xil
+    javob bersin (sabab: rol va holat shaklidagi narsa demo'da
+    o'z-o'zidan "ishlaydi" va nosozlik faqat backend ulanganda
+    chiqadi).
+  */
+  const appointment = db.appointments.find(input.appointmentId, clinicId)
+  if (appointment?.status === 'cancelled') {
+    throw new Error('Bekor qilingan qabulga tashrif yozib bo‘lmaydi')
+  }
+  if (appointment?.status === 'no_show') {
+    throw new Error('Kelmagan deb belgilangan qabulga tashrif yozib bo‘lmaydi')
+  }
+  if (db.visits.all(clinicId).some((v) => v.appointmentId === input.appointmentId)) {
+    throw new Error('Bu qabulga tashrif allaqachon yozilgan')
+  }
+
   const visit: Visit = {
     id: db.visits.nextId('vis'),
     clinicId,
@@ -109,6 +126,51 @@ export async function createVisit(input: VisitInput): Promise<Visit> {
 export async function getVisit(id: ID): Promise<Visit | null> {
   if (!USE_MOCK) return request<Visit>('GET', `/visits/${id}`)
   return delay(getDb().visits.find(id, apiContext().clinicId))
+}
+
+/**
+ * Yozilgan tashrifni tuzatish.
+ *
+ * Xato tashxis kartochkada turgani — yozuv umuman yo'qligidan
+ * xavfliroq: keyingi shifokor unga ishonadi. Server faqat O'Z
+ * yozuvini tahrirlashga ruxsat beradi va o'zgarishni jurnalga
+ * yozadi.
+ */
+// PATCH /visits/:id
+export async function updateVisit(
+  id: ID,
+  patch: {
+    imageKeys?: string[]
+    complaint?: string
+    diagnosis?: string
+    treatment?: string
+    notes?: string
+    price?: number
+  },
+): Promise<Visit> {
+  if (!USE_MOCK) return request<Visit>('PATCH', `/visits/${id}`, { body: patch })
+
+  const { clinicId } = apiContext()
+  const db = getDb()
+  const current = db.visits.find(id, clinicId)
+  if (!current) throw new Error('Tashrif topilmadi')
+
+  const updated = db.visits.update(
+    id,
+    {
+      complaint: patch.complaint ?? current.complaint,
+      diagnosis: patch.diagnosis ?? current.diagnosis,
+      treatment: patch.treatment ?? current.treatment,
+      notes: patch.notes ?? current.notes,
+      images:
+        patch.imageKeys === undefined
+          ? current.images
+          : patch.imageKeys.map((key, i) => ({ id: `vim_${Date.now()}_${i}`, imageUrl: key })),
+    },
+    clinicId,
+  )
+  if (!updated) throw new Error('Tashrif topilmadi')
+  return delay(updated, 250)
 }
 
 // GET /appointments/:id/visit  — qabulga biriktirilgan yozuv bormi

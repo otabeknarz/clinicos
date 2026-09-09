@@ -11,7 +11,7 @@ import { toApi, toApiDate, toApiDateTime } from '../common/api-enum'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
 import { StorageService } from '../storage/storage.service'
-import { FollowUpPatchDto, VisitInputDto } from './visits.dto'
+import { FollowUpPatchDto, UpdateVisitDto, VisitInputDto } from './visits.dto'
 
 /**
  * Rasmlar har doim yozuv bilan birga qaytadi.
@@ -82,8 +82,26 @@ export class VisitsService {
       throw new ForbiddenException('Bu qabul boshqa shifokorga tegishli')
     }
 
-    if (appointment.status === 'CANCELLED') {
-      throw new BadRequestException('Bekor qilingan qabulga tashrif yozib bo‘lmaydi')
+    /*
+      BEKOR QILINGAN VA KELMAGAN QABULGA TASHRIF YOZILMAYDI.
+
+      Bekor qilingani ravshan: qabul bo'lmagan.
+
+      "Kelmagan" esa jiddiyroq. Tashrif yozilsa, u qabulni
+      `COMPLETED` ga o'tkazadi — ya'ni kelmagan bemor "kelgan"
+      bo'lib qoladi va kelmaganlar ulushi jimgina pasayadi. Bu
+      ko'rsatkich esa shifokorning ish sifatini o'lchaydi, ya'ni
+      uni o'chirish imkoniyati bo'lmasligi kerak.
+
+      Bemor haqiqatan kech kelgan bo'lsa, registrator uni qaytadan
+      navbatga qo'yadi — o'shanda tashrif yoziladi.
+    */
+    if (appointment.status === 'CANCELLED' || appointment.status === 'NO_SHOW') {
+      throw new BadRequestException(
+        appointment.status === 'CANCELLED'
+          ? 'Bekor qilingan qabulga tashrif yozib bo‘lmaydi'
+          : 'Kelmagan deb belgilangan qabulga tashrif yozib bo‘lmaydi',
+      )
     }
 
     const existing = await this.db.visit.findFirst({
@@ -163,6 +181,79 @@ export class VisitsService {
       include: VISIT_EXPAND,
     })
     if (!row) throw new NotFoundException('Tashrif topilmadi')
+    return toApiVisit(row)
+  }
+
+  /**
+   * Yozilgan tashrifni TUZATISH.
+   *
+   * FAQAT O'Z YOZUVI. Boshqa shifokorning tashxisini tahrirlash
+   * yozuvni ishonchsiz qiladi: kartochkada kimning fikri turganini
+   * aytib bo'lmay qoladi.
+   *
+   * NARX ALOHIDA QOIDA BILAN. Summa — registratorning to'lov
+   * shiftosi. To'lov allaqachon olingan bo'lsa u o'zgarmaydi: aks
+   * holda "qancha olindi" va "qancha bo'lishi kerak edi" bir-biriga
+   * mos kelmay qolardi va kassa nazorati ma'nosini yo'qotardi.
+   *
+   * IZ QOLADI: marshrut `@Audit` bilan belgilangan.
+   */
+  async update(id: string, dto: UpdateVisitDto) {
+    const { role, doctorId, clinicId } = this.ctx.require()
+
+    const current = await this.db.visit.findFirst({
+      where: { id },
+      include: { appointment: { include: { service: true } } },
+    })
+    if (!current) throw new NotFoundException('Tashrif topilmadi')
+
+    if (role === 'DOCTOR' && current.doctorId !== doctorId) {
+      throw new ForbiddenException('Bu tashrif boshqa shifokorniki')
+    }
+
+    let price: number | null | undefined
+    if (dto.price !== undefined) {
+      const paid = await this.db.payment.count({
+        where: { appointmentId: current.appointmentId, status: 'PAID' },
+      })
+      if (paid > 0) {
+        throw new BadRequestException(
+          'To‘lov olingan tashrifning summasi o‘zgartirilmaydi',
+        )
+      }
+      price = resolveVisitPrice(current.appointment.service, dto.price)
+    }
+
+    /*
+      Rasmlar TO'LIQ ALMASHTIRILADI: forma barcha kalitni yuboradi,
+      ya'ni ro'yxatdan chiqarilgani o'chirilishi kerak. Qo'shish
+      bilan cheklansa, xato biriktirilgan rasmni olib tashlab
+      bo'lmasdi.
+    */
+    const images =
+      dto.imageKeys === undefined
+        ? undefined
+        : {
+            deleteMany: {},
+            create: dto.imageKeys.map((key) => {
+              this.storage.assertOwnKey(key)
+              return { clinicId, imageUrl: key }
+            }),
+          }
+
+    const row = await this.db.visit.update({
+      where: { id },
+      data: {
+        complaint: dto.complaint,
+        diagnosis: dto.diagnosis,
+        treatment: dto.treatment,
+        notes: dto.notes,
+        price,
+        images,
+      },
+      include: VISIT_EXPAND,
+    })
+
     return toApiVisit(row)
   }
 

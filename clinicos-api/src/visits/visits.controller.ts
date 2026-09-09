@@ -3,7 +3,12 @@ import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common
 import { Audit } from '../common/audit.interceptor'
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { IdParamDto } from '../patients/patients.dto'
-import { FollowUpPatchDto, FollowUpsQueryDto, VisitInputDto } from './visits.dto'
+import {
+  FollowUpPatchDto,
+  FollowUpsQueryDto,
+  UpdateVisitDto,
+  VisitInputDto,
+} from './visits.dto'
 import { VisitsService } from './visits.service'
 
 @Controller()
@@ -21,6 +26,23 @@ export class VisitsController {
   @RequirePermission('visits.create')
   create(@Body() dto: VisitInputDto) {
     return this.visits.create(dto)
+  }
+
+  /*
+    PATCH /visits/:id
+
+    Xato tashxisni tuzatish uchun. `visits.create` talab qilinadi —
+    ya'ni faqat shifokor: yozgan odam tuzatadi, registrator emas.
+    Servisda yana bir tekshiruv bor — o'z yozuvi bo'lishi shart.
+
+    `@Audit` MAJBURIY: tibbiy yozuv jimgina almashtirilmaydi, kim va
+    qachon tuzatgani jurnalda qoladi.
+  */
+  @Patch('visits/:id')
+  @RequirePermission('visits.create')
+  @Audit('update', 'Visit')
+  update(@Param() params: IdParamDto, @Body() dto: UpdateVisitDto) {
+    return this.visits.update(params.id, dto)
   }
 
   // GET /visits/:id

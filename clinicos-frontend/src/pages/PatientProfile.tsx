@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -20,6 +20,11 @@ import {
 } from '@/api/patients'
 import { AppointmentFormModal } from '@/components/modals/AppointmentFormModal'
 import { PatientFormModal } from '@/components/modals/PatientFormModal'
+
+/* Tashrif formasi og'ir (rasm yuklash) — faqat kerak bo'lganda yuklanadi */
+const VisitFormModal = lazy(() =>
+  import('@/components/modals/VisitFormModal').then((m) => ({ default: m.VisitFormModal })),
+)
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
 import { Button, IconButton } from '@/components/ui/Button'
@@ -48,6 +53,7 @@ import {
 import { useAction, useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
+import type { VisitExpanded } from '@/types/models'
 import { useToast } from '@/store/toast-context'
 
 type Tab = 'overview' | 'visits' | 'appointments' | 'payments'
@@ -153,7 +159,9 @@ export function PatientProfilePage() {
 
         <div className="p-5 sm:p-6">
           {tab === 'overview' ? <OverviewTab patientId={id} /> : null}
-          {tab === 'visits' ? <VisitsTab patientId={id} /> : null}
+          {tab === 'visits' ? (
+            <VisitsTab patientId={id} patientName={patient.fullName} />
+          ) : null}
           {tab === 'appointments' ? <AppointmentsTab patientId={id} /> : null}
           {tab === 'payments' ? <PaymentsTab patientId={id} /> : null}
         </div>
@@ -351,9 +359,21 @@ function Row({
 /* Tashriflar tarixi                                                   */
 /* ------------------------------------------------------------------ */
 
-function VisitsTab({ patientId }: { patientId: string }) {
+function VisitsTab({ patientId, patientName }: { patientId: string; patientName: string }) {
   const { t, tComplaint, tService } = useI18n()
+  const { session } = useAuth()
   const { data, loading, error, reload } = useAsync(() => getPatientVisits(patientId), [patientId])
+  const [editing, setEditing] = useState<VisitExpanded | null>(null)
+
+  /*
+    TUZATISH — FAQAT O'Z YOZUVIGA.
+
+    Boshqa shifokorning tashxisini o'zgartirish yozuvni ishonchsiz
+    qiladi: kartochkada kimning fikri turganini aytib bo'lmay
+    qoladi. Server ham shuni tekshiradi — bu yerdagi shart
+    tugmani ko'rsatmaslik uchun.
+  */
+  const myDoctorId = session?.user.doctorId ?? null
 
   if (loading) return <CardSkeleton />
   if (error) return <ErrorState onRetry={reload} />
@@ -367,16 +387,33 @@ function VisitsTab({ patientId }: { patientId: string }) {
       </p>
 
       <ol className="space-y-3">
-        {data.map((visit) => (
+        {data.map((visit) => {
+          const mine = myDoctorId !== null && visit.doctor.id === myDoctorId
+
+          return (
           <li key={visit.id} className="rounded-[14px] bg-sunken p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="text-subhead font-medium text-label">
+              <p className="min-w-0 flex-1 text-subhead font-medium text-label">
                 {visit.service ? tService(visit.service.name) : tComplaint(visit.complaint)}
               </p>
               <p className="text-caption tnum text-label-tertiary">{dateTime(visit.visitedAt)}</p>
             </div>
 
-            <p className="mt-0.5 text-caption text-label-tertiary">{visit.doctor.fullName}</p>
+            <div className="mt-0.5 flex items-center justify-between gap-2">
+              <p className="min-w-0 truncate text-caption text-label-tertiary">
+                {visit.doctor.fullName}
+              </p>
+              {mine ? (
+                <button
+                  type="button"
+                  onClick={() => setEditing(visit)}
+                  className="inline-flex shrink-0 items-center gap-1 text-caption font-medium text-accent hover:opacity-80"
+                >
+                  <Pencil size={12} />
+                  {t('action.edit')}
+                </button>
+              ) : null}
+            </div>
 
             <dl className="mt-3 space-y-1.5 text-footnote">
               {visit.diagnosis ? (
@@ -393,8 +430,27 @@ function VisitsTab({ patientId }: { patientId: string }) {
               ) : null}
             </dl>
           </li>
-        ))}
+          )
+        })}
       </ol>
+
+      {editing ? (
+        <Suspense fallback={null}>
+          <VisitFormModal
+            open
+            appointment={null}
+            visit={editing}
+            subtitle={`${patientName} · ${
+              editing.service ? tService(editing.service.name) : ''
+            }`}
+            onClose={() => setEditing(null)}
+            onSaved={() => {
+              setEditing(null)
+              reload()
+            }}
+          />
+        </Suspense>
+      ) : null}
     </>
   )
 }

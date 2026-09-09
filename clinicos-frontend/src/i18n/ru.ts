@@ -180,6 +180,9 @@ export const dict: Dict = {
   'patient.medicalNotice': 'Медицинские данные — конфиденциально',
 
   'visit.title': 'Запись о визите',
+  'visit.editTitle': 'Исправить запись',
+  'visit.imagesEditHint':
+    'Снимки можно добавить или убрать. Изменение фиксируется в журнале.',
   'visit.price': 'Сумма к оплате',
   'visit.priceHint': 'Стоимость этой услуги определяете вы: {min} — {max}',
   'visit.priceRangeError': 'Сумма должна быть в диапазоне {min} — {max}',

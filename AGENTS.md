@@ -191,6 +191,11 @@ reception collects it. The payment ceiling then comes from `Visit.price` instead
 such a payment **must** carry `appointmentId` — without it there is no ceiling at all. Loyalty
 discounts do not apply (the doctor already priced the case), and `DOCTOR_SET` forces `POSTPAID`.
 
+**A no-show or cancelled appointment takes no visit.** Cancelled is obvious. `NO_SHOW` matters more:
+writing a visit flips the appointment to `COMPLETED`, so without this guard a no-show could be
+quietly converted into a completed visit and the no-show rate — a measure of the doctor's own work
+— would drop. If the patient did turn up late, reception puts them back in the queue.
+
 **An appointment cannot be completed without a visit.** `setStatus('completed')` rejects the
 change when no `Visit` row points at the appointment — a completed appointment with no medical
 record means the patient was seen and nothing was written down, and the next doctor has no history
@@ -203,8 +208,19 @@ appearing to work in demo mode. The receptionist's queue lost its complete butto
 reason: the row leaves the queue on its own once the visit is saved. The mock layer repeats the
 rule deliberately — kept server-only, the UI would look fine in demo mode and break on the API.
 
-**A visit can carry images** (`VisitImage`) — X-rays, tooth photos. Attached only while the visit is
-being written, because there is no `PATCH /visits/:id` and there should not be. It is a separate
+**A doctor can correct their own visit** (`PATCH /visits/:id`). A wrong diagnosis sitting in the
+record is more dangerous than no record at all — the next doctor believes it. The route is gated on
+`visits.create`, so only a doctor reaches it, and the service additionally requires the visit to be
+*theirs*: editing a colleague's diagnosis would make the record unattributable. It is `@Audit`ed —
+a medical record is not rewritten silently. Three things are deliberately not editable:
+`appointmentId` (moving a visit would re-assign it to another patient), the follow-up fields (a
+`FollowUp` is its own row with its own edit path, and two sources would contradict each other), and
+the price once a payment exists — money already collected must keep matching what was owed, or cash
+control loses its meaning. The form hides price entirely, because the allowed range lives on the
+service and is not carried on the visit record.
+
+**A visit can carry images** (`VisitImage`) — X-rays, tooth photos. On edit the key list is
+*replaced*, not appended, so a wrongly attached image can be removed. It is a separate
 table rather than a `String[]` on `Visit` because `SignedUrlInterceptor` signs a **string** field
 named `*Url`, not an array. Confidentiality needs no new permission: images ride along with
 `visits.view`, which the receptionist does not have. `prepareMedicalImage` in `lib/image.ts` scales

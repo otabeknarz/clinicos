@@ -499,6 +499,36 @@ async function main() {
         after.data?.status === 'completed',
         `holat: ${after.data?.status}`,
       )
+
+      /*
+        YOZILGAN TASHRIFNI TUZATISH.
+
+        Xato tashxis kartochkada turgani yozuv umuman yo'qligidan
+        xavfliroq: keyingi shifokor unga ishonadi. Tuzatish faqat
+        o'z yozuviga va faqat shifokorga.
+      */
+      const visitId = visit.data?.id
+      if (visitId) {
+        const fixed = await call('PATCH', `/visits/${visitId}`, doctor, {
+          diagnosis: 'migren, yengil shakli',
+        })
+        check('tashxis tuzatildi', fixed.data?.diagnosis === 'migren, yengil shakli', short(fixed.data))
+        check(
+          '  qolgan maydonlar saqlandi',
+          fixed.data?.treatment === 'dam olish' && fixed.data?.complaint === 'bosh og‘rig‘i',
+          short(fixed.data),
+        )
+
+        /* Registratorda `visits.create` yo'q — tibbiy yozuvga tegmaydi */
+        const byReception = await call('PATCH', `/visits/${visitId}`, reception, {
+          diagnosis: 'boshqacha',
+        })
+        check(
+          '  registrator tuzata OLMADI',
+          byReception.status === 403,
+          `status: ${byReception.status}`,
+        )
+      }
     }
   }
 

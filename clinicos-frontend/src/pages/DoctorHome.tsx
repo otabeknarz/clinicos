@@ -268,7 +268,19 @@ function TodayCard() {
       ) : (
         <ul className="max-h-[560px] overflow-y-auto scroll-slim">
           {rows.map((appointment) => {
-            const done = appointment.status === 'completed'
+            /*
+              TUGMA FAQAT YOZILADIGAN QABULDA.
+
+              Ilgari shart faqat "tugallanganmi" edi, ya'ni KELMAGAN
+              bemorga ham "tashrif yozish" taklif qilinardi. Bu ikki
+              jihatdan noto'g'ri: bemor kelmagan bo'lsa yozadigan
+              narsa yo'q, va yozuv qabulni `COMPLETED` ga o'tkazib,
+              kelmaganlar ulushini jimgina pasaytirib yuborardi.
+            */
+            const writable =
+              appointment.status !== 'completed' &&
+              appointment.status !== 'no_show' &&
+              appointment.status !== 'cancelled'
 
             return (
               <li key={appointment.id} className="hairline last:border-b-0">
@@ -282,7 +294,15 @@ function TodayCard() {
                     onClick={() => navigate(`/patients/${appointment.patient.id}`)}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
-                    <Avatar name={appointment.patient.fullName} size="sm" />
+                    {/*
+                      Avatar telefonda CHIQMAYDI. U 48px oladi va
+                      hech narsa qo'shmaydi — bemorni ismi bilan
+                      taniydilar, harf bilan emas. O'sha joy ismning
+                      o'ziga ketadi.
+                    */}
+                    <span className="hidden sm:block">
+                      <Avatar name={appointment.patient.fullName} size="sm" />
+                    </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-subhead font-medium text-label">
                         {appointment.patient.fullName}
@@ -327,7 +347,7 @@ function TodayCard() {
                     `COMPLETED` ga o'tkazadi — ya'ni bitta amal
                     ikkalasini ham bajaradi.
                   */}
-                  {done ? null : (
+                  {writable ? (
                     <Button
                       variant="tinted"
                       size="sm"
@@ -344,7 +364,7 @@ function TodayCard() {
                       <span className="sm:hidden">{t('doctorHome.recordVisitShort')}</span>
                       <span className="hidden sm:inline">{t('doctorHome.recordVisit')}</span>
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </li>
             )

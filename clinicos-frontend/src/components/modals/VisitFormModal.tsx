@@ -4,7 +4,7 @@ import { ImagePlus, ShieldAlert, X } from 'lucide-react'
 /** Bitta tashrifga biriktiriladigan eng ko'p rasm — serverdagi chegara bilan bir xil */
 const MAX_IMAGES = 10
 
-import { createVisit } from '@/api/visits'
+import { createVisit, updateVisit } from '@/api/visits'
 import { uploadImage } from '@/api/uploads'
 import { cn } from '@/lib/cn'
 import { prepareMedicalImage } from '@/lib/image'
@@ -16,7 +16,7 @@ import { money } from '@/lib/format'
 import { useAction } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useToast } from '@/store/toast-context'
-import type { AppointmentExpanded } from '@/types/models'
+import type { AppointmentExpanded, VisitExpanded } from '@/types/models'
 
 /**
  * Shifokorning tashrif yozuvi.
@@ -31,11 +31,32 @@ export function VisitFormModal({
   onClose,
   onSaved,
   appointment,
+  visit,
+  subtitle,
 }: {
   open: boolean
   onClose: () => void
   onSaved: () => void
   appointment: AppointmentExpanded | null
+  /**
+   * Berilsa — TUZATISH rejimi.
+   *
+   * Shifokor tashxisni xato yozib qo'yishi yoki biror narsani unutib
+   * qoldirishi mumkin. Kartochkada noto'g'ri tashxis turgani yozuv
+   * umuman yo'qligidan xavfliroq: keyingi shifokor unga ishonadi.
+   *
+   * Takroriy tashrif maydonlari bu rejimda ko'rinmaydi — u alohida
+   * yozuv (`FollowUp`) va o'z tahrirlash yo'li bor. Ikki joydan
+   * o'zgartirilsa, ikkita manba bir-biriga zid qolardi.
+   *
+   * SUMMA HAM KO'RINMAYDI. U registratorning to'lov shiftosi va
+   * xizmatning ruxsat etilgan oralig'iga bog'liq — oraliq esa
+   * tashrif yozuvida saqlanmaydi. Tuzatish tibbiy matn uchun; summa
+   * xato bo'lsa to'lov qaytariladi va qaytadan olinadi.
+   */
+  visit?: VisitExpanded | null
+  /** Tuzatish rejimida sarlavha ostidagi yozuv — kim va qaysi xizmat */
+  subtitle?: string
 }) {
   const { t, tService } = useI18n()
   const toast = useToast()
@@ -55,7 +76,7 @@ export function VisitFormModal({
     keyin aynan shu raqamni oladi — pulni oladigan odam summani o'zi
     belgilamaydi.
   */
-  const doctorSet = appointment?.service.priceMode === 'doctor_set'
+  const doctorSet = !visit && appointment?.service.priceMode === 'doctor_set'
   const minPrice = appointment?.service.minPrice ?? 0
   const maxPrice = appointment?.service.maxPrice ?? 0
   const [price, setPrice] = useState('')
@@ -71,20 +92,42 @@ export function VisitFormModal({
   const [images, setImages] = useState<{ preview: string; key: string }[]>([])
   const [uploading, setUploading] = useState(false)
 
+  const editing = Boolean(visit)
+
   useEffect(() => {
     if (!open) return
     setTouched(false)
-    setPrice('')
-    setImages([])
-    setComplaint('')
-    setDiagnosis('')
-    setTreatment('')
-    setNotes('')
     setFollowUp('')
     setFollowUpReason('')
-  }, [open])
+
+    /*
+      Tuzatishda forma MAVJUD yozuv bilan to'ldiriladi: shifokor bir
+      so'zni o'zgartirish uchun hammasini qaytadan yozmasin.
+    */
+    setPrice(visit?.price != null ? String(visit.price) : '')
+    setImages(
+      (visit?.images ?? []).map((image) => ({
+        preview: image.imageUrl,
+        key: image.imageUrl,
+      })),
+    )
+    setComplaint(visit?.complaint ?? '')
+    setDiagnosis(visit?.diagnosis ?? '')
+    setTreatment(visit?.treatment ?? '')
+    setNotes(visit?.notes ?? '')
+  }, [open, visit])
 
   const save = useAction(async () => {
+    if (visit) {
+      return updateVisit(visit.id, {
+        imageKeys: images.map((image) => image.key),
+        complaint: complaint.trim(),
+        diagnosis: diagnosis.trim(),
+        treatment: treatment.trim(),
+        notes: notes.trim(),
+      })
+    }
+
     if (!appointment) return null
     return createVisit({
       appointmentId: appointment.id,
@@ -173,14 +216,20 @@ export function VisitFormModal({
     onClose()
   }
 
-  if (!appointment) return null
+  /* Tuzatishda qabul kerak emas — yozuvning o'zi yetadi */
+  if (!appointment && !visit) return null
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={t('visit.title')}
-      description={`${appointment.patient.fullName} · ${tService(appointment.service.name)}`}
+      title={editing ? t('visit.editTitle') : t('visit.title')}
+      description={
+        subtitle ??
+        (appointment
+          ? `${appointment.patient.fullName} · ${tService(appointment.service.name)}`
+          : undefined)
+      }
       footer={
         <>
           <Button variant="gray" onClick={onClose}>
@@ -262,7 +311,12 @@ export function VisitFormModal({
             {t('visit.images')}
           </p>
           <p className="mt-0.5 text-caption text-label-tertiary">
-            {t('visit.imagesHint')}
+            {/*
+              Tuzatishda izoh boshqacha: u yerda "yozuv saqlangach
+              o'zgarmaydi" deyilgan, tuzatish rejimida esa aynan
+              o'zgartirilyapti.
+            */}
+            {editing ? t('visit.imagesEditHint') : t('visit.imagesHint')}
           </p>
 
           <div className="mt-2 flex flex-wrap gap-2">
@@ -310,7 +364,8 @@ export function VisitFormModal({
           </div>
         </div>
 
-        {/* --- Takroriy tashrif --- */}
+        {/* --- Takroriy tashrif: faqat YANGI yozuvda --- */}
+        {editing ? null : (
         <div className="rounded-[14px] bg-sunken p-4">
           <p className="mb-3 text-footnote font-medium text-label">
             {t('patient.nextFollowUp')}
@@ -330,6 +385,7 @@ export function VisitFormModal({
             />
           </div>
         </div>
+        )}
       </div>
     </Modal>
   )

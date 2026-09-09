@@ -179,6 +179,9 @@ export const dict: Dict = {
   'patient.medicalNotice': 'Medical data — confidential',
 
   'visit.title': 'Visit record',
+  'visit.editTitle': 'Correct the record',
+  'visit.imagesEditHint':
+    'Images can be added or removed. The change is written to the audit log.',
   'visit.price': 'Amount to pay',
   'visit.priceHint': 'You set the price for this service: {min} — {max}',
   'visit.priceRangeError': 'The amount must be between {min} and {max}',
