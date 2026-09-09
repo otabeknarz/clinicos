@@ -616,8 +616,8 @@ export class PlatformService {
       data: {
         name: dto.name?.trim(),
         pricePerMonth: dto.pricePerMonth,
-        limitDoctors: dto.limitDoctors,
-        limitStaff: dto.limitStaff,
+        limitDoctors: dto.limits?.doctors,
+        limitStaff: dto.limits?.staff,
         features: dto.features,
         isActive: dto.isActive,
       },

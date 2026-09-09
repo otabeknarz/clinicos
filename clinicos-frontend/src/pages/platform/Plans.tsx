@@ -205,6 +205,15 @@ function EditModal({
   const [saving, setSaving] = useState(false)
   const [ready, setReady] = useState<string | null>(null)
 
+  /*
+    Oyna yopilganda holat tozalanadi.
+
+    Busiz "Bekor qilish" bosilgach kiritilgan raqamlar qolib ketardi
+    va o'sha tarif qayta ochilganda saqlanmagan qiymatlar ko'rinardi —
+    foydalanuvchi ularni saqlangan deb o'ylardi.
+  */
+  if (!plan && ready !== null) setReady(null)
+
   // Forma qiymatlarini tanlangan tarifdan olamiz
   if (plan && ready !== plan.id) {
     setReady(plan.id)

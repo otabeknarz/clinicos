@@ -14,6 +14,7 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator'
 
 import { CLINIC_KINDS, CLINIC_MODULES, type ClinicKind } from '../common/modules'
@@ -101,6 +102,21 @@ export class BillingTermDto {
   isActive?: boolean
 }
 
+/** Tarif chegaralari. `-1` — cheksiz. */
+export class PlanLimitsDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(-1, { message: 'Chegara -1 (cheksiz) yoki noldan katta bo‘lsin' })
+  @Max(100000)
+  doctors!: number
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(-1, { message: 'Chegara -1 (cheksiz) yoki noldan katta bo‘lsin' })
+  @Max(100000)
+  staff!: number
+}
+
 export class PlanInputDto {
   @IsOptional() @IsString() @MinLength(2) @MaxLength(100)
   name?: string
@@ -108,12 +124,23 @@ export class PlanInputDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1_000_000_000)
   pricePerMonth?: number
 
-  /** -1 = cheksiz */
-  @IsOptional() @Type(() => Number) @IsInt() @Min(-1) @Max(100000)
-  limitDoctors?: number
+  /*
+    CHEGARALAR JAVOB BILAN BIR XIL SHAKLDA.
 
-  @IsOptional() @Type(() => Number) @IsInt() @Min(-1) @Max(100000)
-  limitStaff?: number
+    `toApiPlan` ularni `limits: { doctors, staff }` bo'lib qaytaradi.
+    Kirish tekis (`limitDoctors`) bo'lganda interfeys javobni o'sha
+    holicha qaytarib yubora olmasdi: `ValidationPipe` `whitelist: true`
+    bilan ishlaydi, ya'ni e'lon qilinmagan `limits` obyekti JIMGINA
+    tashlanardi — narx saqlanib, chegaralar saqlanmasdi va hech qanday
+    xato ham chiqmasdi.
+
+    O'qish va yozish shakli bir xil bo'lsa, bunday nomuvofiqlik
+    qaytalanmaydi.
+  */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PlanLimitsDto)
+  limits?: PlanLimitsDto
 
   @IsOptional() @IsArray() @ArrayMaxSize(20) @IsString({ each: true })
   features?: string[]

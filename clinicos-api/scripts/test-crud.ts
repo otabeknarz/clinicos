@@ -812,6 +812,106 @@ async function main() {
     }
   }
 
+  /* ---------------- Tarif chegaralari (platforma) ---------------- */
+  /*
+    ILDIZI: interfeys `limits: { doctors, staff }` yuboradi, DTO da
+    esa tekis `limitDoctors` turardi. `ValidationPipe` `whitelist: true`
+    bilan ishlagani uchun e'lon qilinmagan `limits` JIMGINA tashlanardi:
+    narx saqlanib, chegaralar saqlanmasdi va xato ham chiqmasdi.
+
+    Demo rejimda ko'rinmasdi — mock qatlamida `limits` allaqachon
+    ichma-ich saqlanadi.
+  */
+  console.log('\nTarif chegaralari (platforma)')
+  const plansList = await call('GET', '/platform/plans', tokens.admin)
+  const somePlan = items(plansList.data)[0]
+  check('tariflar keldi', Boolean(somePlan), short(plansList.data))
+
+  if (somePlan) {
+    const before = { ...somePlan.limits }
+
+    const patched = await call('PATCH', `/platform/plans/${somePlan.id}`, tokens.admin, {
+      limits: { doctors: 7, staff: 21 },
+    })
+    check('chegaralar yuborildi', patched.status === 200, short(patched.data))
+    check(
+      '  javobda o‘zgardi',
+      patched.data?.limits?.doctors === 7 && patched.data?.limits?.staff === 21,
+      short(patched.data?.limits),
+    )
+
+    /* Qayta o'qib tekshiramiz — javob to'g'ri, baza esa eski bo'lmasin */
+    const reread = await call('GET', '/platform/plans', tokens.admin)
+    const again = items(reread.data).find((p: { id: string }) => p.id === somePlan.id)
+    check(
+      '  bazada ham saqlandi',
+      again?.limits?.doctors === 7 && again?.limits?.staff === 21,
+      short(again?.limits),
+    )
+
+    /* Cheksiz (-1) ham o'tishi kerak */
+    const unlimited = await call('PATCH', `/platform/plans/${somePlan.id}`, tokens.admin, {
+      limits: { doctors: -1, staff: -1 },
+    })
+    check(
+      '  cheksiz (-1) qabul qilindi',
+      unlimited.data?.limits?.doctors === -1,
+      short(unlimited.data?.limits),
+    )
+
+    const bad = await call('PATCH', `/platform/plans/${somePlan.id}`, tokens.admin, {
+      limits: { doctors: -5, staff: 10 },
+    })
+    check('  noto‘g‘ri chegara RAD ETILDI', bad.status === 400, `status: ${bad.status}`)
+
+    /* O'z holiga qaytaramiz */
+    await call('PATCH', `/platform/plans/${somePlan.id}`, tokens.admin, { limits: before })
+  }
+
+  /* ---------------- To'lov muddatlari (platforma) ---------------- */
+  console.log('\nTo‘lov muddatlari (platforma)')
+  const termsList = await call('GET', '/platform/billing-terms', tokens.admin)
+  const terms = items(termsList.data)
+  check('muddatlar keldi', terms.length === 3, short(termsList.data))
+  check(
+    '  3, 6, 12 oy',
+    [3, 6, 12].every((m) => terms.some((row: { months: number }) => row.months === m)),
+    short(terms.map((row: { months: number }) => row.months)),
+  )
+
+  const sixMonths = terms.find((row: { months: number }) => row.months === 6)
+  if (sixMonths) {
+    const wasPct = sixMonths.discountPct
+
+    const changed = await call(
+      'PATCH',
+      `/platform/billing-terms/${sixMonths.id}`,
+      tokens.admin,
+      { discountPct: 15 },
+    )
+    check('chegirma o‘zgardi', changed.data?.discountPct === 15, short(changed.data))
+
+    const tooBig = await call(
+      'PATCH',
+      `/platform/billing-terms/${sixMonths.id}`,
+      tokens.admin,
+      { discountPct: 101 },
+    )
+    check('  100 dan katta RAD ETILDI', tooBig.status === 400, `status: ${tooBig.status}`)
+
+    const negative = await call(
+      'PATCH',
+      `/platform/billing-terms/${sixMonths.id}`,
+      tokens.admin,
+      { discountPct: -1 },
+    )
+    check('  manfiy RAD ETILDI', negative.status === 400, `status: ${negative.status}`)
+
+    await call('PATCH', `/platform/billing-terms/${sixMonths.id}`, tokens.admin, {
+      discountPct: wasPct,
+    })
+  }
+
   /* ---------------- Klinikani o'chirish (platforma) ---------------- */
   /*
     O'CHIRISH va ARXIVLASH — ikki xil amal.
