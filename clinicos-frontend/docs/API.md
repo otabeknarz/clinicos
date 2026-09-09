@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**142 ta endpoint.**
+**148 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -796,7 +796,7 @@ updateService(id: ID, patch: Partial<ServiceInput>): Promise<Service>
 deleteService(id: ID): Promise<void>
 ```
 
-### `GET /services/:id/price?patientId=`
+### `GET /services/:id/price?patientId=&appointmentId=`
 
 Aniq bemorga aniq xizmat qancha turishini hisoblaydi.
 
@@ -809,7 +809,7 @@ server narxni qaytadan hisoblab, mijoz yuborgan summani tekshirishi
 shart — aks holda registrator summani o'zgartirib yuborishi mumkin.
 
 ```ts
-resolvePriceForPatient(serviceId: ID, patientId: ID | null): Promise<PricePreview | null>
+resolvePriceForPatient(serviceId: ID, patientId: ID | null, /* Narxni shifokor belgilaydigan xizmatda summa AYNAN shu qabulning ko'rigidan keladi — katalogda uni topib bo'lmaydi. */ appointmentId: ID | null = null): Promise<PricePreview | null>
 ```
 
 ## To'lovlar
@@ -1437,6 +1437,18 @@ O'qish
 
 ```ts
 listAttendance(staffId: ID, from: string, to: string): Promise<AttendanceDay[]>
+```
+
+### `GET /attendance?from=&to=`
+
+Butun klinikaning davomati — Davomat → Jadval uchun.
+
+Bitta so'rovda barcha xodimning yozuvi keladi. Ilgari bu tab
+to'g'ridan-to'g'ri demo bazadan o'qirdi va haqiqiy backend
+ulanganda umuman ishlamasdi.
+
+```ts
+listAttendanceBoard(from: string, to: string): Promise<(AttendanceDay & { staffId: ID })[]>
 ```
 
 ### `GET /attendance/summary?staffId=&period=`
@@ -3261,4 +3273,70 @@ berish uchun, ro'yxatni almashtirish uchun emas. To'liq ro'yxat
 
 ```ts
 platformSearch(query: string, scope: PlatformSearchScope = 'all'): Promise<PlatformSearchHit[]>
+```
+
+### `PATCH /platform/tenants/:id/modules`
+
+Klinikada qaysi bo'limlar ishlashini belgilash.
+
+O'chirilganlari yuboriladi, yoqilganlari emas. Bo'lim o'chirilsa
+MA'LUMOT o'chmaydi — u ko'rinmay qoladi va endpointlari 403
+qaytaradi. Qayta yoqilsa hammasi joyida chiqadi.
+
+```ts
+setTenantModules(id: ID, disabledModules: ClinicModule[]): Promise<Tenant>
+```
+
+### `POST /platform/tenants/:id/delete`
+
+KLINIKANI O'CHIRISH — arxivlashdan boshqa narsa.
+
+Arxiv: "mijoz ketdi, qaytishi mumkin" — obuna `cancelled` bo'ladi,
+klinika ro'yxatda turaveradi.
+O'chirish: klinika platformaning ish ro'yxatidan chiqadi va
+xodimlari kira olmay qoladi.
+
+IKKALASIDA HAM MA'LUMOT BAZADA QOLADI. Bemor, tashrif, to'lov va
+audit jurnalini yo'qotadigan `DELETE` yo'q va bo'lmasligi kerak.
+
+```ts
+deleteTenant(id: ID, reason: string): Promise<Tenant>
+```
+
+### `POST /platform/tenants/:id/undelete`
+
+```ts
+undeleteTenant(id: ID): Promise<Tenant>
+```
+
+## debts
+
+`src/api/debts.ts`
+
+> Qarzdorlik.
+> 
+> Qarz saqlanmaydi — xizmat narxi minus to'langan summa sifatida
+> hisoblanadi. Shuning uchun bu yerda "qarz yaratish" degan amal yo'q:
+> qarz to'lov yozilishi bilan o'zi kamayadi va nolga yetganda o'zi
+> yo'qoladi.
+> 
+> RUXSAT: ko'rish `payments.view` (egasi ham, registrator ham),
+> kechirish `debts.waive` (faqat egasi).
+
+### `GET /debts`
+
+```ts
+listDebts(): Promise<DebtList>
+```
+
+### `POST /debts/waive`
+
+Umidsiz qarzni yopish.
+
+SERVERDA: faqat `debts.waive` ruxsati borida ishlaydi va audit
+jurnaliga tushadi. Qarz o'chirilmaydi — kechirish alohida yozuv
+bo'lib qo'shiladi.
+
+```ts
+waiveDebt(input: WaiveDebtInput): Promise<DebtWaiver>
 ```

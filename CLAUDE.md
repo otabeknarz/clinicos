@@ -44,7 +44,9 @@ There is no unit-test framework — verification is these scripts. `test:isolati
 both require a running/seeded database; the other checks are static.
 
 The two generator scripts (`gen:tenant-models` here, `docs:api` in the frontend) are Python and
-call `python3` — on Windows that means a `python3` on PATH, not just `py`.
+call `python3`. **On Windows `python3` is usually the Microsoft Store stub** — it prints nothing,
+exits 0, and the file is silently left unchanged. `python` and `py` work; run the script directly
+(`python scripts/gen-tenant-models.py`) rather than through npm when that happens.
 
 ### clinicos-frontend
 
@@ -182,12 +184,60 @@ never matches a null `doctorId`, and percent-based pay computes against zero rev
 `Staff` by `userId` and 404 without it — a brand-new clinic had two dead pages on the owner's
 first login. Migration `20260906180000_egasiga_xodim_yozuvi` backfills.
 
+**A service's price can be set by the doctor instead of the catalog** (`Service.priceMode`,
+`minPrice`/`maxPrice`, `Visit.price`). For surgery and the like the amount is not knowable before
+the visit, so the owner gives a range, the doctor enters the amount when writing the visit, and
+reception collects it. The payment ceiling then comes from `Visit.price` instead of the catalog, so
+such a payment **must** carry `appointmentId` — without it there is no ceiling at all. Loyalty
+discounts do not apply (the doctor already priced the case), and `DOCTOR_SET` forces `POSTPAID`.
+
+**A visit can carry images** (`VisitImage`) — X-rays, tooth photos. Attached only while the visit is
+being written, because there is no `PATCH /visits/:id` and there should not be. It is a separate
+table rather than a `String[]` on `Visit` because `SignedUrlInterceptor` signs a **string** field
+named `*Url`, not an array. Confidentiality needs no new permission: images ride along with
+`visits.view`, which the receptionist does not have. `prepareMedicalImage` in `lib/image.ts` scales
+to 1600px without cropping — `prepareAvatar` centre-crops to 256px, which would cut an X-ray in half.
+
 **The ward (`src/ward/`) is the one module whose money has no catalog service.** `Room` / `Bed` /
 `Admission`: a bed charge is the room's `dailyRate` × days lying in, so there is no `Service` row
 to attribute it to and a naive per-service revenue report would drop a whole wing of the clinic.
 Both reports that break revenue down by service therefore fold ward payments under the single
 `WARD_KEY` / `WARD_LABEL` pair from `src/common/ward-revenue.ts` — it lives in `common/` precisely
 because two callers must agree. Day counting here is the timezone trap below.
+
+**Modules are a second gate, orthogonal to permissions** (`src/common/modules.ts`). A permission
+answers "may this *person* do it"; a module answers "does this *clinic* have it at all" — a dental
+clinic has no ward even though its owner holds `ward.manage`. `Clinic.disabledModules` stores the
+**disabled** ones, so an empty array means everything is on: existing clinics are unaffected and a
+newly added module works everywhere by default. `PermissionsGuard` rejects a route whose module is
+off, deriving the module from the permission the route already declares (`MODULE_BY_PERMISSION`) —
+per-route annotations would be forgotten on the next new route. The frontend needs no logic of its
+own: `buildSession` strips blocked permissions from the session, so navigation, buttons and route
+guards follow automatically. `check:permissions` does **not** cover this mapping.
+
+**Deleting a clinic and archiving it are different acts.** Archive (`POST /platform/tenants/:id/archive`)
+means "the customer left but may come back": the subscription goes `CANCELLED` and the clinic stays
+in the platform list. Delete (`POST /platform/tenants/:id/delete`) sets `Clinic.deletedAt` and takes
+it out of the list entirely — `GET /platform/tenants` hides deleted rows unless `status=deleted` is
+asked for, which is a filter value, not a subscription status. Both keep every row: there is no
+`DELETE` that removes patients, visits, payments or the audit log, and there must not be one.
+The deleted check sits in `clinic-access.ts` *before* the subscription check, because a clinic can
+be deleted without ever being archived.
+
+**Debt is computed, never stored.** `GET /debts` derives it as price − payments, in two lists
+(appointments and admissions). A stored balance column would drift from the payment rows and then
+nobody could say which one was true. `DebtWaiver` writes off a hopeless debt without touching the
+money: `paymentStatus` stays unpaid — it really was — and only the lists and the notification
+filter the waived row out. `debts.waive` is owner-only for the same reason `payments.refund` is.
+
+**The reception panel's unpaid list is the one part that is not "today".** Everything else on that
+panel (counts, queue, cash) comes from the day's appointments; debt comes from a *separate* query
+with no date bound. They were one query once, and yesterday's debt showed in the notification count
+while being invisible on the panel. Do not merge them back.
+
+**Ward money lives in `common/ward-revenue.ts`.** `wardBalance()` (planned vs actual days × daily
+rate − paid) is called by both the payment ceiling and the debt list; written twice, one copy would
+drift.
 
 **Suspension is enforced in two places** (`common/clinic-access.ts`): at login and in
 `jwt.strategy.ts` on every request, so an already-issued 12h token stops working immediately.
@@ -294,7 +344,10 @@ Row Level Security in the database (application-layer filtering is the only laye
 backups, no UI for reading the audit log, no self-service password recovery (a person must
 reset it for you — there is no mail service), the patient-feedback endpoints are deliberately closed
 until rate limiting exists (phone-number enumeration risk), and penalty rules are stored but
-never applied — the background job doesn't exist.
+never applied — the background job doesn't exist. Debt has no due dates or reminders: only the
+outstanding balance is tracked, deliberately — deadlines turn it into a payment-plan feature.
+`check:permissions` compares permission names but knows nothing about module gating, so a module
+that is off is only caught by driving the app or by `test:crud`.
 
 **Impersonation** issues a separate 30-minute token carrying `impersonationId`; `jwt.strategy.ts`
 resolves the target `clinicId` from the log row and swaps in `IMPERSONATION_PERMISSIONS` (view-only
