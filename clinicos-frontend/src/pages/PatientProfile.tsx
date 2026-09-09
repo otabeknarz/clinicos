@@ -247,8 +247,19 @@ function OverviewTab({ patientId }: { patientId: string }) {
     .slice(0, 3)
 
   return (
+    /*
+      `min-w-0` HAR IKKI USTUNDA — SHARTLI EMAS.
+
+      Grid katagining sukut bo'yicha `min-width: auto`, ya'ni u
+      ichidagi eng uzun uzilmas matndan tor bo'la olmaydi. Ichkarida
+      esa `truncate` bor va u `white-space: nowrap` beradi: manzil
+      "Toshkent, Bektemir tumani, Amir Temur ko'chasi 12" bir qatorga
+      cho'zilib, katakni 405px ga kengaytirardi. Telefonda ekran
+      375px — kartaning o'ng cheti, ichidagi qiymatlar va hatto
+      ustidagi ilovalar qatori ekrandan chiqib ketardi.
+    */
     <div className="grid gap-6 lg:grid-cols-2">
-      <div>
+      <div className="min-w-0">
         <CardHeader title={t('patient.tab.overview')} />
         <dl className="mt-4 space-y-3">
           <Row label={t('common.phone')} value={formatPhone(patient.phone)} />
@@ -263,7 +274,7 @@ function OverviewTab({ patientId }: { patientId: string }) {
         </dl>
       </div>
 
-      <div>
+      <div className="min-w-0">
         <CardHeader title={t('patient.tab.appointments')} />
         {upcoming.length === 0 ? (
           <p className="mt-4 text-subhead text-label-tertiary">{t('appts.empty.desc')}</p>
@@ -297,6 +308,16 @@ function OverviewTab({ patientId }: { patientId: string }) {
   )
 }
 
+/**
+ * Ma'lumot qatori: yorliq — qiymat.
+ *
+ * TELEFONDA USTMA-UST, KOMPYUTERDA YONMA-YON.
+ *
+ * Yonma-yon turganda qiymatga 375px ekranda 150px joy qolardi va
+ * manzil ham, telefon raqami ham nuqtalar bilan kesilardi — ya'ni
+ * kartochkaning butun mazmuni ko'rinmasdi. Ustma-ust turganda
+ * qiymat butun kenglikni oladi va o'zi qatorga bo'linadi.
+ */
 function Row({
   label,
   value,
@@ -307,11 +328,20 @@ function Row({
   icon?: React.ReactNode
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <dt className="shrink-0 text-footnote text-label-tertiary">{label}</dt>
-      <dd className="inline-flex min-w-0 items-center gap-1.5 text-right text-subhead text-label">
-        {icon}
-        <span className="truncate">{value}</span>
+      <dd
+        className={cn(
+          'flex min-w-0 items-start gap-1.5 text-subhead text-label',
+          /*
+            `break-words` — kesish o'rniga o'rash. Uzun izoh yoki
+            manzil ikki qatorga tushadi, lekin BUTUNICHA ko'rinadi.
+          */
+          'break-words sm:justify-end sm:text-right',
+        )}
+      >
+        {icon ? <span className="mt-0.5 shrink-0">{icon}</span> : null}
+        <span className="min-w-0">{value}</span>
       </dd>
     </div>
   )
@@ -387,10 +417,18 @@ function AppointmentsTab({ patientId }: { patientId: string }) {
   }
 
   return (
+    /*
+      TELEFONDA SANA ALOHIDA USTUN EMAS.
+
+      Sana (96px) + soat (48px) + holat nishoni (~110px) 375px li
+      ekranda xizmat nomiga 50px qoldirardi va u "U..." bo'lib
+      kesilardi — ya'ni qatordagi eng muhim so'z o'qilmasdi.
+      Telefonda sana ikkinchi qatorga, shifokor yoniga tushadi.
+    */
     <ul className="divide-y divide-separator">
       {data.map((appointment) => (
-        <li key={appointment.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0">
-          <span className="w-24 shrink-0 text-footnote tnum text-label-secondary">
+        <li key={appointment.id} className="flex items-center gap-3 py-3 first:pt-0">
+          <span className="hidden w-24 shrink-0 text-footnote tnum text-label-secondary sm:block">
             {dateShort(appointment.startsAt)}
           </span>
           <span className="w-12 shrink-0 text-footnote font-semibold tnum text-label">
@@ -400,13 +438,35 @@ function AppointmentsTab({ patientId }: { patientId: string }) {
             <span className="block truncate text-subhead text-label">
               {tService(appointment.service.name)}
             </span>
-            <span className="block truncate text-caption text-label-tertiary">
-              {appointment.doctor.fullName}
+            {/*
+              Telefonda holat nishoni SHU QATORDA, o'ngda. Xizmat
+              nomi yonida turganda unga 140px qolib, "Umumiy qon
+              t..." bo'lib kesilardi — tahlil nomi esa qatordagi
+              yagona ma'noli so'z.
+            */}
+            <span className="mt-0.5 flex items-center justify-between gap-2">
+              <span className="min-w-0 truncate text-caption text-label-tertiary">
+                <span className="sm:hidden">{dateShort(appointment.startsAt)} · </span>
+                {appointment.doctor.fullName}
+              </span>
+              {/*
+                `hidden` O'RAMGA beriladi, nishonning o'ziga emas:
+                `cn()` Tailwind classlarini birlashtirmaydi va
+                `Badge` ning o'z `inline-flex`i `hidden` ni bosib
+                ketardi — nishon ikkala joyda ham ko'rinardi.
+              */}
+              <span className="shrink-0 sm:hidden">
+                <Badge tone={APPOINTMENT_TONE[appointment.status]} dot>
+                  {t(APPOINTMENT_LABEL[appointment.status])}
+                </Badge>
+              </span>
             </span>
           </span>
-          <Badge tone={APPOINTMENT_TONE[appointment.status]} dot>
-            {t(APPOINTMENT_LABEL[appointment.status])}
-          </Badge>
+          <span className="hidden shrink-0 sm:block">
+            <Badge tone={APPOINTMENT_TONE[appointment.status]} dot>
+              {t(APPOINTMENT_LABEL[appointment.status])}
+            </Badge>
+          </span>
         </li>
       ))}
     </ul>
@@ -439,22 +499,37 @@ function PaymentsTab({ patientId }: { patientId: string }) {
         <span className="text-title-3 font-semibold tnum text-label">{money(total)}</span>
       </div>
 
+      {/*
+        Beshta ustun telefonga sig'maydi — summa eng muhimi, u o'ngda
+        yolg'iz qoladi. Sana, usul va holat xizmat nomi ostidagi
+        ikkinchi qatorga tushadi: joy talab qilmaydi va hammasi
+        BUTUNICHA o'qiladi.
+      */}
       <ul className="divide-y divide-separator">
         {data.map((payment) => (
-          <li key={payment.id} className="flex flex-wrap items-center gap-3 py-3">
-            <span className="w-24 shrink-0 text-footnote tnum text-label-secondary">
+          <li key={payment.id} className="flex items-center gap-3 py-3">
+            <span className="hidden w-24 shrink-0 text-footnote tnum text-label-secondary sm:block">
               {dateShort(payment.paidAt)}
             </span>
-            <span className="min-w-0 flex-1 truncate text-subhead text-label">
-              {tService(payment.service.name)}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-subhead text-label">
+                {tService(payment.service.name)}
+              </span>
+              <span className="block truncate text-caption text-label-tertiary sm:hidden">
+                {dateShort(payment.paidAt)} · {t(`payments.method.${payment.method}`)}
+              </span>
             </span>
-            <span className="shrink-0 text-caption text-label-tertiary">
+            <span className="hidden shrink-0 text-caption text-label-tertiary sm:block">
               {t(`payments.method.${payment.method}`)}
             </span>
             <span className="shrink-0 text-subhead font-semibold tnum text-label">
               {money(payment.amount)}
             </span>
-            <Badge tone={PAYMENT_TONE[payment.status]}>{t(PAYMENT_LABEL[payment.status])}</Badge>
+            <span className="hidden shrink-0 sm:block">
+              <Badge tone={PAYMENT_TONE[payment.status]}>
+                {t(PAYMENT_LABEL[payment.status])}
+              </Badge>
+            </span>
           </li>
         ))}
       </ul>

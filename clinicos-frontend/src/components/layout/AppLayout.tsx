@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { MoreHorizontal, X } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 import { MOBILE_NAV, NAVIGATION, PLATFORM_MOBILE_NAV } from './navigation'
 import { Sidebar } from './Sidebar'
@@ -126,6 +127,55 @@ export function AppLayout() {
 /* Telefondagi pastki panel                                            */
 /* ------------------------------------------------------------------ */
 
+/*
+  Tabletka bandi. Faol bo'lsa to'q ko'k fon + yozuv, aks holda faqat
+  ikonka. Uch class'ga ajratilgan, chunki "Yana" tugmasi NavLink emas
+  — u varaq ochadi, ya'ni bir xil ko'rinishni takrorlash kerak.
+*/
+const PILL_BASE = [
+  'flex h-11 min-w-11 items-center justify-center gap-2 rounded-full px-3',
+  'transition-[background-color,color,padding] duration-200 ease-apple',
+].join(' ')
+
+const PILL_ACTIVE = 'bg-navy px-4 text-white'
+const PILL_IDLE = 'text-label-tertiary hover:text-label-secondary'
+
+function NavItem({
+  to,
+  end,
+  icon: Icon,
+  label,
+}: {
+  to: string
+  end?: boolean
+  icon: LucideIcon
+  label: string
+}) {
+  return (
+    <li className="min-w-0">
+      <NavLink
+        to={to}
+        end={end}
+        aria-label={label}
+        className={({ isActive }) => cn(PILL_BASE, isActive ? PILL_ACTIVE : PILL_IDLE)}
+      >
+        {({ isActive }) => (
+          <>
+            <Icon size={20} strokeWidth={isActive ? 2.2 : 1.9} className="shrink-0" />
+            {/*
+              Yozuv faqat faol bandda. `truncate` kerak emas — tabletka
+              matnga qarab kengayadi va qolganlari siqilib turaveradi.
+            */}
+            {isActive ? (
+              <span className="truncate text-footnote font-semibold">{label}</span>
+            ) : null}
+          </>
+        )}
+      </NavLink>
+    </li>
+  )
+}
+
 /**
  * Pastki panel — telefonda asosiy navigatsiya.
  *
@@ -184,71 +234,64 @@ function MobileNav() {
 
   return (
     <>
-      <nav className="material-thick hairline-t fixed inset-x-0 bottom-0 z-30 md:hidden">
-        <ul className="flex items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)]">
+      {/*
+        SUZUVCHI TABLETKA.
+
+        Ilgari panel butun kenglikni egallab, ekranning pastki
+        chekkasiga yopishib turardi. Endi u chetlardan uzilgan: ostidagi
+        ro'yxat panel orqasidan o'tib ketayotgani ko'rinib turadi va
+        sahifa qayerda tugaganini odam o'zi biladi.
+
+        FAQAT FAOL BANDDA YOZUV BOR. Beshta yozuv yonma-yon turganda
+        har biri 11px ga tushib, "Ro'yxatdan o'tganlar" kabi so'z
+        qisqarib ketardi. Faol band esa kengayib, to'liq nomni
+        ko'rsatadi — odam qayerdaligini bir qarashda biladi, qolganlari
+        ikonka bo'lib turaveradi.
+      */}
+      <nav
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-30 md:hidden',
+          'px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2',
+          /*
+            Panel ostidan chiqayotgan kontent to'satdan kesilmasin:
+            yupqa gradient uni asta yo'qqa chiqaradi.
+          */
+          'bg-gradient-to-t from-canvas via-canvas/90 to-transparent',
+        )}
+      >
+        <ul
+          className={cn(
+            'material-thick mx-auto flex max-w-md items-center justify-between gap-1',
+            'rounded-full p-1.5',
+            'shadow-[0_6px_24px_-6px_rgb(16_31_56_/_0.22)]',
+            'ring-[0.5px] ring-separator',
+          )}
+        >
           {primary.map((item) => (
-            <li key={item.to} className="flex-1">
-              <NavLink
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  cn(
-                    'flex min-h-[56px] flex-col items-center justify-center gap-0.5 px-1 py-1.5',
-                    'transition-colors duration-150',
-                    isActive ? 'text-accent' : 'text-label-tertiary',
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    {/*
-                      Faol band ikonka ortidagi yumshoq "tabletka" bilan
-                      belgilanadi. Faqat rang bilan belgilash yorug'da
-                      va rangni ajratolmaydigan odamda bilinmaydi.
-                    */}
-                    <span
-                      className={cn(
-                        'flex h-7 w-12 items-center justify-center rounded-full',
-                        'transition-colors duration-200',
-                        isActive && 'bg-accent-soft',
-                      )}
-                    >
-                      <item.icon size={21} strokeWidth={isActive ? 2.3 : 1.9} />
-                    </span>
-                    <span className="max-w-full truncate text-caption-2 font-medium">
-                      {t(item.labelKey)}
-                    </span>
-                  </>
-                )}
-              </NavLink>
-            </li>
+            <NavItem
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              icon={item.icon}
+              label={t(item.labelKey)}
+            />
           ))}
 
           {hasOverflow ? (
-            <li className="flex-1">
+            <li className="min-w-0">
               <button
                 type="button"
                 onClick={() => setMoreOpen(true)}
                 aria-haspopup="dialog"
                 aria-expanded={moreOpen}
-                className={cn(
-                  'flex min-h-[56px] w-full flex-col items-center justify-center gap-0.5 px-1 py-1.5',
-                  'transition-colors duration-150',
-                  overflowActive ? 'text-accent' : 'text-label-tertiary',
-                )}
+                className={cn(PILL_BASE, overflowActive ? PILL_ACTIVE : PILL_IDLE)}
               >
-                <span
-                  className={cn(
-                    'flex h-7 w-12 items-center justify-center rounded-full',
-                    'transition-colors duration-200',
-                    overflowActive && 'bg-accent-soft',
-                  )}
-                >
-                  <MoreHorizontal size={21} strokeWidth={overflowActive ? 2.3 : 1.9} />
-                </span>
-                <span className="max-w-full truncate text-caption-2 font-medium">
-                  {t('action.more')}
-                </span>
+                <MoreHorizontal size={20} strokeWidth={overflowActive ? 2.2 : 1.9} />
+                {overflowActive ? (
+                  <span className="truncate text-footnote font-semibold">
+                    {t('action.more')}
+                  </span>
+                ) : null}
               </button>
             </li>
           ) : null}

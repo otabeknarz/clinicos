@@ -34,6 +34,22 @@
   --ios-yellow: #ffcc00;
   --ios-pink: #ff2d55;
 
+  /*
+    --- BREND: TO'Q KO'K ---
+
+    Kartaning o'zi rang bo'ladigan joylar uchun: bosh sahifadagi
+    asosiy karta, faol menyu bandi, asosiy amal tugmasi.
+
+    NEGA ALOHIDA PALITRA: `--ios-blue` HARAKAT rangi — u bosiladigan
+    narsani bildiradi. Uni katta sirtga yoysak, "bosiladigan" belgisi
+    ma'nosini yo'qotadi. To'q ko'k esa sirt rangi: ustida oq matn
+    turadi va yonidagi ko'k tugma baribir ajralib ko'rinadi.
+  */
+  --navy-900: #101f38;
+  --navy-800: #16294a;
+  --navy-700: #1d375e;
+  --navy-soft: rgb(22 41 74 / 0.07);
+
   /* --- Kulranglar (yorug') --- */
   --ios-gray: #8e8e93;
   --ios-gray-2: #aeaeb2;
@@ -102,6 +118,15 @@
   --ios-teal: #40c8e0;
   --ios-yellow: #ffd60a;
   --ios-pink: #ff375f;
+
+  /*
+    Qorong'ida fon allaqachon qora — to'q ko'k undan ajralib turishi
+    uchun BIR OZ OCHROQ olinadi, aks holda karta fonga singib ketardi.
+  */
+  --navy-900: #16294a;
+  --navy-800: #1d375e;
+  --navy-700: #264472;
+  --navy-soft: rgb(80 130 210 / 0.16);
 
   /* --- Kulranglar (qorong'i — tartib teskari) --- */
   --ios-gray: #8e8e93;
@@ -190,6 +215,11 @@
   /* --- Brend rangi (binafsha) --- */
   --color-brand: var(--ios-purple);
   --color-brand-soft: var(--tint-purple-soft);
+
+  /* --- To'q ko'k sirt --- */
+  --color-navy: var(--navy-800);
+  --color-navy-deep: var(--navy-900);
+  --color-navy-soft: var(--navy-soft);
 
   /* --- Holat ranglari --- */
   --color-ok: var(--ios-green);

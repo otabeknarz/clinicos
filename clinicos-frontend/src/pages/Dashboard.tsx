@@ -5,9 +5,11 @@ import {
   CalendarCheck,
   CalendarClock,
   CircleDollarSign,
+  ReceiptText,
   Repeat,
   UserPlus,
   UserRound,
+  UsersRound,
   UserX,
 } from 'lucide-react'
 
@@ -19,6 +21,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
+import { Hero, QuickAccess, StatStrip } from '@/components/ui/Hero'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { ProgressBar } from '@/components/ui/Progress'
 import { CardSkeleton, EmptyState, ErrorState, Skeleton } from '@/components/ui/States'
@@ -37,6 +40,163 @@ import { APPOINTMENT_LABEL, APPOINTMENT_TONE } from '@/lib/status'
 import { useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
+import type { Permission } from '@/types/models'
+
+/* ------------------------------------------------------------------ */
+/* Telefondagi bosh blok                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Egasining telefondagi birinchi ekrani.
+ *
+ * TARTIB PULDAN BOSHLANADI. Klinika egasi telefonni kun davomida
+ * bitta savol bilan ochadi: "bugun qanday ketyapti?". Javob birinchi
+ * kartada, boshqa hech narsa bosmasdan.
+ */
+function MobileHome() {
+  const { t } = useI18n()
+  const { can } = useAuth()
+  const { data, loading, error, reload } = useAsync(() => getDashboardSummary(), [])
+
+  if (error) {
+    return (
+      <Card>
+        <ErrorState onRetry={reload} />
+      </Card>
+    )
+  }
+
+  const showMoney = can('payments.view')
+
+  /*
+    Pulni ko'rolmaydigan xodimda (registrator) to'q karta bo'sh
+    qolmasin — unga bugungi qabullar soni chiqadi. Kartaning o'zi
+    olib tashlanmaydi: ekranning boshi hamma rolda bir xil turishi
+    kerak, aks holda ilova har kirganda boshqacha ko'rinadi.
+  */
+  const heroValue = showMoney
+    ? data
+      ? /* `moneyShort` valyutani O'ZI qo'shadi — bu yerda birlik alohida */
+        compactNumber(data.revenueToday.value)
+      : '—'
+    : data
+      ? groupDigits(data.appointmentsToday.value)
+      : '—'
+
+  return (
+    <div className="space-y-4">
+      {loading ? (
+        <Skeleton className="h-[124px] rounded-[22px]" />
+      ) : (
+        <Hero
+          eyebrow={showMoney ? t('dash.kpi.revenueToday') : t('dash.kpi.appointments')}
+          value={heroValue}
+          unit={showMoney ? currencyLabel() : undefined}
+          meta={
+            data ? (
+              <span className="flex items-center gap-2">
+                {data.revenueToday.changePct !== null && showMoney ? (
+                  <span className="tnum">
+                    {data.revenueToday.changePct >= 0 ? '+' : ''}
+                    {percent(data.revenueToday.changePct)} {t('common.vsYesterday')}
+                  </span>
+                ) : (
+                  <span>{t('dash.kpi.remaining', { count: data.appointmentsRemaining })}</span>
+                )}
+              </span>
+            ) : null
+          }
+          to={showMoney ? '/revenue' : '/appointments'}
+        />
+      )}
+
+      {loading ? (
+        <Skeleton className="h-[104px] rounded-[20px]" />
+      ) : (
+        <StatStrip
+          title={t('dash.today')}
+          items={[
+            {
+              key: 'patients',
+              label: t('nav.patients'),
+              value: data ? groupDigits(data.patientsToday.value) : '—',
+              icon: <UserRound size={12} />,
+              tone: 'accent',
+            },
+            {
+              key: 'appointments',
+              label: t('dash.kpi.appointments'),
+              value: data ? groupDigits(data.appointmentsToday.value) : '—',
+              icon: <CalendarCheck size={12} />,
+              tone: 'brand',
+            },
+            {
+              key: 'noshow',
+              label: t('dash.strip.noShow'),
+              value: data ? groupDigits(data.noShows.value) : '—',
+              icon: <UserX size={12} />,
+              tone: data && data.noShows.value > 0 ? 'bad' : 'neutral',
+            },
+          ]}
+        />
+      )}
+
+      <QuickAccess title={t('dash.quickAccess')} items={quickItems(can, t)} />
+    </div>
+  )
+}
+
+/**
+ * Tez kirish bandlari — ruxsat bo'yicha filtrlanadi.
+ *
+ * TO'RTTADAN OSHMAYDI: qator to'rt ustunli, beshinchisi ikkinchi
+ * qatorga tushib, blok ikki barobar joy olardi. Tartib ahamiyatga
+ * qarab: pul → odam → jadval → nazorat.
+ */
+function quickItems(
+  can: (permission: Permission) => boolean,
+  t: (key: string) => string,
+) {
+  const all = [
+    {
+      key: 'payments',
+      to: '/payments',
+      label: t('nav.payments'),
+      icon: <CircleDollarSign size={20} />,
+      permission: 'payments.view' as Permission,
+    },
+    {
+      key: 'debts',
+      to: '/debts',
+      label: t('nav.debts'),
+      icon: <ReceiptText size={20} />,
+      permission: 'payments.view' as Permission,
+    },
+    {
+      key: 'patients',
+      to: '/patients',
+      label: t('nav.patients'),
+      icon: <UserRound size={20} />,
+      permission: 'patients.view' as Permission,
+    },
+    {
+      key: 'calendar',
+      to: '/calendar',
+      label: t('nav.calendar'),
+      icon: <CalendarClock size={20} />,
+      permission: 'calendar.view' as Permission,
+    },
+    {
+      key: 'staff',
+      to: '/staff',
+      label: t('nav.staff'),
+      icon: <UsersRound size={20} />,
+      permission: 'staff.view' as Permission,
+    },
+  ]
+
+  return all.filter((item) => can(item.permission)).slice(0, 4)
+}
 
 /** Grafik kutubxonasi og'ir — talab bo'yicha yuklanadi */
 const RevenueCard = lazy(() => import('./dashboard/RevenueCard'))
@@ -60,7 +220,20 @@ export function DashboardPage() {
     <>
       <PageHeader
         title={`${t(greeting)}, ${firstName}`}
-        subtitle={t('dash.subtitle')}
+        /*
+          Telefonda izoh o'rniga SANA.
+
+          "Bugun klinikangizda nimalar bo'layotganini ko'ring" — bu
+          gap ekranning bir qatorini oladi va hech narsa aytmaydi:
+          odam nima uchun kirganini o'zi biladi. Sana esa kerak,
+          chunki pastdagi hamma raqam "bugun" ga tegishli.
+        */
+        subtitle={
+          <>
+            <span className="sm:hidden">{dateLong(new Date())}</span>
+            <span className="hidden sm:inline">{t('dash.subtitle')}</span>
+          </>
+        }
         actions={
           <span className="hidden rounded-[10px] bg-fill-4 px-3 py-2 text-footnote font-medium text-label-secondary sm:inline-block">
             {dateLong(new Date())}
@@ -68,7 +241,26 @@ export function DashboardPage() {
         }
       />
 
-      <KpiGrid />
+      {/*
+        TELEFON VA KOMPYUTER — IKKI XIL BOSH BLOK.
+
+        Kompyuterda oltita KPI karta bir qatorga sig'adi va hammasi
+        bir qarashda ko'rinadi. Telefonda esa o'sha oltitasi uch
+        ekranga cho'ziladi: eng muhim raqamga yetguncha barmoq
+        surish kerak bo'lardi.
+
+        Shuning uchun telefonda: bitta to'q karta (bugungi tushum),
+        ostida uchta raqam va tez kirish qatori. Qolgan uchtasi
+        — yangi bemor, qaytgan bemor, kelmaganlar — kunlik qaror
+        uchun emas, hisobot uchun kerak; ular pastda, o'z joyida.
+      */}
+      <div className="md:hidden">
+        <MobileHome />
+      </div>
+
+      <div className="hidden md:block">
+        <KpiGrid />
+      </div>
 
       {/*
         Tushum kartochkasi faqat `revenue.view` bo'lganda.

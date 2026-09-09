@@ -136,6 +136,10 @@ export const dict: Dict = {
   'dash.greeting.day': 'Xayrli kun',
   'dash.greeting.evening': 'Xayrli kech',
   'dash.subtitle': 'Bugun klinikangizda nimalar bo’layotganini ko’ring.',
+  'dash.today': 'Bugun',
+  /* Uch ustunli blokda joy tor — qisqa shakli */
+  'dash.strip.noShow': 'Kelmagan',
+  'dash.quickAccess': 'Tez kirish',
   'dash.kpi.patientsToday': 'Bugungi bemorlar',
   'dash.kpi.revenueToday': 'Bugungi daromad',
   'dash.kpi.appointments': 'Qabullar',
