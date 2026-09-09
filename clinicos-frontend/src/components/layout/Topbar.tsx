@@ -74,14 +74,18 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           <MobileSearchButton />
           <NotificationsMenu />
           {/*
-            Mavzu va til telefonda yuqoridan olib tashlandi.
+            MAVZU TELEFONDA HAM SHU YERDA, TIL ESA YO'Q.
 
-            Bular kunda bir marta ham bosilmaydigan sozlamalar, lekin
-            tor ekranda joyni egallab, kerakli tugmalarni siqib
-            qo'yardi. Ikkalasi ham Sozlamalar > Ko'rinish bo'limida.
+            Ikkalasi ham yashirilgan edi va rejimni almashtirish uchun
+            Sozlamalar > Ko'rinish ga borish kerak bo'lardi — kechqurun
+            bosiladigan tugma uchun uzoq yo'l. Ikonkasi o'zi
+            tushunarli: quyosh yoki oy.
+
+            Til qoldirilmadi: u bir marta tanlanadi va keyin yillab
+            tegilmaydi, tor panelda esa har ikonka joy oladi.
           */}
-          <span className="hidden items-center gap-1 sm:flex">
-            <ThemeMenu />
+          <ThemeMenu />
+          <span className="hidden sm:flex">
             <LanguageMenu />
           </span>
           <UserMenu />

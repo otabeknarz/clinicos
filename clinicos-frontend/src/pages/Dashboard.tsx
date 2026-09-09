@@ -22,7 +22,6 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Hero, QuickAccess, StatStrip } from '@/components/ui/Hero'
-import { ThemeSwitch } from '@/components/ui/ThemeSwitch'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { ProgressBar } from '@/components/ui/Progress'
 import { CardSkeleton, EmptyState, ErrorState, Skeleton } from '@/components/ui/States'
@@ -305,16 +304,6 @@ export function DashboardPage() {
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         {can('revenue.view') ? <ClinicPerformanceCard /> : null}
         <FollowUpsCard />
-      </div>
-
-      {/*
-        Ko'rinish almashtirgichi — FAQAT TELEFONDA va sahifaning
-        oxirida. Kompyuterda u yuqori panelda turadi, telefonda esa
-        u yerdan olib tashlangan (joy tor). Pastda turgani to'g'ri:
-        bu kunlik ish emas, bir marta tanlanadigan sozlama.
-      */}
-      <div className="mt-5 md:hidden">
-        <ThemeSwitch />
       </div>
     </>
   )
