@@ -928,6 +928,17 @@ export const dict: Dict = {
   'platform.copied': 'Скопировано',
   'platform.editClinic': 'Редактировать',
   'platform.editClinicTitle': 'Данные клиники',
+  'platform.delete': 'Удалить',
+  'platform.deleteTitle': 'Удаление клиники',
+  'platform.deleteReason': 'Причина',
+  'platform.deleteReasonHint': 'Пусть останется запись, почему удалили',
+  'platform.deleteWarning':
+    'Клиника уходит из списка, сотрудники не смогут войти. ДАННЫЕ НЕ УДАЛЯЮТСЯ: пациенты, приёмы, платежи и журнал аудита остаются в базе. Позже можно вернуть.',
+  'platform.undelete': 'Вернуть',
+  'platform.undeleteTitle': 'Возврат удалённой клиники',
+  'platform.undeleteWarning':
+    'Клиника вернётся в список, сотрудники снова смогут входить. Статус подписки не меняется — останется таким, каким был до удаления.',
+  'platform.status.deleted': 'Удалена',
   'platform.archive': 'В архив',
   'platform.archiveTitle': 'Архивировать клинику',
   'platform.archiveReason': 'Причина',

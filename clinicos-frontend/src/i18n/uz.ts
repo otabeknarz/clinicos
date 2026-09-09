@@ -966,6 +966,17 @@ export const dict: Dict = {
   'platform.copied': 'Nusxalandi',
   'platform.editClinic': 'Tahrirlash',
   'platform.editClinicTitle': 'Klinika ma’lumotlari',
+  'platform.delete': 'O’chirish',
+  'platform.deleteTitle': 'Klinikani o’chirish',
+  'platform.deleteReason': 'Sabab',
+  'platform.deleteReasonHint': 'Nima uchun o’chirilgani yozib qolsin',
+  'platform.deleteWarning':
+    'Klinika ro’yxatdan chiqadi va xodimlari tizimga kira olmaydi. MA’LUMOT O’CHIRILMAYDI: bemorlar, tashriflar, to’lovlar va audit jurnali bazada qoladi. Keyin qaytarish mumkin.',
+  'platform.undelete': 'Qaytarish',
+  'platform.undeleteTitle': 'O’chirilgan klinikani qaytarish',
+  'platform.undeleteWarning':
+    'Klinika ro’yxatga qaytadi va xodimlari yana kira oladi. Obuna holati o’zgarmaydi — o’chirishdan oldin qanday bo’lsa, shundayligicha qoladi.',
+  'platform.status.deleted': 'O’chirilgan',
   'platform.archive': 'Arxivlash',
   'platform.archiveTitle': 'Klinikani arxivlash',
   'platform.archiveReason': 'Sabab',

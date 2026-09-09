@@ -812,6 +812,81 @@ async function main() {
     }
   }
 
+  /* ---------------- Klinikani o'chirish (platforma) ---------------- */
+  /*
+    O'CHIRISH va ARXIVLASH — ikki xil amal.
+
+    Arxiv obunani `cancelled` ga o'tkazadi va klinika ro'yxatda
+    turaveradi. O'chirish esa uni ro'yxatdan chiqaradi. Ikkalasida ham
+    ma'lumot bazada qoladi.
+
+    Sinov `Salomat` klinikasida bajariladi — `Shifo Med` qolgan
+    sinovlarda ishlatiladi va uni o'chirib qo'ysak, ular yiqilardi.
+  */
+  console.log('\nKlinikani o‘chirish (platforma)')
+  const salomat = await call('POST', '/auth/login', undefined, {
+    email: 'owner@salomat.uz',
+    password: PASSWORD,
+  })
+  const salomatId: string | undefined = salomat.data?.user?.clinicId
+  check('Salomat klinikasi topildi', Boolean(salomatId))
+
+  if (salomatId) {
+    const listedBefore = await call('GET', '/platform/tenants?page=1&pageSize=100', tokens.admin)
+    check(
+      'boshida ro‘yxatda bor',
+      items(listedBefore.data).some((t: { id: string }) => t.id === salomatId),
+    )
+
+    const del = await call('POST', `/platform/tenants/${salomatId}/delete`, tokens.admin, {
+      reason: 'CRUD sinovi',
+    })
+    check('o‘chirildi', del.status < 300, short(del.data))
+    check('  deletedAt qaytdi', Boolean(del.data?.deletedAt), String(del.data?.deletedAt))
+
+    const listedAfter = await call('GET', '/platform/tenants?page=1&pageSize=100', tokens.admin)
+    check(
+      '  ro‘yxatdan CHIQDI',
+      !items(listedAfter.data).some((t: { id: string }) => t.id === salomatId),
+    )
+
+    const deletedOnly = await call(
+      'GET',
+      '/platform/tenants?status=deleted&page=1&pageSize=100',
+      tokens.admin,
+    )
+    check(
+      '  “o‘chirilgan” filtrida bor',
+      items(deletedOnly.data).some((t: { id: string }) => t.id === salomatId),
+    )
+
+    const blocked = await call('POST', '/auth/login', undefined, {
+      email: 'owner@salomat.uz',
+      password: PASSWORD,
+    })
+    check('  egasi kira olmadi', blocked.status === 401, `status: ${blocked.status}`)
+
+    /* Qo'ldagi eski token ham darhol yaroqsiz bo'lishi kerak */
+    const oldToken = await call('GET', '/patients?page=1', salomat.data?.token)
+    check('  eski token yaroqsiz', oldToken.status === 401, `status: ${oldToken.status}`)
+
+    const otherClinic = await call('POST', '/auth/login', undefined, {
+      email: ACCOUNTS.owner,
+      password: PASSWORD,
+    })
+    check('  boshqa klinika ishlayapti', otherClinic.status < 300, short(otherClinic.data))
+
+    const back = await call('POST', `/platform/tenants/${salomatId}/undelete`, tokens.admin)
+    check('qaytarildi', back.status < 300, short(back.data))
+    check('  deletedAt tozalandi', back.data?.deletedAt === null)
+
+    const again = await call('POST', '/auth/login', undefined, {
+      email: 'owner@salomat.uz',
+      password: PASSWORD,
+    })
+    check('  egasi yana kirdi', again.status < 300, `status: ${again.status}`)
+  }
+
   /* ---------------- Klinika bo'limlari ---------------- */
   /*
     O'chirilgan bo'lim ruxsat yo'qligi bilan bir xil narsa emas:

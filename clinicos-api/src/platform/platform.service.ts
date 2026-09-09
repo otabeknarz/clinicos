@@ -75,7 +75,22 @@ export class PlatformService {
 
     const where: Prisma.SubscriptionWhereInput = {
       AND: [
-        query.status === 'all' ? {} : { status: toDb(query.status) },
+        /*
+          O'CHIRILGAN KLINIKALAR RO'YXATDA CHIQMAYDI.
+
+          Ular ish ro'yxatini to'ldirib turmasligi kerak — o'chirishning
+          ma'nosi shu. Ko'rish uchun `status=deleted` filtri bor:
+          ma'lumot yo'qolmagan, faqat ko'zdan olib qo'yilgan.
+
+          Arxivlangan (`cancelled`) klinika esa ro'yxatda QOLADI:
+          u "ketgan mijoz", o'chirilgan emas.
+        */
+        query.status === 'deleted'
+          ? { clinic: { deletedAt: { not: null } } }
+          : { clinic: { deletedAt: null } },
+        query.status === 'all' || query.status === 'deleted'
+          ? {}
+          : { status: toDb(query.status) },
         query.planId === 'all' ? {} : { planId: query.planId },
         search
           ? {
@@ -374,6 +389,68 @@ export class PlatformService {
     })
     const usage = await this.usageFor([row.clinicId])
     return toApiTenant(row, usage[row.clinicId])
+  }
+
+  /**
+   * KLINIKANI O'CHIRISH.
+   *
+   * ARXIVLASHDAN FARQI: arxiv — "mijoz ketdi, lekin qaytishi mumkin",
+   * u obunani `CANCELLED` ga o'tkazadi va klinika ro'yxatda turaveradi.
+   * O'chirish esa uni platformaning ish ro'yxatidan olib tashlaydi.
+   *
+   * MA'LUMOT BARIBIR O'CHMAYDI. Bemorlar, tashriflar, to'lovlar va
+   * audit jurnali joyida qoladi — bazadan yo'qotadigan `DELETE` yo'q
+   * va bo'lmasligi kerak: tibbiy yozuvni o'chirish odatda qonun
+   * bilan taqiqlanadi.
+   *
+   * Xodimlar darhol kira olmay qoladi (`clinic-access.ts`), qo'ldagi
+   * eski token ham ishlamaydi — tekshiruv har so'rovda bo'ladi.
+   */
+  async deleteTenant(id: string, dto: ArchiveDto) {
+    const clinic = await this.db.clinic.findUnique({ where: { id } })
+    if (!clinic) throw new NotFoundException('Klinika topilmadi')
+    if (clinic.deletedAt) {
+      throw new BadRequestException('Klinika allaqachon o‘chirilgan')
+    }
+
+    await this.db.clinic.update({
+      where: { id },
+      data: { deletedAt: new Date(), deletedReason: dto.reason.trim() },
+    })
+
+    return this.tenantById(id)
+  }
+
+  /**
+   * O'chirilgan klinikani qaytarish.
+   *
+   * Ma'lumot hech qayoqqa ketmagani uchun qaytarish — bitta belgini
+   * olib tashlash. Obuna holatiga TEGILMAYDI: klinika o'chirilishidan
+   * oldin qanday bo'lsa, shundayligicha qaytadi.
+   */
+  async undeleteTenant(id: string) {
+    const clinic = await this.db.clinic.findUnique({ where: { id } })
+    if (!clinic) throw new NotFoundException('Klinika topilmadi')
+    if (!clinic.deletedAt) {
+      throw new BadRequestException('Klinika o‘chirilmagan')
+    }
+
+    await this.db.clinic.update({
+      where: { id },
+      data: { deletedAt: null, deletedReason: '' },
+    })
+
+    return this.tenantById(id)
+  }
+
+  /** Klinikani obunasi bilan birga qaytaradi */
+  private async tenantById(clinicId: string) {
+    const row = await this.db.subscription.findFirstOrThrow({
+      where: { clinicId },
+      include: { clinic: true, plan: true },
+    })
+    const usage = await this.usageFor([clinicId])
+    return toApiTenant(row, usage[clinicId])
   }
 
   /**
@@ -1233,7 +1310,14 @@ function toApiTenant(
     city: string
     lastActiveAt: Date | null
     createdAt: Date
-    clinic: { name: string; logoUrl: string | null; phone: string; disabledModules: string[] }
+    clinic: {
+      name: string
+      logoUrl: string | null
+      phone: string
+      disabledModules: string[]
+      deletedAt: Date | null
+      deletedReason: string
+    }
     plan: { name: string }
   },
   usage: { doctors: number; staff: number; patients: number; users: number; appointmentsThisMonth: number },
@@ -1257,6 +1341,9 @@ function toApiTenant(
     suspendReason: row.suspendReason,
     /* Shu klinikada o'chirilgan bo'limlar — platforma paneli shuni belgilaydi */
     disabledModules: row.clinic.disabledModules,
+    /* O'chirilgan bo'lsa — qachon va nima uchun. Arxivdan alohida holat. */
+    deletedAt: toApiDateTime(row.clinic.deletedAt),
+    deletedReason: row.clinic.deletedReason,
     usage,
     lastActiveAt: toApiDateTime(row.lastActiveAt),
     createdAt: toApiDateTime(row.createdAt)!,

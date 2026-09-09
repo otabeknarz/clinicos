@@ -46,6 +46,7 @@ export class AuthService {
             id: true,
             name: true,
             isActive: true,
+            deletedAt: true,
             subscription: { select: { status: true } },
           },
         },
@@ -67,6 +68,7 @@ export class AuthService {
       role: user.role,
       clinicIsActive: user.clinic.isActive,
       subscriptionStatus: user.clinic.subscription?.status ?? null,
+      clinicDeletedAt: user.clinic.deletedAt,
     })
     if (!access.ok) throw new UnauthorizedException(access.reason)
 

@@ -57,7 +57,8 @@ import type {
 
 export interface TenantQuery {
   search?: string
-  status?: TenantStatus | 'all'
+  /** `deleted` — obuna holati emas, o'chirilganlarni ko'rish uchun alohida filtr */
+  status?: TenantStatus | 'all' | 'deleted'
   planId?: ID | 'all'
   page?: number
   pageSize?: number
@@ -83,7 +84,20 @@ export async function listTenants(query: TenantQuery = {}): Promise<Paginated<Te
 
   const rows = getDb()
     .tenants.allAcrossTenants()
-    .filter((t) => !query.status || query.status === 'all' || t.status === query.status)
+    /*
+      O'chirilganlar odatdagi ro'yxatda chiqmaydi — o'chirishning
+      ma'nosi shu. Ko'rish uchun `status=deleted` ataylab tanlanadi.
+    */
+    .filter((t) =>
+      query.status === 'deleted' ? Boolean(t.deletedAt) : !t.deletedAt,
+    )
+    .filter(
+      (t) =>
+        !query.status ||
+        query.status === 'all' ||
+        query.status === 'deleted' ||
+        t.status === query.status,
+    )
     .filter((t) => !query.planId || query.planId === 'all' || t.planId === query.planId)
     .filter(
       (t) =>
@@ -167,6 +181,8 @@ export async function createTenant(input: TenantCreateInput): Promise<TenantCrea
     suspendReason: '',
     // Serverdagi kabi: tur bo'yicha keraksiz bo'limlar o'chiriladi
     disabledModules: DISABLED_BY_KIND[input.kind ?? 'general'],
+    deletedAt: null,
+    deletedReason: '',
     usage: { doctors: 0, staff: 0, patients: 0, users: 1, appointmentsThisMonth: 0 },
     lastActiveAt: null,
     createdAt: new Date().toISOString(),
@@ -1406,4 +1422,43 @@ export const DISABLED_BY_KIND: Record<ClinicKind, ClinicModule[]> = {
   dental: ['ward'],
   eye: ['ward'],
   lab: ['ward', 'attendance', 'analytics'],
+}
+
+/**
+ * KLINIKANI O'CHIRISH — arxivlashdan boshqa narsa.
+ *
+ * Arxiv: "mijoz ketdi, qaytishi mumkin" — obuna `cancelled` bo'ladi,
+ * klinika ro'yxatda turaveradi.
+ * O'chirish: klinika platformaning ish ro'yxatidan chiqadi va
+ * xodimlari kira olmay qoladi.
+ *
+ * IKKALASIDA HAM MA'LUMOT BAZADA QOLADI. Bemor, tashrif, to'lov va
+ * audit jurnalini yo'qotadigan `DELETE` yo'q va bo'lmasligi kerak.
+ */
+// POST /platform/tenants/:id/delete
+export async function deleteTenant(id: ID, reason: string): Promise<Tenant> {
+  if (!USE_MOCK) {
+    return request<Tenant>('POST', `/platform/tenants/${id}/delete`, { body: { reason } })
+  }
+
+  const updated = getDb().tenants.updateAcrossTenants(id, {
+    deletedAt: new Date().toISOString(),
+    deletedReason: reason,
+  })
+  if (!updated) throw new Error('Klinika topilmadi')
+  return delay(updated, 280)
+}
+
+// POST /platform/tenants/:id/undelete
+export async function undeleteTenant(id: ID): Promise<Tenant> {
+  if (!USE_MOCK) {
+    return request<Tenant>('POST', `/platform/tenants/${id}/undelete`)
+  }
+
+  const updated = getDb().tenants.updateAcrossTenants(id, {
+    deletedAt: null,
+    deletedReason: '',
+  })
+  if (!updated) throw new Error('Klinika topilmadi')
+  return delay(updated, 260)
 }

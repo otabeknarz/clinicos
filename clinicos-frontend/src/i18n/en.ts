@@ -925,6 +925,17 @@ export const dict: Dict = {
   'platform.copied': 'Copied',
   'platform.editClinic': 'Edit',
   'platform.editClinicTitle': 'Clinic details',
+  'platform.delete': 'Delete',
+  'platform.deleteTitle': 'Delete the clinic',
+  'platform.deleteReason': 'Reason',
+  'platform.deleteReasonHint': 'Keep a record of why it was deleted',
+  'platform.deleteWarning':
+    'The clinic leaves the list and its staff cannot sign in. NOTHING IS DELETED: patients, visits, payments and the audit log stay in the database. It can be brought back later.',
+  'platform.undelete': 'Bring back',
+  'platform.undeleteTitle': 'Bring back a deleted clinic',
+  'platform.undeleteWarning':
+    'The clinic returns to the list and its staff can sign in again. The subscription status does not change — it stays as it was before the deletion.',
+  'platform.status.deleted': 'Deleted',
   'platform.archive': 'Archive',
   'platform.archiveTitle': 'Archive the clinic',
   'platform.archiveReason': 'Reason',

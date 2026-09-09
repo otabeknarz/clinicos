@@ -1,16 +1,29 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Archive, Building2, KeyRound, LogIn, Pause, Pencil, Play, Plus } from 'lucide-react'
+import {
+  Archive,
+  Building2,
+  KeyRound,
+  LogIn,
+  Pause,
+  Pencil,
+  Play,
+  Plus,
+  Trash2,
+  Undo2,
+} from 'lucide-react'
 
 import {
   activateTenant,
   archiveTenant,
   createTenant,
+  deleteTenant,
   listPlans,
   listTenants,
   resetOwnerPassword,
   startImpersonation,
   suspendTenant,
+  undeleteTenant,
   updateTenant,
 } from '@/api/platform'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -40,13 +53,20 @@ import type {
 import { CLINIC_KINDS } from '@/types/models'
 import { UNLIMITED } from '@/types/models'
 
-const STATUSES: (TenantStatus | 'all')[] = [
+/*
+  `deleted` — obuna holati EMAS. O'chirilgan klinikalar odatdagi
+  ro'yxatda umuman chiqmaydi; ularni ko'rish uchun ataylab shu filtr
+  tanlanadi. Arxivlangan (`cancelled`) esa ro'yxatda qolaveradi —
+  u "ketgan mijoz", o'chirilgan emas.
+*/
+const STATUSES: (TenantStatus | 'all' | 'deleted')[] = [
   'all',
   'active',
   'trial',
   'past_due',
   'suspended',
   'cancelled',
+  'deleted',
 ]
 
 /**
@@ -66,7 +86,7 @@ export function PlatformClinicsPage() {
   const [page, setPage] = useState(1)
   const [version, setVersion] = useState(0)
 
-  const status = (searchParams.get('status') as TenantStatus) ?? 'all'
+  const status = (searchParams.get('status') as TenantStatus | 'deleted') ?? 'all'
   const planId = searchParams.get('plan') ?? 'all'
 
   const { data: plans } = useAsync(() => listPlans(), [])
@@ -82,6 +102,8 @@ export function PlatformClinicsPage() {
   const [editing, setEditing] = useState<Tenant | null>(null)
   const [archiving, setArchiving] = useState<Tenant | null>(null)
   const [restoring, setRestoring] = useState<Tenant | null>(null)
+  const [deleting, setDeleting] = useState<Tenant | null>(null)
+  const [undeleting, setUndeleting] = useState<Tenant | null>(null)
   const [resetting, setResetting] = useState<Tenant | null>(null)
 
   function setFilter(key: string, value: string) {
@@ -199,7 +221,19 @@ export function PlatformClinicsPage() {
             `activate` faqat `suspended` da chiqardi va arxivlangan
             klinika boshi berk ko'chaga tushib qolardi.
           */}
-          {row.status === 'cancelled' ? (
+          {row.deletedAt ? (
+            /* O'chirilgan klinikada faqat bitta amal qoladi — qaytarish */
+            <IconButton
+              label={t('platform.undelete')}
+              className="hover:text-ok"
+              onClick={(e) => {
+                e.stopPropagation()
+                setUndeleting(row)
+              }}
+            >
+              <Undo2 size={15} />
+            </IconButton>
+          ) : row.status === 'cancelled' ? (
             <IconButton
               label={t('platform.restore')}
               className="hover:text-ok"
@@ -235,7 +269,15 @@ export function PlatformClinicsPage() {
             </IconButton>
           )}
 
-          {row.status === 'cancelled' ? null : (
+          {/*
+            ARXIVLASH va O'CHIRISH — ikki xil amal.
+
+            Arxiv: "mijoz ketdi, qaytishi mumkin" — obuna `cancelled`
+            bo'ladi, klinika ro'yxatda turaveradi.
+            O'chirish: klinika ro'yxatdan chiqadi va xodimlari kira
+            olmaydi. Ma'lumot ikkalasida ham bazada qoladi.
+          */}
+          {row.deletedAt || row.status === 'cancelled' ? null : (
             <IconButton
               label={t('platform.archive')}
               className="hover:text-bad"
@@ -245,6 +287,19 @@ export function PlatformClinicsPage() {
               }}
             >
               <Archive size={15} />
+            </IconButton>
+          )}
+
+          {row.deletedAt ? null : (
+            <IconButton
+              label={t('platform.delete')}
+              className="hover:text-bad"
+              onClick={(e) => {
+                e.stopPropagation()
+                setDeleting(row)
+              }}
+            >
+              <Trash2 size={15} />
             </IconButton>
           )}
         </div>
@@ -287,9 +342,9 @@ export function PlatformClinicsPage() {
             />
           </div>
 
-          <FilterPills<TenantStatus | 'all'>
+          <FilterPills<TenantStatus | 'all' | 'deleted'>
             value={status}
-            onChange={(v: TenantStatus | 'all') => setFilter('status', v)}
+            onChange={(v: TenantStatus | 'all' | 'deleted') => setFilter('status', v)}
             options={STATUSES.map((value) => ({
               value,
               label: value === 'all' ? t('common.all') : t(`platform.status.${value}`),
@@ -367,6 +422,31 @@ export function PlatformClinicsPage() {
           if (!restoring) return
           await activateTenant(restoring.id)
           setRestoring(null)
+          setVersion((v) => v + 1)
+        }}
+      />
+
+      {/*
+        O'chirish — sabab bilan. Arxivlash oynasi bilan bir xil shakl,
+        lekin boshqa amal: klinika ro'yxatdan chiqadi.
+      */}
+      <DeleteModal
+        tenant={deleting}
+        onClose={() => setDeleting(null)}
+        onDone={() => setVersion((v) => v + 1)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(undeleting)}
+        danger={false}
+        title={t('platform.undeleteTitle')}
+        description={t('platform.undeleteWarning')}
+        confirmLabel={t('platform.undelete')}
+        onClose={() => setUndeleting(null)}
+        onConfirm={async () => {
+          if (!undeleting) return
+          await undeleteTenant(undeleting.id)
+          setUndeleting(null)
           setVersion((v) => v + 1)
         }}
       />
@@ -1063,6 +1143,88 @@ function ResetOwnerModal({
           </p>
         </div>
       )}
+    </Modal>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Klinikani o'chirish                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * KLINIKANI O'CHIRISH — arxivlashdan boshqa amal.
+ *
+ * Arxiv: "mijoz ketdi, qaytishi mumkin" — obuna `cancelled` bo'ladi
+ * va klinika ro'yxatda turaveradi.
+ * O'chirish: klinika platformaning ish ro'yxatidan chiqadi va
+ * xodimlari tizimga kira olmay qoladi.
+ *
+ * IKKALASIDA HAM MA'LUMOT BAZADA QOLADI: bemorlar, tashriflar,
+ * to'lovlar va audit jurnali joyida. Bazadan yo'qotadigan `DELETE`
+ * yo'q — tibbiy yozuvni o'chirish odatda qonun bilan taqiqlanadi.
+ */
+function DeleteModal({
+  tenant,
+  onClose,
+  onDone,
+}: {
+  tenant: Tenant | null
+  onClose: () => void
+  onDone: () => void
+}) {
+  const { t } = useI18n()
+  const toast = useToast()
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function submit() {
+    if (!tenant || reason.trim().length < 5) return
+    setSaving(true)
+    try {
+      await deleteTenant(tenant.id, reason.trim())
+      toast.success(t('toast.saved'))
+      onDone()
+      onClose()
+      setReason('')
+    } catch {
+      toast.error(t('toast.error'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal
+      open={tenant !== null}
+      onClose={onClose}
+      title={t('platform.deleteTitle')}
+      footer={
+        <>
+          <Button variant="gray" onClick={onClose}>
+            {t('action.cancel')}
+          </Button>
+          <Button
+            variant="danger"
+            loading={saving}
+            disabled={reason.trim().length < 5}
+            onClick={submit}
+          >
+            {t('platform.delete')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <p className="text-subhead text-label">{tenant?.name}</p>
+        <TextArea
+          label={t('platform.deleteReason')}
+          hint={t('platform.deleteReasonHint')}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={3}
+        />
+        <p className="text-caption text-label-tertiary">{t('platform.deleteWarning')}</p>
+      </div>
     </Modal>
   )
 }

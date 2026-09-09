@@ -210,6 +210,15 @@ export interface Tenant {
    * barcha klinikada o'z-o'zidan ishlaydi.
    */
   disabledModules: ClinicModule[]
+  /**
+   * O'chirilgan payt. `null` — o'chirilmagan.
+   *
+   * ARXIVDAN FARQI: arxiv — obuna holati (`cancelled`) va klinika
+   * ro'yxatda turaveradi. O'chirilgani esa ro'yxatdan chiqadi —
+   * lekin ma'lumoti bazada qoladi.
+   */
+  deletedAt: ISODateTime | null
+  deletedReason: string
   usage: TenantUsage
   /** Oxirgi marta tizimga kirilgan payt */
   lastActiveAt: ISODateTime | null

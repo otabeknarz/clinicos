@@ -45,8 +45,14 @@ export class TenantQueryDto extends PageQueryDto {
   @IsOptional() @IsString() @MaxLength(100)
   search?: string
 
-  @IsOptional() @IsIn(['all', ...TENANT_STATUSES])
-  status: (typeof TENANT_STATUSES)[number] | 'all' = 'all'
+  /*
+    `deleted` — obuna holati EMAS, alohida filtr.
+
+    O'chirilgan klinikalar odatdagi ro'yxatda umuman chiqmaydi;
+    ularni ko'rish uchun ataylab shu qiymat tanlanadi.
+  */
+  @IsOptional() @IsIn(['all', 'deleted', ...TENANT_STATUSES])
+  status: (typeof TENANT_STATUSES)[number] | 'all' | 'deleted' = 'all'
 
   @IsOptional() @ValidateIf((o) => o.planId !== 'all') @IsUUID()
   planId: string | 'all' = 'all'

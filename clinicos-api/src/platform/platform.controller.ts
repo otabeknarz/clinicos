@@ -199,6 +199,30 @@ export class PlatformController {
   }
 
   /*
+    POST /platform/tenants/:id/delete
+
+    ARXIVLASHDAN BOSHQA NARSA. Arxiv — "mijoz ketdi, qaytishi mumkin",
+    klinika ro'yxatda turaveradi. O'chirish esa uni platformaning ish
+    ro'yxatidan olib tashlaydi va xodimlari kira olmay qoladi.
+
+    Ma'lumot ikkalasida ham bazada qoladi — `DELETE` yo'q.
+  */
+  @Post('tenants/:id/delete')
+  @RequirePermission('platform.manage')
+  @Audit('delete', 'Clinic')
+  deleteTenant(@Param() params: IdParamDto, @Body() dto: ArchiveDto) {
+    return this.platform.deleteTenant(params.id, dto)
+  }
+
+  // POST /platform/tenants/:id/undelete
+  @Post('tenants/:id/undelete')
+  @RequirePermission('platform.manage')
+  @Audit('restore', 'Clinic')
+  undeleteTenant(@Param() params: IdParamDto) {
+    return this.platform.undeleteTenant(params.id)
+  }
+
+  /*
     PATCH /platform/tenants/:id/modules
 
     Klinikada qaysi bo'limlar ishlashini belgilaydi. Bo'lim

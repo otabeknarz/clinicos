@@ -58,6 +58,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         clinic: {
           select: {
             isActive: true,
+            deletedAt: true,
             disabledModules: true,
             subscription: { select: { status: true } },
           },
@@ -95,6 +96,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       role: user.role,
       clinicIsActive: user.clinic.isActive,
       subscriptionStatus: user.clinic.subscription?.status ?? null,
+      clinicDeletedAt: user.clinic.deletedAt,
     })
     if (!access.ok) throw new UnauthorizedException(access.reason)
 

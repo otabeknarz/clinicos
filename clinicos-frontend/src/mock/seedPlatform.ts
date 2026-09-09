@@ -264,6 +264,9 @@ export function generateTenants(plans: Plan[], now: Date, r: Random): Tenant[] {
         turli sozlamali klinikalar ko'rinib tursin.
       */
       disabledModules: isDemo ? [] : r.chance(0.3) ? ['ward'] : [],
+      /* O'chirilganlar seedda yo'q — platforma egasi o'zi o'chiradi */
+      deletedAt: null,
+      deletedReason: '',
       usage: {
         doctors,
         staff,

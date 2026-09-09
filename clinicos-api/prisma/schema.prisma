@@ -21,6 +21,20 @@ model Clinic {
   timezone    String   @default("Asia/Tashkent")
   isActive    Boolean  @default(true) @map("is_active")
 
+  /// Klinika o'chirilgan payt. `null` — o'chirilmagan.
+  ///
+  /// ARXIVLASHDAN FARQI: arxiv — "mijoz ketdi, lekin qaytishi mumkin",
+  /// obuna `CANCELLED` bo'ladi va klinika ro'yxatda turaveradi.
+  /// O'chirish esa uni platformaning ish ro'yxatidan butunlay olib
+  /// tashlaydi.
+  ///
+  /// MA'LUMOT BARIBIR O'CHMAYDI: bemorlar, tashriflar, to'lovlar va
+  /// audit jurnali joyida qoladi. Tibbiy yozuvni haqiqatan o'chirish
+  /// odatda qonun bilan taqiqlanadi, shuning uchun bazadan
+  /// yo'qotadigan `DELETE` yo'q va bo'lmasligi kerak.
+  deletedAt     DateTime? @map("deleted_at")
+  deletedReason String    @default("") @map("deleted_reason")
+
   /// Shu klinikada O'CHIRILGAN modullar (`src/common/modules.ts`).
   ///
   /// O'chirilganlari saqlanadi, yoqilganlari emas: bo'sh ro'yxat

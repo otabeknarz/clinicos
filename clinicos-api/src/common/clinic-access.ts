@@ -44,6 +44,8 @@ export function checkClinicAccess(input: {
   role: string
   clinicIsActive: boolean
   subscriptionStatus: TenantStatus | null
+  /** Klinika o'chirilgan payt. `null` — o'chirilmagan. */
+  clinicDeletedAt?: Date | null
 }): ClinicAccess {
   /*
     Platforma egasi klinika xodimi emas. Uning "klinikasi" —
@@ -52,6 +54,17 @@ export function checkClinicAccess(input: {
     boshqarishi kerak.
   */
   if (input.role === 'SUPERADMIN') return ALLOWED
+
+  /*
+    O'CHIRILGAN KLINIKA — obuna holatidan QAT'I NAZAR yopiq.
+
+    Arxivlash obunani `CANCELLED` ga o'tkazadi, o'chirish esa alohida
+    belgi qo'yadi: klinika arxivlanmagan holatda ham o'chirilgan
+    bo'lishi mumkin. Shuning uchun tekshiruv obunadan oldin turadi.
+  */
+  if (input.clinicDeletedAt) {
+    return { ok: false, reason: 'Klinika o‘chirilgan' }
+  }
 
   if (!input.clinicIsActive) {
     return { ok: false, reason: 'Klinika hisobi to‘xtatilgan' }
