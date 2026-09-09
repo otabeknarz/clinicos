@@ -280,7 +280,16 @@ export const PLATFORM_MOBILE_NAV: NavItem[] = [
   },
 ]
 
-/** Telefondagi pastki panel — klinika xodimlari uchun */
+/**
+ * Telefondagi pastki panel — klinika xodimlari uchun.
+ *
+ * BESHTA BAND. Ilgari to'rttasi edi va beshinchi joyni "Yana"
+ * tugmasi olardi; u yuqori panelga ko'chgach, joy bo'shadi.
+ *
+ * Beshinchisi — to'lovlar: kun davomida eng ko'p ochiladigan
+ * bo'lim, chunki pul har qabuldan keyin olinadi. Ruxsati yo'q
+ * xodimda (shifokor) panel to'rt bandli bo'lib qolaveradi.
+ */
 export const MOBILE_NAV: NavItem[] = [
   {
     to: '/',
@@ -297,4 +306,5 @@ export const MOBILE_NAV: NavItem[] = [
     permission: 'appointments.view',
   },
   { to: '/calendar', labelKey: 'nav.calendar', icon: CalendarDays, permission: 'calendar.view' },
+  { to: '/payments', labelKey: 'nav.payments', icon: CreditCard, permission: 'payments.view' },
 ]

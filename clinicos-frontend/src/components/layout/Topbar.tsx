@@ -4,6 +4,7 @@ import {
   Check,
   Globe,
   LogOut,
+  LayoutGrid,
   Menu,
   Moon,
   Search,
@@ -32,7 +33,16 @@ import type { ThemeMode } from '@/store/theme-context'
  * Apple uslubi: shaffof material fon — sahifa skroll qilinganda kontent
  * ostidan xira ko'rinib turadi.
  */
-export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
+export function Topbar({
+  onOpenSidebar,
+  onOpenMore,
+  moreOpen,
+}: {
+  onOpenSidebar: () => void
+  /** Telefondagi "Barcha bo'limlar" varag'ini ochadi */
+  onOpenMore: () => void
+  moreOpen: boolean
+}) {
   const { t } = useI18n()
 
   // Platforma bo'limlarida boshqa qidiruv ishlaydi
@@ -52,6 +62,30 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <span className="hidden md:inline-flex lg:hidden">
           <IconButton label="menu" onClick={onOpenSidebar}>
             <Menu size={20} />
+          </IconButton>
+        </span>
+
+        {/*
+          BARCHA BO'LIMLAR — TELEFONDA, CHAPDA.
+
+          Ilgari bu tugma pastki panelning o'ng chetida, bo'limlar
+          orasida turardi. Lekin u bo'lim EMAS — menyu: bosilganda
+          boshqa sahifaga o'tmaydi, varaq ochadi. Bir qatorda
+          turganda ikkalasi aralashib, panel "to'rt bo'lim va yana
+          nimadir" bo'lib qolardi.
+
+          Chapda turgani — menyu odatda o'sha yerda bo'ladi, va
+          pastdagi panelga bittta haqiqiy bo'lim ko'proq sig'adi.
+        */}
+        <span className="md:hidden">
+          <IconButton
+            label={t('nav.allSections')}
+            onClick={onOpenMore}
+            active={moreOpen}
+            aria-haspopup="dialog"
+            aria-expanded={moreOpen}
+          >
+            <LayoutGrid size={20} />
           </IconButton>
         </span>
 

@@ -563,6 +563,7 @@ export const dict: Dict = {
   'ward.selectBed': 'Выберите койку',
 
   'nav.staff': 'Сотрудники',
+  'nav.allSections': 'Все разделы',
   'staff.title': 'Сотрудники',
   'staff.subtitle': '{count} сотрудников',
   'staff.add': '+ Добавить сотрудника',

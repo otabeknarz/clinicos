@@ -595,6 +595,7 @@ export const dict: Dict = {
 
   /* --- Xodimlar --- */
   'nav.staff': 'Xodimlar',
+  'nav.allSections': 'Barcha bo’limlar',
   'staff.title': 'Xodimlar',
   'staff.subtitle': '{count} ta xodim',
   'staff.add': '+ Xodim qo’shish',

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { MoreHorizontal, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import { MOBILE_NAV, NAVIGATION, PLATFORM_MOBILE_NAV } from './navigation'
@@ -24,6 +24,12 @@ import { useAuth } from '@/store/auth-context'
  */
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  /*
+    "Barcha bo'limlar" varag'i. Holat SHU YERDA, chunki uni ochadigan
+    tugma yuqori panelda, varaqning o'zi esa pastki panel yonida
+    chiziladi — ikki qardosh komponent bitta holatni bo'lishadi.
+  */
+  const [moreOpen, setMoreOpen] = useState(false)
   const location = useLocation()
 
   /*
@@ -36,6 +42,7 @@ export function AppLayout() {
   // Sahifa almashganda ochiq panelni yopamiz
   useEffect(() => {
     setSidebarOpen(false)
+    setMoreOpen(false)
   }, [location.pathname])
 
   // Panel ochiq bo'lganda fon skroll qilmasin
@@ -80,7 +87,11 @@ export function AppLayout() {
 
       {/* --- Asosiy qism --- */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar onOpenSidebar={() => setSidebarOpen(true)} />
+        <Topbar
+          onOpenSidebar={() => setSidebarOpen(true)}
+          onOpenMore={() => setMoreOpen(true)}
+          moreOpen={moreOpen}
+        />
 
         <ImpersonationBar />
 
@@ -117,7 +128,7 @@ export function AppLayout() {
           </ErrorBoundary>
         </main>
 
-        <MobileNav />
+        <MobileNav moreOpen={moreOpen} setMoreOpen={setMoreOpen} />
       </div>
     </div>
   )
@@ -183,11 +194,15 @@ function NavItem({
  * klinika egasi telefondan HAR BIR bo'limga yeta olishi kerak — kompyuter
  * oldida o'tirmasdan ishlashi mumkin bo'lsin.
  */
-function MobileNav() {
+function MobileNav({
+  moreOpen,
+  setMoreOpen,
+}: {
+  moreOpen: boolean
+  setMoreOpen: (open: boolean) => void
+}) {
   const { t } = useI18n()
   const { can } = useAuth()
-  const [moreOpen, setMoreOpen] = useState(false)
-  const location = useLocation()
 
   /*
     Varaq ochiq bo'lganda: Escape yopadi va orqadagi sahifa skroll
@@ -226,11 +241,6 @@ function MobileNav() {
   })).filter((group) => group.items.length > 0)
 
   if (primary.length === 0) return null
-
-  const hasOverflow = overflow.length > 0
-  const overflowActive = overflow.some((group) =>
-    group.items.some((item) => location.pathname.startsWith(item.to)),
-  )
 
   return (
     <>
@@ -277,24 +287,6 @@ function MobileNav() {
             />
           ))}
 
-          {hasOverflow ? (
-            <li className="min-w-0">
-              <button
-                type="button"
-                onClick={() => setMoreOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={moreOpen}
-                className={cn(PILL_BASE, overflowActive ? PILL_ACTIVE : PILL_IDLE)}
-              >
-                <MoreHorizontal size={20} strokeWidth={overflowActive ? 2.2 : 1.9} />
-                {overflowActive ? (
-                  <span className="truncate text-footnote font-semibold">
-                    {t('action.more')}
-                  </span>
-                ) : null}
-              </button>
-            </li>
-          ) : null}
         </ul>
       </nav>
 

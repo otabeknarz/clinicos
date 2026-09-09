@@ -7,6 +7,7 @@ import {
   CircleDollarSign,
   ReceiptText,
   Repeat,
+  ShieldCheck,
   UserPlus,
   UserRound,
   UsersRound,
@@ -16,6 +17,7 @@ import {
 import { getClinicPerformance, getDashboardSummary } from '@/api/analytics'
 import { listTodayAppointments } from '@/api/appointments'
 import { listFollowUpsDue } from '@/api/visits'
+import { MOBILE_NAV } from '@/components/layout/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
@@ -149,27 +151,56 @@ function MobileHome() {
 /**
  * Tez kirish bandlari — ruxsat bo'yicha filtrlanadi.
  *
+ * PASTKI PANELDAGILAR BU YERGA TUSHMAYDI. Ular allaqachon bir
+ * bosishda ochiladi; qatorda takrorlansa, to'rtta joyning yarmi
+ * hech narsa qo'shmaydi. Shuning uchun ro'yxat `MOBILE_NAV` ga
+ * qarab suziladi — panelga yangi band qo'shilsa, u o'z-o'zidan
+ * bu yerdan chiqib ketadi.
+ *
  * TO'RTTADAN OSHMAYDI: qator to'rt ustunli, beshinchisi ikkinchi
- * qatorga tushib, blok ikki barobar joy olardi. Tartib ahamiyatga
- * qarab: pul → odam → jadval → nazorat.
+ * qatorga tushib, blok ikki barobar joy olardi.
  */
 function quickItems(
   can: (permission: Permission) => boolean,
   t: (key: string) => string,
 ) {
+  const inBottomNav = new Set(MOBILE_NAV.map((item) => item.to))
+
   const all = [
-    {
-      key: 'payments',
-      to: '/payments',
-      label: t('nav.payments'),
-      icon: <CircleDollarSign size={20} />,
-      permission: 'payments.view' as Permission,
-    },
     {
       key: 'debts',
       to: '/debts',
       label: t('nav.debts'),
       icon: <ReceiptText size={20} />,
+      permission: 'payments.view' as Permission,
+    },
+    {
+      key: 'revenue',
+      to: '/revenue',
+      label: t('nav.revenue'),
+      icon: <CircleDollarSign size={20} />,
+      permission: 'revenue.view' as Permission,
+    },
+    {
+      key: 'staff',
+      to: '/staff',
+      label: t('nav.staff'),
+      icon: <UsersRound size={20} />,
+      permission: 'staff.view' as Permission,
+    },
+    {
+      key: 'cash',
+      to: '/cash-control',
+      label: t('nav.cashControl'),
+      icon: <ShieldCheck size={20} />,
+      permission: 'cashcontrol.view' as Permission,
+    },
+    /* Quyidagilar zaxira: yuqoridagilarning ruxsati yo'q rolda ishlaydi */
+    {
+      key: 'payments',
+      to: '/payments',
+      label: t('nav.payments'),
+      icon: <CircleDollarSign size={20} />,
       permission: 'payments.view' as Permission,
     },
     {
@@ -186,16 +217,11 @@ function quickItems(
       icon: <CalendarClock size={20} />,
       permission: 'calendar.view' as Permission,
     },
-    {
-      key: 'staff',
-      to: '/staff',
-      label: t('nav.staff'),
-      icon: <UsersRound size={20} />,
-      permission: 'staff.view' as Permission,
-    },
   ]
 
-  return all.filter((item) => can(item.permission)).slice(0, 4)
+  return all
+    .filter((item) => can(item.permission) && !inBottomNav.has(item.to))
+    .slice(0, 4)
 }
 
 /** Grafik kutubxonasi og'ir — talab bo'yicha yuklanadi */
