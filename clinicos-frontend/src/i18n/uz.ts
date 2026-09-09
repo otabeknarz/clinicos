@@ -966,6 +966,13 @@ export const dict: Dict = {
   'platform.copied': 'Nusxalandi',
   'platform.editClinic': 'Tahrirlash',
   'platform.editClinicTitle': 'Klinika ma’lumotlari',
+  'platform.terms': 'To’lov muddatlari',
+  'platform.termsHint':
+    'Chegirma MUDDATGA biriktiriladi va barcha tariflarga bir xil qo’llanadi. Katakdagi summa — o’sha muddat uchun jami to’lov. O’zgartirish mavjud obunalarga tegmaydi.',
+  'platform.term': 'Muddat',
+  'platform.termMonths': '{count} oy',
+  'platform.termTotal': '{months} oy uchun jami: {total}',
+  'platform.termRangeError': 'Chegirma 0 dan 100 gacha bo’lishi kerak',
   'platform.delete': 'O’chirish',
   'platform.deleteTitle': 'Klinikani o’chirish',
   'platform.deleteReason': 'Sabab',

@@ -49,6 +49,7 @@ async function main() {
   await db.subscription.deleteMany()
   await db.platformMember.deleteMany()
   await db.plan.deleteMany()
+  await db.billingTerm.deleteMany()
 
   await db.penaltyWaiver.deleteMany()
   await db.penalty.deleteMany()
@@ -152,6 +153,20 @@ async function main() {
     }),
   ])
 
+  /*
+    To'lov muddatlari va chegirmalari.
+
+    Chegirma MUDDATGA biriktirilgan, tarifga emas: "6 oy — 10%"
+    barcha tariflarga bir xil qo'llanadi.
+  */
+  await db.billingTerm.createMany({
+    data: [
+      { months: 3, discountPct: 0 },
+      { months: 6, discountPct: 10 },
+      { months: 12, discountPct: 20 },
+    ],
+  })
+
   const today = new Date()
   const nextMonth = new Date(today)
   nextMonth.setMonth(nextMonth.getMonth() + 1)
@@ -167,6 +182,9 @@ async function main() {
         // Narx obuna paytida MUZLATILADI — tarif qimmatlashsa
         // mavjud mijozning hisobi o'z-o'zidan oshib ketmasin
         pricePerMonth: plan.pricePerMonth,
+        /* Birinchisi 6 oyga (10% chegirma bilan), ikkinchisi 3 oyga */
+        termMonths: index === 0 ? 6 : 3,
+        discountPct: index === 0 ? 10 : 0,
         subscribedAt: new Date('2025-06-15'),
         trialEndsAt: new Date('2025-06-14'),
         nextInvoiceAt: nextMonth,

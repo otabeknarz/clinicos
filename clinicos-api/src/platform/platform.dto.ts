@@ -70,9 +70,35 @@ export class SuspendDto {
   reason!: string
 }
 
+/** Ruxsat etilgan to'lov muddatlari. Boshqasini qabul qilmaymiz. */
+export const TERM_MONTHS = [3, 6, 12] as const
+
 export class ChangePlanDto {
   @IsUUID()
   planId!: string
+
+  /*
+    Muddat berilmasa obunadagi hozirgisi qoladi: tarif almashtirish
+    va muddat o'zgartirish har doim birga bo'lavermaydi.
+  */
+  @IsOptional()
+  @Type(() => Number)
+  @IsIn([...TERM_MONTHS])
+  termMonths?: number
+}
+
+/** To'lov muddatining chegirmasi */
+export class BillingTermDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Chegirma butun son bo‘lishi kerak' })
+  @Min(0, { message: 'Chegirma 0 dan kichik bo‘lmaydi' })
+  @Max(100, { message: 'Chegirma 100% dan oshmaydi' })
+  discountPct?: number
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean
 }
 
 export class PlanInputDto {
@@ -264,6 +290,15 @@ export class TenantCreateDto {
   @IsOptional()
   @IsIn([...CLINIC_KINDS])
   kind: ClinicKind = 'general'
+
+  /*
+    Necha oyga obuna. Muddatga biriktirilgan chegirma narxga
+    o'sha paytda qo'llanadi va obunada muzlatiladi.
+  */
+  @IsOptional()
+  @Type(() => Number)
+  @IsIn([...TERM_MONTHS])
+  termMonths: number = 3
 }
 
 /** Klinikada qaysi bo'limlar o'chirilgani */

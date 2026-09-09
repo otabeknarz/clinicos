@@ -61,6 +61,7 @@ import type {
   PenaltyRule,
   PenaltyWaiver,
   ImpersonationLog,
+  BillingTerm,
   Plan,
   Tenant,
   TenantInvoice,
@@ -106,6 +107,7 @@ export interface SeedData {
   bonusRules: BonusRule[]
   penaltyRules: PenaltyRule[]
   plans: Plan[]
+  billingTerms: BillingTerm[]
   tenants: Tenant[]
   tenantInvoices: TenantInvoice[]
   impersonations: ImpersonationLog[]
@@ -769,6 +771,17 @@ export function generateSeed(seed = 20260901): SeedData {
   /* --- Platforma: klinikalar, tariflar, hisoblar --- */
 
   const plans = generatePlans(now)
+
+  /*
+    To'lov muddatlari va chegirmalari. Chegirma MUDDATGA biriktirilgan,
+    tarifga emas — serverdagi boshlang'ich qiymatlar bilan bir xil.
+  */
+  const billingTerms: BillingTerm[] = [
+    { id: 'term_3', months: 3, discountPct: 0, isActive: true },
+    { id: 'term_6', months: 6, discountPct: 10, isActive: true },
+    { id: 'term_12', months: 12, discountPct: 20, isActive: true },
+  ]
+
   const tenants = generateTenants(plans, now, r)
   const tenantInvoices = generateInvoices(tenants, now, r)
   const impersonations = generateImpersonations(tenants, now, r)
@@ -871,6 +884,7 @@ export function generateSeed(seed = 20260901): SeedData {
     bonuses,
     bonusRules,
     plans,
+    billingTerms,
     tenants,
     tenantInvoices,
     impersonations,

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Check, Minus, Pencil } from 'lucide-react'
 
-import { listPlans, updatePlan } from '@/api/platform'
+import { listBillingTerms, listPlans, updateBillingTerm, updatePlan } from '@/api/platform'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
 import { Button, IconButton } from '@/components/ui/Button'
@@ -14,8 +14,8 @@ import { money } from '@/lib/format'
 import { useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useToast } from '@/store/toast-context'
-import type { Plan, PlanFeature } from '@/types/models'
-import { UNLIMITED } from '@/types/models'
+import type { BillingTerm, ID, Plan, PlanFeature } from '@/types/models'
+import { termTotal, UNLIMITED } from '@/types/models'
 
 /** Barcha imkoniyatlar — jadval ustunlari uchun */
 const ALL_FEATURES: PlanFeature[] = [
@@ -73,6 +73,18 @@ export function PlatformPlansPage() {
           ))}
         </div>
       )}
+
+      {/*
+        MUDDAT × TARIF JADVALI.
+
+        Chegirma muddatga biriktirilgan, shuning uchun u qatorda
+        turadi va barcha ustunga bir xil qo'llanadi. Katakda —
+        o'sha muddat uchun JAMI summa, ya'ni mijoz bir marta
+        to'laydigan raqam.
+      */}
+      {data && data.length > 0 ? (
+        <TermMatrix plans={data} onSaved={() => setVersion((v) => v + 1)} />
+      ) : null}
 
       <EditModal
         plan={editing}
@@ -313,5 +325,134 @@ function EditModal({
         </div>
       </div>
     </Modal>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Muddat × tarif jadvali                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * TO'LOV MUDDATLARI VA CHEGIRMALARI.
+ *
+ * Chegirma MUDDATGA biriktirilgan, tarifga emas: "6 oy — 10%" barcha
+ * tariflarga bir xil qo'llanadi. Har tarifda alohida saqlansa, bitta
+ * qoida uch joyda yotardi va ular ertami-kechmi farq qilib qolardi.
+ *
+ * Katakdagi raqam — o'sha muddat uchun JAMI summa (oylik narx × oylar,
+ * chegirma qo'llangan holda), ya'ni mijoz bir marta to'laydigan pul.
+ *
+ * Chegirmani o'zgartirish MAVJUD OBUNALARGA TEGMAYDI: ularda narx ham,
+ * foiz ham obuna paytida muzlatilgan.
+ */
+function TermMatrix({ plans, onSaved }: { plans: Plan[]; onSaved: () => void }) {
+  const { t } = useI18n()
+  const toast = useToast()
+  const [version, setVersion] = useState(0)
+  const [saving, setSaving] = useState<ID | null>(null)
+  const [draft, setDraft] = useState<Record<string, string>>({})
+
+  const { data: terms } = useAsync(() => listBillingTerms(), [version])
+
+  async function save(term: BillingTerm) {
+    const raw = draft[term.id]
+    if (raw === undefined) return
+
+    const value = Number(raw)
+    if (!Number.isInteger(value) || value < 0 || value > 100) {
+      toast.error(t('platform.termRangeError'))
+      return
+    }
+    if (value === term.discountPct) return
+
+    setSaving(term.id)
+    try {
+      await updateBillingTerm(term.id, { discountPct: value })
+      setDraft((current) => {
+        const next = { ...current }
+        delete next[term.id]
+        return next
+      })
+      setVersion((v) => v + 1)
+      onSaved()
+      toast.success(t('toast.saved'))
+    } catch {
+      toast.error(t('toast.error'))
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  if (!terms) return null
+
+  return (
+    <Card className="mt-5" padded={false}>
+      <div className="p-5 pb-3 sm:p-6 sm:pb-3">
+        <CardHeader title={t('platform.terms')} subtitle={t('platform.termsHint')} />
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-subhead">
+          <thead>
+            <tr className="hairline text-caption text-label-tertiary">
+              <th className="px-5 py-2 text-left font-medium sm:px-6">
+                {t('platform.term')}
+              </th>
+              {plans.map((plan) => (
+                <th key={plan.id} className="px-4 py-2 text-left font-medium">
+                  {plan.name}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {terms.map((term) => (
+              <tr key={term.id} className="hairline last:border-b-0">
+                <td className="px-5 py-3 sm:px-6">
+                  <div className="flex items-center gap-2">
+                    <span className="text-label">
+                      {t('platform.termMonths', { count: term.months })}
+                    </span>
+
+                    {/*
+                      Chegirma 0 dan 100 gacha. Maydon o'zgarganda emas,
+                      fokus ketganda yoki Enter bosilganda saqlanadi —
+                      har bosilgan raqamga so'rov yuborilmasin.
+                    */}
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={draft[term.id] ?? String(term.discountPct)}
+                      disabled={saving !== null}
+                      onChange={(e) =>
+                        setDraft((c) => ({ ...c, [term.id]: e.target.value }))
+                      }
+                      onBlur={() => void save(term)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.currentTarget.blur()
+                      }}
+                      className={cn(
+                        'h-7 w-14 rounded-[8px] bg-sunken px-2 text-center text-caption tnum',
+                        'text-label outline-none focus:ring-2 focus:ring-accent',
+                      )}
+                    />
+                    <span className="text-caption text-label-tertiary">%</span>
+                  </div>
+                </td>
+
+                {plans.map((plan) => (
+                  <td key={plan.id} className="px-4 py-3">
+                    <span className="tnum text-label">
+                      {money(termTotal(plan.pricePerMonth, term.months, term.discountPct))}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   )
 }

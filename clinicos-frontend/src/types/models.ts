@@ -129,6 +129,35 @@ export type PlanTier = 'starter' | 'standard' | 'premium'
 /** Cheksiz chegara — sonli maydonlarda shu qiymat ishlatiladi */
 export const UNLIMITED = -1
 
+/**
+ * To’lov muddati va unga beriladigan chegirma.
+ *
+ * Chegirma MUDDATGA biriktirilgan, tarifga emas: "6 oy — 10%"
+ * barcha tariflarga bir xil qo’llanadi.
+ */
+export interface BillingTerm {
+  id: ID
+  /** 3, 6 yoki 12 */
+  months: number
+  /** 0 dan 100 gacha */
+  discountPct: number
+  isActive: boolean
+}
+
+/**
+ * Muddat uchun jami summa: oylik narx × oylar × (100 − chegirma).
+ *
+ * Serverdagi `discountedMonthly` bilan bir xil yaxlitlash — panelda
+ * ko’ringan raqam hisobdagisidan farq qilmasligi kerak.
+ */
+export function termTotal(
+  pricePerMonth: UZS,
+  months: number,
+  discountPct: number,
+): UZS {
+  return Math.round((pricePerMonth * (100 - discountPct)) / 100) * months
+}
+
 export interface Plan {
   id: ID
   tier: PlanTier
@@ -219,6 +248,10 @@ export interface Tenant {
    */
   deletedAt: ISODateTime | null
   deletedReason: string
+  /** Necha oyga obuna: 3, 6 yoki 12 */
+  termMonths: number
+  /** Obuna paytidagi chegirma foizi — "nega bu narx" degan savolga javob */
+  discountPct: number
   usage: TenantUsage
   /** Oxirgi marta tizimga kirilgan payt */
   lastActiveAt: ISODateTime | null
@@ -309,6 +342,8 @@ export interface TenantCreateInput {
    * qulaylik — keyin har bir bo'lim alohida yoqib-o'chiriladi.
    */
   kind?: ClinicKind
+  /** Necha oyga obuna. Muddatga biriktirilgan chegirma narxga qo'llanadi. */
+  termMonths?: number
 }
 
 /** Klinika ma'lumotlarini tahrirlash. Tarif va egasi alohida. */

@@ -928,6 +928,13 @@ export const dict: Dict = {
   'platform.copied': 'Скопировано',
   'platform.editClinic': 'Редактировать',
   'platform.editClinicTitle': 'Данные клиники',
+  'platform.terms': 'Сроки оплаты',
+  'platform.termsHint':
+    'Скидка привязана к СРОКУ и применяется ко всем тарифам одинаково. Сумма в ячейке — общий платёж за этот срок. Изменение не затрагивает существующие подписки.',
+  'platform.term': 'Срок',
+  'platform.termMonths': '{count} мес.',
+  'platform.termTotal': 'Всего за {months} мес.: {total}',
+  'platform.termRangeError': 'Скидка должна быть от 0 до 100',
   'platform.delete': 'Удалить',
   'platform.deleteTitle': 'Удаление клиники',
   'platform.deleteReason': 'Причина',

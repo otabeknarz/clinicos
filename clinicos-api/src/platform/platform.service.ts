@@ -15,6 +15,7 @@ import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
 import {
   ArchiveDto,
+  BillingTermDto,
   ImpersonateDto,
   InvoiceQueryDto,
   MemberInputDto,
@@ -185,8 +186,14 @@ export class PlatformService {
     const email = dto.ownerEmail.trim().toLowerCase()
 
     const now = new Date()
-    const nextMonth = new Date(now)
-    nextMonth.setMonth(nextMonth.getMonth() + 1)
+
+    /*
+      Hisob OYLIK emas, MUDDAT bo'yicha chiqadi: 6 oyga obuna
+      bo'lgan mijozdan har oy pul so'ralmaydi.
+    */
+    const discountPct = await this.discountFor(dto.termMonths)
+    const termEnd = new Date(now)
+    termEnd.setMonth(termEnd.getMonth() + dto.termMonths)
 
     const sub = await this.db.$transaction(async (tx) => {
       const clinic = await tx.clinic.create({
@@ -263,9 +270,17 @@ export class PlatformService {
             qimmatlashsa, mavjud mijozning hisobi o'z-o'zidan
             oshib ketmasin.
           */
-          pricePerMonth: plan.pricePerMonth,
+          /*
+            Chegirma SHU YERDA qo'llanadi va natija muzlatiladi:
+            `pricePerMonth` — mijoz haqiqatan to'laydigan oylik summa.
+            Foizning o'zi ham saqlanadi, "nega bu narx" degan savolga
+            javob bo'lishi uchun.
+          */
+          pricePerMonth: discountedMonthly(plan.pricePerMonth, discountPct),
+          termMonths: dto.termMonths,
+          discountPct,
           subscribedAt: now,
-          nextInvoiceAt: nextMonth,
+          nextInvoiceAt: termEnd,
           ownerName: dto.ownerName.trim(),
           ownerEmail: email,
           ownerPhone: dto.ownerPhone.trim(),
@@ -511,18 +526,73 @@ export class PlatformService {
    * uchun chiqarilgan hisob o'zgarmaydi. Aks holda mijoz
    * allaqachon ko'rgan summa o'zgarib qolardi.
    */
-  async changePlan(id: string, planId: string) {
+  async changePlan(id: string, planId: string, termMonths?: number) {
     const sub = await this.requireSubscription(id)
     const plan = await this.db.plan.findUnique({ where: { id: planId } })
     if (!plan) throw new NotFoundException('Tarif topilmadi')
 
+    /*
+      Muddat berilmasa hozirgisi qoladi. Chegirma esa HAR DOIM
+      qaytadan hisoblanadi: tarif almashgach eski foizni yangi
+      narxga qo'llash noto'g'ri bo'lardi.
+    */
+    const months = termMonths ?? sub.termMonths
+    const discountPct = await this.discountFor(months)
+
     const row = await this.db.subscription.update({
       where: { id: sub.id },
-      data: { planId: plan.id, pricePerMonth: plan.pricePerMonth },
+      data: {
+        planId: plan.id,
+        pricePerMonth: discountedMonthly(plan.pricePerMonth, discountPct),
+        termMonths: months,
+        discountPct,
+      },
       include: { clinic: true, plan: true },
     })
     const usage = await this.usageFor([row.clinicId])
     return toApiTenant(row, usage[row.clinicId])
+  }
+
+  /* ---------------- To'lov muddatlari ---------------- */
+
+  /**
+   * Muddatlar va ularning chegirmasi.
+   *
+   * Chegirma MUDDATGA biriktirilgan, tarifga emas: "6 oy — 10%"
+   * barcha tariflarga bir xil qo'llanadi.
+   */
+  async listBillingTerms() {
+    const rows = await this.db.billingTerm.findMany({ orderBy: { months: 'asc' } })
+    return rows.map(toApiBillingTerm)
+  }
+
+  /**
+   * Chegirmani o'zgartirish.
+   *
+   * MAVJUD OBUNALARGA TEGMAYDI: ularda narx ham, chegirma ham obuna
+   * paytida muzlatilgan. Yangi foiz faqat yangi obunaga va muddat
+   * almashtirilganda qo'llanadi — xuddi tarif narxi kabi.
+   */
+  async updateBillingTerm(id: string, dto: BillingTermDto) {
+    const found = await this.db.billingTerm.findUnique({ where: { id } })
+    if (!found) throw new NotFoundException('Muddat topilmadi')
+
+    const row = await this.db.billingTerm.update({
+      where: { id },
+      data: { discountPct: dto.discountPct, isActive: dto.isActive },
+    })
+    return toApiBillingTerm(row)
+  }
+
+  /**
+   * Muddatning chegirmasi. Muddat topilmasa yoki o'chirilgan bo'lsa — 0.
+   *
+   * Xato o'rniga nolga tushadi: chegirma yo'qligi to'g'ri narx,
+   * xato esa klinika ochilishini butunlay to'xtatib qo'yardi.
+   */
+  private async discountFor(months: number): Promise<number> {
+    const term = await this.db.billingTerm.findUnique({ where: { months } })
+    return term && term.isActive ? term.discountPct : 0
   }
 
   /* ---------------- Tariflar ---------------- */
@@ -1284,7 +1354,8 @@ export class PlatformService {
   private async requireSubscription(id: string) {
     const sub = await this.db.subscription.findFirst({
       where: { OR: [{ id }, { clinicId: id }] },
-      select: { id: true, clinicId: true },
+      /* `termMonths` — tarif almashtirilganda muddat berilmasa kerak bo'ladi */
+      select: { id: true, clinicId: true, termMonths: true },
     })
     if (!sub) throw new NotFoundException('Klinika topilmadi')
     return sub
@@ -1300,6 +1371,8 @@ function toApiTenant(
     status: string
     planId: string
     pricePerMonth: number
+    termMonths: number
+    discountPct: number
     trialEndsAt: Date | null
     subscribedAt: Date | null
     nextInvoiceAt: Date | null
@@ -1339,6 +1412,9 @@ function toApiTenant(
     subscribedAt: toApiDate(row.subscribedAt),
     nextInvoiceAt: toApiDate(row.nextInvoiceAt),
     suspendReason: row.suspendReason,
+    /* Necha oyga obuna va o’sha paytdagi chegirma — “nega bu narx” degan savolga javob */
+    termMonths: row.termMonths,
+    discountPct: row.discountPct,
     /* Shu klinikada o'chirilgan bo'limlar — platforma paneli shuni belgilaydi */
     disabledModules: row.clinic.disabledModules,
     /* O'chirilgan bo'lsa — qachon va nima uchun. Arxivdan alohida holat. */
@@ -1408,5 +1484,30 @@ function toApiMember(row: {
     isActive: row.isActive,
     lastActiveAt: toApiDateTime(row.lastActiveAt),
     createdAt: toApiDateTime(row.createdAt)!,
+  }
+}
+
+/**
+ * Chegirma qo'llangan oylik narx.
+ *
+ * Bitta joyda, chunki uch joyda kerak: obuna ochilganda, tarif
+ * almashtirilganda va platforma panelidagi jadvalda. Uch marta
+ * yozilsa, yaxlitlash bir-biridan farq qilib qolardi.
+ */
+function discountedMonthly(pricePerMonth: number, discountPct: number): number {
+  return Math.round((pricePerMonth * (100 - discountPct)) / 100)
+}
+
+function toApiBillingTerm(row: {
+  id: string
+  months: number
+  discountPct: number
+  isActive: boolean
+}) {
+  return {
+    id: row.id,
+    months: row.months,
+    discountPct: row.discountPct,
+    isActive: row.isActive,
   }
 }

@@ -68,6 +68,7 @@ export const TENANT_MODELS = new Set<string>([
  *     db.chatGroup.findMany({ where: { members: { some: { userId } } } })
  */
 export const GLOBAL_MODELS = new Set<string>([
+  'BillingTerm',
   'ChatGroupMember',
   'ChatMessageRead',
   'Clinic',

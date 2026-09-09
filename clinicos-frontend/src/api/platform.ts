@@ -25,6 +25,7 @@ import { getDb } from '@/mock/db'
 import { addDays, toISODate } from '@/lib/dates'
 import { COMPLAINT_KEYS, SERVICE_KEYS, SPECIALTIES } from '@/i18n/data'
 import type {
+  BillingTerm,
   ClinicKind,
   ClinicModule,
   ID,
@@ -183,6 +184,11 @@ export async function createTenant(input: TenantCreateInput): Promise<TenantCrea
     disabledModules: DISABLED_BY_KIND[input.kind ?? 'general'],
     deletedAt: null,
     deletedReason: '',
+    termMonths: input.termMonths ?? 3,
+    /* Chegirma muddatga biriktirilgan — serverdagi kabi shu yerda topiladi */
+    discountPct:
+      getDb().billingTerms.all().find((term) => term.months === (input.termMonths ?? 3))
+        ?.discountPct ?? 0,
     usage: { doctors: 0, staff: 0, patients: 0, users: 1, appointmentsThisMonth: 0 },
     lastActiveAt: null,
     createdAt: new Date().toISOString(),
@@ -300,19 +306,37 @@ export async function activateTenant(id: ID): Promise<Tenant> {
  * ko'rgan summa o'zgarib qolardi.
  */
 // POST /platform/tenants/:id/plan
-export async function changeTenantPlan(id: ID, planId: ID): Promise<Tenant> {
+export async function changeTenantPlan(
+  id: ID,
+  planId: ID,
+  /** Berilmasa obunadagi hozirgi muddat qoladi */
+  termMonths?: number,
+): Promise<Tenant> {
   if (!USE_MOCK) {
-    return request<Tenant>('POST', `/platform/tenants/${id}/plan`, { body: { planId } })
+    return request<Tenant>('POST', `/platform/tenants/${id}/plan`, {
+      body: { planId, termMonths },
+    })
   }
 
   const db = getDb()
   const plan = db.plans.allAcrossTenants().find((p) => p.id === planId)
   if (!plan) throw new Error('Tarif topilmadi')
 
+  /*
+    Chegirma HAR DOIM qaytadan hisoblanadi: tarif almashgach eski
+    foizni yangi narxga qo’llash noto’g’ri bo’lardi.
+  */
+  const current = db.tenants.allAcrossTenants().find((tenant) => tenant.id === id)
+  const months = termMonths ?? current?.termMonths ?? 3
+  const discountPct =
+    db.billingTerms.all().find((term) => term.months === months)?.discountPct ?? 0
+
   const updated = db.tenants.updateAcrossTenants(id, {
     planId: plan.id,
     planName: plan.name,
-    pricePerMonth: plan.pricePerMonth,
+    pricePerMonth: Math.round((plan.pricePerMonth * (100 - discountPct)) / 100),
+    termMonths: months,
+    discountPct,
   })
   if (!updated) throw new Error('Klinika topilmadi')
   return delay(updated, 300)
@@ -1461,4 +1485,41 @@ export async function undeleteTenant(id: ID): Promise<Tenant> {
   })
   if (!updated) throw new Error('Klinika topilmadi')
   return delay(updated, 260)
+}
+
+/* ------------------------------------------------------------------ */
+/* To'lov muddatlari                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Muddatlar (3, 6, 12 oy) va ularning chegirmasi.
+ *
+ * Chegirma MUDDATGA biriktirilgan, tarifga emas — "6 oy — 10%"
+ * barcha tariflarga bir xil qo'llanadi.
+ */
+// GET /platform/billing-terms
+export async function listBillingTerms(): Promise<BillingTerm[]> {
+  if (!USE_MOCK) return request<BillingTerm[]>('GET', '/platform/billing-terms')
+  return delay(getDb().billingTerms.all(), 140)
+}
+
+/**
+ * Chegirmani o'zgartirish.
+ *
+ * MAVJUD OBUNALARGA TEGMAYDI: ularda narx ham, chegirma ham obuna
+ * paytida muzlatilgan. Yangi foiz faqat yangi obunaga va muddat
+ * almashtirilganda qo'llanadi.
+ */
+// PATCH /platform/billing-terms/:id
+export async function updateBillingTerm(
+  id: ID,
+  patch: { discountPct?: number; isActive?: boolean },
+): Promise<BillingTerm> {
+  if (!USE_MOCK) {
+    return request<BillingTerm>('PATCH', `/platform/billing-terms/${id}`, { body: patch })
+  }
+
+  const updated = getDb().billingTerms.update(id, patch)
+  if (!updated) throw new Error('Muddat topilmadi')
+  return delay(updated, 220)
 }

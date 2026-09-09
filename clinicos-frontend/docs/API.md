@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**148 ta endpoint.**
+**150 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -2976,31 +2976,39 @@ chiqarilgan hisob o'zgarmaydi. Aks holda mijoz allaqachon
 ko'rgan summa o'zgarib qolardi.
 
 ```ts
-changeTenantPlan(id: ID, planId: ID): Promise<Tenant>
+changeTenantPlan(id: ID, planId: ID, /** Berilmasa obunadagi hozirgi muddat qoladi */ termMonths?: number): Promise<Tenant>
 ```
 
 ### `GET /platform/plans`
 
-Tarifni o'zgartirish.
-
-Yangi narx keyingi hisobdan boshlab qo'llanadi — joriy oy uchun
-chiqarilgan hisob o'zgarmaydi. Aks holda mijoz allaqachon
-ko'rgan summa o'zgarib qolardi.
-
-// POST /platform/tenants/:id/plan
-export async function changeTenantPlan(id: ID, planId: ID): Promise<Tenant> {
+Berilmasa obunadagi hozirgi muddat qoladi
+termMonths?: number,
+): Promise<Tenant> {
 if (!USE_MOCK) {
-return request<Tenant>('POST', `/platform/tenants/${id}/plan`, { body: { planId } })
+return request<Tenant>('POST', `/platform/tenants/${id}/plan`, {
+body: { planId, termMonths },
+})
 }
 
 const db = getDb()
 const plan = db.plans.allAcrossTenants().find((p) => p.id === planId)
 if (!plan) throw new Error('Tarif topilmadi')
 
+
+Chegirma HAR DOIM qaytadan hisoblanadi: tarif almashgach eski
+foizni yangi narxga qo’llash noto’g’ri bo’lardi.
+
+const current = db.tenants.allAcrossTenants().find((tenant) => tenant.id === id)
+const months = termMonths ?? current?.termMonths ?? 3
+const discountPct =
+db.billingTerms.all().find((term) => term.months === months)?.discountPct ?? 0
+
 const updated = db.tenants.updateAcrossTenants(id, {
 planId: plan.id,
 planName: plan.name,
-pricePerMonth: plan.pricePerMonth,
+pricePerMonth: Math.round((plan.pricePerMonth * (100 - discountPct)) / 100),
+termMonths: months,
+discountPct,
 })
 if (!updated) throw new Error('Klinika topilmadi')
 return delay(updated, 300)
@@ -3307,6 +3315,29 @@ deleteTenant(id: ID, reason: string): Promise<Tenant>
 
 ```ts
 undeleteTenant(id: ID): Promise<Tenant>
+```
+
+### `GET /platform/billing-terms`
+
+Muddatlar (3, 6, 12 oy) va ularning chegirmasi.
+
+Chegirma MUDDATGA biriktirilgan, tarifga emas — "6 oy — 10%"
+barcha tariflarga bir xil qo'llanadi.
+
+```ts
+listBillingTerms(): Promise<BillingTerm[]>
+```
+
+### `PATCH /platform/billing-terms/:id`
+
+Chegirmani o'zgartirish.
+
+MAVJUD OBUNALARGA TEGMAYDI: ularda narx ham, chegirma ham obuna
+paytida muzlatilgan. Yangi foiz faqat yangi obunaga va muddat
+almashtirilganda qo'llanadi.
+
+```ts
+updateBillingTerm(id: ID, patch: { discountPct?: number; isActive?: boolean }): Promise<BillingTerm>
 ```
 
 ## debts

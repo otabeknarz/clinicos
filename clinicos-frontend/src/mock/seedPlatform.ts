@@ -166,6 +166,12 @@ const STATUS_WEIGHTS: [TenantStatus, number][] = [
   ['cancelled', 0.07],
 ]
 
+/**
+ * Muddat → chegirma. `seed.ts` dagi `billingTerms` bilan bir xil
+ * bo'lishi shart: obunadagi foiz muddatdan kelib chiqadi.
+ */
+const TERM_DISCOUNT: Record<number, number> = { 3: 0, 6: 10, 12: 20 }
+
 export function generateTenants(plans: Plan[], now: Date, r: Random): Tenant[] {
   const tenants: Tenant[] = []
 
@@ -267,6 +273,16 @@ export function generateTenants(plans: Plan[], now: Date, r: Random): Tenant[] {
       /* O'chirilganlar seedda yo'q — platforma egasi o'zi o'chiradi */
       deletedAt: null,
       deletedReason: '',
+      /*
+        Muddat aralash: uchdan biri 12 oyga (20% chegirma), yana
+        uchdan biri 6 oyga (10%), qolgani 3 oyga chegirmasiz —
+        panelda turli obunalar ko'rinib tursin.
+      */
+      ...(() => {
+        const months = isDemo ? 6 : r.pick([3, 6, 12])
+        /* Chegirma muddatdan kelib chiqadi — seed ham shu qoidaga bo'ysunadi */
+        return { termMonths: months, discountPct: TERM_DISCOUNT[months] ?? 0 }
+      })(),
       usage: {
         doctors,
         staff,

@@ -21,6 +21,7 @@ import {
   activateTenant,
   changeTenantPlan,
   getTenant,
+  listBillingTerms,
   listImpersonations,
   listInvoices,
   listPlans,
@@ -51,7 +52,7 @@ import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
 import { useToast } from '@/store/toast-context'
 import type { ClinicModule, Plan, Tenant } from '@/types/models'
-import { CLINIC_MODULES, UNLIMITED } from '@/types/models'
+import { CLINIC_MODULES, termTotal, UNLIMITED } from '@/types/models'
 import { startImpersonation, suspendTenant } from '@/api/platform'
 
 /**
@@ -799,23 +800,29 @@ function PlanModal({
   const { t } = useI18n()
   const toast = useToast()
   const [planId, setPlanId] = useState('')
+  const [termMonths, setTermMonths] = useState(3)
   const [saving, setSaving] = useState(false)
   const [ready, setReady] = useState<string | null>(null)
 
-  // Tanlovni joriy tarifdan boshlaymiz
+  const { data: terms } = useAsync(() => listBillingTerms(), [])
+
+  // Tanlovni joriy tarif va muddatdan boshlaymiz
   if (tenant && ready !== tenant.id) {
     setReady(tenant.id)
     setPlanId(tenant.planId)
+    setTermMonths(tenant.termMonths)
   }
 
   const selected = plans.find((p) => p.id === planId)
-  const changed = tenant !== null && planId !== tenant.planId
+  const term = terms?.find((row) => row.months === termMonths)
+  const changed =
+    tenant !== null && (planId !== tenant.planId || termMonths !== tenant.termMonths)
 
   async function submit() {
     if (!tenant || !changed) return
     setSaving(true)
     try {
-      await changeTenantPlan(tenant.id, planId)
+      await changeTenantPlan(tenant.id, planId, termMonths)
       toast.success(t('toast.saved'))
       onDone()
       onClose()
@@ -855,6 +862,35 @@ function PlanModal({
             label: `${p.name} — ${money(p.pricePerMonth)}`,
           }))}
         />
+
+        {/*
+          Muddat: uzunroq muddat — kattaroq chegirma. Foiz muddatga
+          biriktirilgan, shuning uchun tarif tanlovidan mustaqil.
+        */}
+        <Select
+          label={t('platform.term')}
+          value={String(termMonths)}
+          onChange={(e) => setTermMonths(Number(e.target.value))}
+          options={(terms ?? []).map((row) => ({
+            value: String(row.months),
+            label:
+              row.discountPct > 0
+                ? `${t('platform.termMonths', { count: row.months })} — ${row.discountPct}%`
+                : t('platform.termMonths', { count: row.months }),
+          }))}
+        />
+
+        {/* Muddat uchun jami summa — mijoz bir marta to'laydigan raqam */}
+        {selected && term ? (
+          <p className="rounded-[10px] bg-sunken px-4 py-3 text-footnote text-label-secondary">
+            {t('platform.termTotal', {
+              months: term.months,
+              total: money(
+                termTotal(selected.pricePerMonth, term.months, term.discountPct),
+              ),
+            })}
+          </p>
+        ) : null}
 
         {/* Yangi tarif chegarasi hozirgi foydalanishga yetadimi */}
         {selected && tenant ? (

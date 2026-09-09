@@ -18,6 +18,7 @@ import {
   archiveTenant,
   createTenant,
   deleteTenant,
+  listBillingTerms,
   listPlans,
   listTenants,
   resetOwnerPassword,
@@ -695,6 +696,9 @@ function NewClinicModal({
   const [planId, setPlanId] = useState('')
   /* Tur saqlanmaydi — u faqat bo’limlarning boshlang’ich to’plamini beradi */
   const [kind, setKind] = useState<ClinicKind>('general')
+  const [termMonths, setTermMonths] = useState(3)
+
+  const { data: terms } = useAsync(() => listBillingTerms(), [])
   const [ownerName, setOwnerName] = useState('')
   const [ownerEmail, setOwnerEmail] = useState('')
   const [ownerPhone, setOwnerPhone] = useState('+998 ')
@@ -716,6 +720,7 @@ function NewClinicModal({
     setCity('')
     setPlanId('')
     setKind('general')
+    setTermMonths(3)
     setOwnerName('')
     setOwnerEmail('')
     setOwnerPhone('+998 ')
@@ -733,6 +738,7 @@ function NewClinicModal({
         city: city.trim(),
         planId: chosenPlan,
         kind,
+        termMonths,
         ownerName: ownerName.trim(),
         ownerEmail: ownerEmail.trim().toLowerCase(),
         ownerPhone: phoneToE164(ownerPhone),
@@ -838,6 +844,23 @@ function NewClinicModal({
           value={chosenPlan}
           onChange={(e) => setPlanId(e.target.value)}
           options={plans.map((p) => ({ value: p.id, label: p.name }))}
+        />
+
+        {/*
+          Necha oyga obuna. Chegirma muddatga biriktirilgan va narxga
+          o'sha paytda qo'llanib, obunada muzlatiladi.
+        */}
+        <Select
+          label={t('platform.term')}
+          value={String(termMonths)}
+          onChange={(e) => setTermMonths(Number(e.target.value))}
+          options={(terms ?? []).map((row) => ({
+            value: String(row.months),
+            label:
+              row.discountPct > 0
+                ? `${t('platform.termMonths', { count: row.months })} — ${row.discountPct}%`
+                : t('platform.termMonths', { count: row.months }),
+          }))}
         />
 
         {/*

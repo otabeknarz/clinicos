@@ -220,6 +220,7 @@ export interface MockDb {
   bonusRules: Collection<SeedData['bonusRules'][number]>
   penaltyRules: Collection<SeedData['penaltyRules'][number]>
   plans: Collection<SeedData['plans'][number]>
+  billingTerms: Collection<SeedData['billingTerms'][number]>
   tenants: Collection<SeedData['tenants'][number]>
   tenantInvoices: Collection<SeedData['tenantInvoices'][number]>
   impersonations: Collection<SeedData['impersonations'][number]>
@@ -262,6 +263,7 @@ export function getDb(): MockDb {
     bonusRules: new Collection('bonusRules', seed.bonusRules, store),
     penaltyRules: new Collection('penaltyRules', seed.penaltyRules, store),
     plans: new Collection('plans', seed.plans, store),
+    billingTerms: new Collection('billingTerms', seed.billingTerms, store),
     tenants: new Collection('tenants', seed.tenants, store),
     tenantInvoices: new Collection('tenantInvoices', seed.tenantInvoices, store),
     impersonations: new Collection('impersonations', seed.impersonations, store),

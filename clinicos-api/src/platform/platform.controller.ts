@@ -14,6 +14,7 @@ import { RequirePermission } from '../common/guards/permissions.guard'
 import { IdParamDto } from '../patients/patients.dto'
 import {
   ArchiveDto,
+  BillingTermDto,
   ChangePlanDto,
   ImpersonateDto,
   ImpersonationQueryDto,
@@ -82,6 +83,24 @@ export class PlatformController {
   @RequirePermission('platform.manage')
   updatePlan(@Param() params: IdParamDto, @Body() dto: PlanInputDto) {
     return this.platform.updatePlan(params.id, dto)
+  }
+
+  /*
+    GET /platform/billing-terms
+
+    To'lov muddatlari (3, 6, 12 oy) va ularning chegirmasi.
+    Chegirma MUDDATGA biriktirilgan, tarifga emas.
+  */
+  @Get('billing-terms')
+  listBillingTerms() {
+    return this.platform.listBillingTerms()
+  }
+
+  // PATCH /platform/billing-terms/:id
+  @Patch('billing-terms/:id')
+  @RequirePermission('platform.manage')
+  updateBillingTerm(@Param() params: IdParamDto, @Body() dto: BillingTermDto) {
+    return this.platform.updateBillingTerm(params.id, dto)
   }
 
   @Get('invoices')
@@ -251,7 +270,7 @@ export class PlatformController {
   @Post('tenants/:id/plan')
   @RequirePermission('platform.manage')
   changePlan(@Param() params: IdParamDto, @Body() dto: ChangePlanDto) {
-    return this.platform.changePlan(params.id, dto.planId)
+    return this.platform.changePlan(params.id, dto.planId, dto.termMonths)
   }
 
   /*

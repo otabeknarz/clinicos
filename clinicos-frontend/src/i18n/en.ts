@@ -925,6 +925,13 @@ export const dict: Dict = {
   'platform.copied': 'Copied',
   'platform.editClinic': 'Edit',
   'platform.editClinicTitle': 'Clinic details',
+  'platform.terms': 'Billing terms',
+  'platform.termsHint':
+    'The discount belongs to the TERM and applies to every plan alike. The cell shows the total for that term. Changing it does not touch existing subscriptions.',
+  'platform.term': 'Term',
+  'platform.termMonths': '{count} months',
+  'platform.termTotal': 'Total for {months} months: {total}',
+  'platform.termRangeError': 'The discount must be between 0 and 100',
   'platform.delete': 'Delete',
   'platform.deleteTitle': 'Delete the clinic',
   'platform.deleteReason': 'Reason',
