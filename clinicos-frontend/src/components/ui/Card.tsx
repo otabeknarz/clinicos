@@ -27,11 +27,22 @@ export function CardHeader({
   title,
   subtitle,
   action,
+  inlineAction = false,
   className,
 }: {
   title: ReactNode
   subtitle?: ReactNode
   action?: ReactNode
+  /**
+   * Telefonda ham boshqaruvni sarlavha YONIDA qoldiradi.
+   *
+   * Sukut bo'yicha u ostiga tushadi — davr tanlagichi kabi keng
+   * boshqaruv sarlavhani ikkiga bo'lib yuborardi. Lekin "Hammasini
+   * ko'rish →" kabi qisqa havola yonida bemalol turadi va bir
+   * qatorni tejaydi: telefonda uch qatorlik sarlavha bloki
+   * ro'yxatning o'zidan ko'proq joy olardi.
+   */
+  inlineAction?: boolean
   className?: string
 }) {
   return (
@@ -44,8 +55,9 @@ export function CardHeader({
           ikki-uch qatorga bo'linib ketardi, chunki yonidagi davr
           tanlagichi joyni olib qo'yadi.
         */
-        'flex flex-col gap-3',
-        'sm:flex-row sm:items-start sm:justify-between sm:gap-4',
+        inlineAction
+          ? 'flex flex-row items-start justify-between gap-3 sm:gap-4'
+          : 'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4',
         className,
       )}
     >

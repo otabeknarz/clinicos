@@ -56,6 +56,7 @@ export function WardMonitorCard() {
             {t('ward.title')}
           </span>
         }
+        inlineAction
         action={
           <Link
             to="/ward"
@@ -132,6 +133,7 @@ export function CashMonitorCard() {
             {t('cash.title')}
           </span>
         }
+        inlineAction
         action={
           <Link
             to="/cash-control"
@@ -192,7 +194,14 @@ function Figure({
       >
         {value}
       </dd>
-      <dt className="mt-0.5 truncate text-caption-2 text-label-tertiary">{label}</dt>
+      {/*
+        KESILMAYDI, IKKI QATORGA BO'LINADI.
+
+        Telefonda uch ustunga bo'linganda har biriga ~100px qoladi va
+        `truncate` "To'lanmagan tas..." qilib qo'yardi — raqam nimani
+        anglatishini aytadigan yagona yozuv o'qilmas edi.
+      */}
+      <dt className="mt-0.5 text-caption-2 leading-tight text-label-tertiary">{label}</dt>
     </div>
   )
 }

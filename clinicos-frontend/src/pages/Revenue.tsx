@@ -77,20 +77,44 @@ export function RevenuePage() {
       ) : (
         <>
           {/* --- Asosiy raqamlar --- */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {/*
+            Telefonda ikki ustun: to'rtta karta ustma-ust turganda
+            470px joy olib, grafik va jadval ko'rinmay qolardi.
+          */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <StatCard
               loading={loading}
               icon={<Wallet size={14} />}
               tone="ok"
               label={t('revenue.total')}
-              value={data ? money(data.totalRevenue) : '—'}
+              value={
+                data ? (
+                  <>
+                    {/* Telefonda ixcham shakl: to'liq raqam ikki ustunga sig'maydi */}
+                    <span className="sm:hidden">{moneyShort(data.totalRevenue)}</span>
+                    <span className="hidden sm:inline">{money(data.totalRevenue)}</span>
+                  </>
+                ) : (
+                  '—'
+                )
+              }
             />
             <StatCard
               loading={loading}
               icon={<TrendingUp size={14} />}
               tone="accent"
               label={t('revenue.net')}
-              value={data ? money(data.netRevenue) : '—'}
+              value={
+                data ? (
+                  <>
+                    {/* Telefonda ixcham shakl: to'liq raqam ikki ustunga sig'maydi */}
+                    <span className="sm:hidden">{moneyShort(data.netRevenue)}</span>
+                    <span className="hidden sm:inline">{money(data.netRevenue)}</span>
+                  </>
+                ) : (
+                  '—'
+                )
+              }
             />
             <StatCard
               loading={loading}
@@ -104,7 +128,17 @@ export function RevenuePage() {
               icon={<Wallet size={14} />}
               tone="neutral"
               label={t('revenue.averageCheck')}
-              value={data ? money(data.averageCheck) : '—'}
+              value={
+                data ? (
+                  <>
+                    {/* Telefonda ixcham shakl: to'liq raqam ikki ustunga sig'maydi */}
+                    <span className="sm:hidden">{moneyShort(data.averageCheck)}</span>
+                    <span className="hidden sm:inline">{money(data.averageCheck)}</span>
+                  </>
+                ) : (
+                  '—'
+                )
+              }
             />
           </div>
 

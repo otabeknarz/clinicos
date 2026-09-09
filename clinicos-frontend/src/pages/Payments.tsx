@@ -9,13 +9,14 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { SearchInput } from '@/components/ui/Form'
+import { StatStrip } from '@/components/ui/Hero'
 import { StatCard } from '@/components/ui/KpiCard'
-import { EmptyState, ErrorState } from '@/components/ui/States'
+import { EmptyState, ErrorState, Skeleton } from '@/components/ui/States'
 import { DataTable, Pagination } from '@/components/ui/Table'
 import type { Column } from '@/components/ui/Table'
 import { FilterPills } from '@/components/ui/Tabs'
 import { cn } from '@/lib/cn'
-import { dateShort, money, moneyShort } from '@/lib/format'
+import { compactNumber, currencyLabel, dateShort, money, moneyShort } from '@/lib/format'
 import { PAYMENT_LABEL, PAYMENT_TONE } from '@/lib/status'
 import { useAsync, useDebounced } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
@@ -135,7 +136,54 @@ export function PaymentsPage() {
         Egasi ishonadigan registratorga `extraPermissions` orqali
         `revenue.view` berib, ochib qo'yishi mumkin.
       */}
-      <div className={cn('grid gap-4', showTotals && 'sm:grid-cols-3')}>
+      {/*
+        TELEFONDA BITTA QATOR, KOMPYUTERDA UCH KARTA.
+
+        Uch karta ustma-ust turganda 360px — telefon ekranining
+        yarmidan ko'pi — uchta raqamga ketardi va to'lovlar ro'yxati
+        birinchi ekranga umuman tushmasdi. Ro'yxat esa bu sahifaning
+        asosiy mazmuni.
+      */}
+      <div className="md:hidden">
+        {summary.loading ? (
+          <Skeleton className="h-[104px] rounded-[20px]" />
+        ) : (
+          <StatStrip
+            items={[
+              {
+                key: 'today',
+                label: t('payments.revenueToday'),
+                value: summary.data ? compactNumber(summary.data.today) : '—',
+                unit: currencyLabel(),
+                icon: <Wallet size={12} />,
+                tone: 'ok',
+              },
+              ...(showTotals
+                ? ([
+                    {
+                      key: 'week',
+                      label: t('payments.revenueWeek'),
+                      value: summary.data ? compactNumber(summary.data.week) : '—',
+                unit: currencyLabel(),
+                      icon: <CalendarDays size={12} />,
+                      tone: 'accent' as const,
+                    },
+                    {
+                      key: 'month',
+                      label: t('payments.revenueMonth'),
+                      value: summary.data ? compactNumber(summary.data.month) : '—',
+                unit: currencyLabel(),
+                      icon: <CalendarRange size={12} />,
+                      tone: 'brand' as const,
+                    },
+                  ])
+                : []),
+            ]}
+          />
+        )}
+      </div>
+
+      <div className={cn('hidden gap-4 md:grid', showTotals && 'sm:grid-cols-3')}>
         <StatCard
           loading={summary.loading}
           icon={<Wallet size={14} />}

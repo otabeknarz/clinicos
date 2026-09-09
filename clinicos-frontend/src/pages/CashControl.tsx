@@ -141,11 +141,27 @@ export function CashControlPage() {
                       <p className="truncate text-subhead font-medium text-label">
                         {row.userName}
                       </p>
-                      <p className="text-caption text-label-tertiary tnum">
-                        {row.transactions} {t('cash.transactions')}
+                      {/*
+                        Telefonda summa va nishon IKKINCHI QATORDA.
+
+                        Yonma-yon turganda ismga 40px qolib "K..."
+                        bo'lardi — kassa hisobotida esa savol aynan
+                        "kim?" degan savol.
+                      */}
+                      <p className="mt-0.5 flex items-center gap-2 text-caption text-label-tertiary tnum sm:mt-0">
+                        {/*
+                          Summa qisqarmaydi, tranzaksiya soni qisqaradi:
+                          bu qatorda pul raqami muhimroq.
+                        */}
+                        <span className="min-w-0 truncate">
+                          {row.transactions} {t('cash.transactions')}
+                        </span>
+                        <span className="shrink-0 font-semibold text-label sm:hidden">
+                          {moneyShort(row.collected)}
+                        </span>
                       </p>
                     </div>
-                    <span className="shrink-0 text-subhead font-semibold tnum text-label">
+                    <span className="hidden shrink-0 text-subhead font-semibold tnum text-label sm:block">
                       {money(row.collected)}
                     </span>
                     {row.shortfall > 0 ? (

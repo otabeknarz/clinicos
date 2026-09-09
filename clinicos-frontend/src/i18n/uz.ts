@@ -149,6 +149,7 @@ export const dict: Dict = {
   'dash.kpi.remaining': '{count} ta qoldi',
   'dash.revenue.title': 'Daromad ko’rinishi',
   'dash.schedule.title': 'Bugungi jadval',
+  'dash.schedule.count': '{count} ta qabul',
   'dash.schedule.empty': 'Bugunga qabul yo’q',
   'dash.performance.title': 'Klinika ko’rsatkichlari',
   'dash.followUps.title': 'Takroriy tashrif kutayotganlar',

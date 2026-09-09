@@ -193,9 +193,9 @@ export function StatCard({
 }) {
   if (loading) {
     return (
-      <div className={cn('card squircle p-5', className)} aria-busy>
+      <div className={cn('card squircle p-4 sm:p-5', className)} aria-busy>
         <Skeleton className="h-3 w-20" />
-        <Skeleton className="mt-3 h-7 w-32" />
+        <Skeleton className="mt-3 h-6 w-24 sm:h-7 sm:w-32" />
       </div>
     )
   }
@@ -203,17 +203,32 @@ export function StatCard({
   const change = metric?.changePct ?? null
 
   return (
-    <div className={cn('card squircle p-5', className)}>
+    /*
+      TELEFONDA IXCHAM.
+
+      Bu karta odatda to'rttalik guruhda turadi. Kompyuterdagi
+      o'lchamda ular telefonda 470px — ekranning yarmidan ko'pi —
+      joy olib, sahifaning asosiy mazmuni birinchi ekranga umuman
+      tushmasdi.
+    */
+    <div className={cn('card squircle p-4 sm:p-5', className)}>
       <div className="flex items-center gap-2">
         {icon ? (
-          <span className={cn('flex h-6 w-6 items-center justify-center rounded-[7px]', TONE_ICON[tone])}>
+          <span
+            className={cn(
+              'flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] sm:h-6 sm:w-6 sm:rounded-[7px]',
+              TONE_ICON[tone],
+            )}
+          >
             {icon}
           </span>
         ) : null}
-        <p className="text-footnote text-label-secondary">{label}</p>
+        <p className="min-w-0 truncate text-caption text-label-secondary sm:text-footnote">
+          {label}
+        </p>
       </div>
-      <div className="mt-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <p className="text-title-2 font-bold tnum text-label">{value}</p>
+      <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 sm:mt-2.5">
+        <p className="text-title-3 font-bold tnum text-label sm:text-title-2">{value}</p>
         {change !== null ? (
           <DeltaBadge value={percentDelta(change)} tone={deltaTone(change, lowerIsBetter)} />
         ) : null}

@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Hero, QuickAccess, StatStrip } from '@/components/ui/Hero'
+import { ThemeSwitch } from '@/components/ui/ThemeSwitch'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { ProgressBar } from '@/components/ui/Progress'
 import { CardSkeleton, EmptyState, ErrorState, Skeleton } from '@/components/ui/States'
@@ -305,6 +306,16 @@ export function DashboardPage() {
         {can('revenue.view') ? <ClinicPerformanceCard /> : null}
         <FollowUpsCard />
       </div>
+
+      {/*
+        Ko'rinish almashtirgichi — FAQAT TELEFONDA va sahifaning
+        oxirida. Kompyuterda u yuqori panelda turadi, telefonda esa
+        u yerdan olib tashlangan (joy tor). Pastda turgani to'g'ri:
+        bu kunlik ish emas, bir marta tanlanadigan sozlama.
+      */}
+      <div className="mt-5 md:hidden">
+        <ThemeSwitch />
+      </div>
     </>
   )
 }
@@ -422,7 +433,8 @@ function TodayScheduleCard() {
       <div className="p-5 sm:p-6 sm:pb-4">
         <CardHeader
           title={t('dash.schedule.title')}
-          subtitle={loading ? undefined : `${rows.length}`}
+          subtitle={loading ? undefined : t('dash.schedule.count', { count: rows.length })}
+          inlineAction
           action={
             <Link
               to="/appointments"
@@ -472,14 +484,31 @@ function TodayScheduleCard() {
                   <span className="block truncate text-subhead font-medium text-label">
                     {appointment.patient.fullName}
                   </span>
-                  <span className="block truncate text-caption text-label-tertiary">
-                    {appointment.doctor.fullName} · {tService(appointment.service.name)}
+                  {/*
+                    Telefonda holat nishoni IKKINCHI QATORDA.
+
+                    Yonma-yon turganda bemor ismiga 110px qolib,
+                    "Nilufar U..." bo'lardi — jadvaldagi eng muhim
+                    so'z esa aynan ism.
+                  */}
+                  <span className="mt-0.5 flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate text-caption text-label-tertiary">
+                      {appointment.doctor.fullName} · {tService(appointment.service.name)}
+                    </span>
+                    {/* `hidden` o'ramga — `Badge` ning `inline-flex`i uni bosib ketardi */}
+                    <span className="shrink-0 sm:hidden">
+                      <Badge tone={APPOINTMENT_TONE[appointment.status]} dot>
+                        {t(APPOINTMENT_LABEL[appointment.status])}
+                      </Badge>
+                    </span>
                   </span>
                 </span>
 
-                <Badge tone={APPOINTMENT_TONE[appointment.status]} dot>
-                  {t(APPOINTMENT_LABEL[appointment.status])}
-                </Badge>
+                <span className="hidden shrink-0 sm:block">
+                  <Badge tone={APPOINTMENT_TONE[appointment.status]} dot>
+                    {t(APPOINTMENT_LABEL[appointment.status])}
+                  </Badge>
+                </span>
               </button>
             </li>
           ))}

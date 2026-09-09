@@ -140,6 +140,7 @@ export const dict: Dict = {
   'dash.kpi.remaining': 'осталось {count}',
   'dash.revenue.title': 'Обзор выручки',
   'dash.schedule.title': 'Расписание на сегодня',
+  'dash.schedule.count': 'приёмов: {count}',
   'dash.schedule.empty': 'На сегодня приёмов нет',
   'dash.performance.title': 'Показатели клиники',
   'dash.followUps.title': 'Ожидают повторного визита',

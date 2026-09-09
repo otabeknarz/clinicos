@@ -156,32 +156,43 @@ export function StatStrip({
               index > 0 && 'border-l-[0.5px] border-separator',
             )}
           >
-            <p className="truncate text-caption text-label-tertiary">{item.label}</p>
             {/*
-              Raqam va ikonka BIR QATORDA, ikki chetda. Ikonka pastda
-              alohida turganda har katak uch qavat bo'lib, blok
-              kerakmagan balandlikni olardi.
+              IKONKA YORLIQ YONIDA, RAQAM YONIDA EMAS.
+
+              Raqam yonida turganda uch ustunli blokda katakka ~95px
+              qolib, "24.6M so'm" — ya'ni pul summasi — "24.6..."
+              bo'lib kesilardi. Yorliq esa allaqachon ikkinchi
+              darajali: u qisqarsa ma'no yo'qolmaydi, raqam
+              qisqarsa yo'qoladi.
             */}
-            <div className="mt-1.5 flex items-end justify-between gap-1">
-              <p className="flex min-w-0 items-baseline gap-0.5">
-                <span className="truncate text-title-3 tnum font-bold text-label">
-                  {item.value}
-                </span>
-                {item.unit ? (
-                  <span className="text-caption-2 text-label-tertiary">{item.unit}</span>
-                ) : null}
-              </p>
+            <p className="flex items-center gap-1.5">
               {item.icon ? (
                 <span
                   className={cn(
-                    'mb-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
+                    'flex h-4 w-4 shrink-0 items-center justify-center rounded-full',
                     TONE_CHIP[item.tone ?? 'accent'],
                   )}
                 >
                   {item.icon}
                 </span>
               ) : null}
-            </div>
+              <span className="truncate text-caption text-label-tertiary">{item.label}</span>
+            </p>
+            {/*
+              Telefonda raqam kichikroq: uch ustunga bo'linganda
+              katakka ~70px qoladi va 20px li "232.4M" sig'masdi.
+              Kompyuterda joy bor — u yerda to'liq o'lchamda.
+            */}
+            <p className="mt-1.5 flex items-baseline gap-0.5">
+              <span className="truncate text-callout tnum font-bold text-label sm:text-title-3">
+                {item.value}
+              </span>
+              {item.unit ? (
+                <span className="shrink-0 text-caption-2 text-label-tertiary">
+                  {item.unit}
+                </span>
+              ) : null}
+            </p>
           </div>
         ))}
       </div>
