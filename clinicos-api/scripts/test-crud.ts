@@ -812,6 +812,79 @@ async function main() {
     }
   }
 
+  /* ---------------- Klinika bo'limlari ---------------- */
+  /*
+    O'chirilgan bo'lim ruxsat yo'qligi bilan bir xil narsa emas:
+    egasida `ward.manage` bor, lekin stomatologiyada statsionar yo'q.
+    Shuning uchun tekshiruv IKKITA joyda bo'lishi kerak — sessiyadagi
+    ruxsatlar ro'yxatida va qorovulda.
+  */
+  console.log('\nKlinika bo‘limlari (platforma)')
+  const ownerSession = await call('POST', '/auth/login', undefined, {
+    email: ACCOUNTS.owner,
+    password: PASSWORD,
+  })
+  const mainClinicId: string | undefined = ownerSession.data?.user?.clinicId
+  check('klinika id topildi', Boolean(mainClinicId))
+  check(
+    'boshida statsionar ruxsati bor',
+    (ownerSession.data?.permissions ?? []).includes('ward.view'),
+  )
+
+  if (mainClinicId) {
+    const off = await call('PATCH', `/platform/tenants/${mainClinicId}/modules`, tokens.admin, {
+      disabledModules: ['ward'],
+    })
+    check('bo‘lim o‘chirildi', off.status === 200, short(off.data))
+    check(
+      '  javobda qaytdi',
+      (off.data?.disabledModules ?? []).includes('ward'),
+      short(off.data?.disabledModules),
+    )
+
+    const after = await call('POST', '/auth/login', undefined, {
+      email: ACCOUNTS.owner,
+      password: PASSWORD,
+    })
+    check(
+      '  sessiyada ruxsat YO‘Q',
+      !(after.data?.permissions ?? []).includes('ward.view'),
+    )
+    check(
+      '  qolgan ruxsatlar joyida',
+      (after.data?.permissions ?? []).includes('patients.view'),
+    )
+
+    const blocked = await call('GET', '/ward/rooms', after.data?.token)
+    check('  endpoint 403 qaytardi', blocked.status === 403, short(blocked.data))
+
+    const open = await call('GET', '/patients?page=1', after.data?.token)
+    check('  boshqa bo‘lim ochiq', open.status === 200, short(open.data))
+
+    /* Boshqa klinikaga ta'sir qilmasligi kerak */
+    const otherClinic = await call('POST', '/auth/login', undefined, {
+      email: 'owner@salomat.uz',
+      password: PASSWORD,
+    })
+    check(
+      '  boshqa klinika tegilmadi',
+      (otherClinic.data?.permissions ?? []).includes('ward.view'),
+    )
+
+    /* Qaytarib qo'yamiz — keyingi ishga tushirish toza boshlansin */
+    const on = await call('PATCH', `/platform/tenants/${mainClinicId}/modules`, tokens.admin, {
+      disabledModules: [],
+    })
+    check('bo‘lim qaytarildi', on.status === 200, short(on.data))
+
+    const restored = await call('POST', '/auth/login', undefined, {
+      email: ACCOUNTS.owner,
+      password: PASSWORD,
+    })
+    const reopened = await call('GET', '/ward/rooms', restored.data?.token)
+    check('  endpoint yana ochiq', reopened.status === 200, short(reopened.data))
+  }
+
   /* ---------------- Egasining o'z sahifalari ---------------- */
   /*
     "Mening profilim" va "Mening ish jadvalim" xodim yozuviga

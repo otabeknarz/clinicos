@@ -1255,6 +1255,8 @@ function toApiTenant(
     subscribedAt: toApiDate(row.subscribedAt),
     nextInvoiceAt: toApiDate(row.nextInvoiceAt),
     suspendReason: row.suspendReason,
+    /* Shu klinikada o'chirilgan bo'limlar — platforma paneli shuni belgilaydi */
+    disabledModules: row.clinic.disabledModules,
     usage,
     lastActiveAt: toApiDateTime(row.lastActiveAt),
     createdAt: toApiDateTime(row.createdAt)!,
