@@ -10,6 +10,7 @@ import { cn } from '@/lib/cn'
 import { rangeFromPreset } from '@/lib/dates'
 import { money, moneyShort, percent } from '@/lib/format'
 import { useAsync } from '@/lib/useAsync'
+import { cashGapHint, cashGapTone } from '@/lib/status'
 import { useI18n } from '@/i18n'
 
 /**
@@ -114,18 +115,34 @@ export function CashMonitorCard() {
 
   if (loading || !data) return <CardSkeleton className="min-h-44" />
 
-  const alarming = data.gap > 0
+  /*
+    UCH HOLAT: pul yetishmaydi, hisob to'g'ri, kassada ortiqcha.
+    Ilgari faqat `gap > 0` xavf deb belgilanardi va ortiqcha pul
+    yashil chiqib, "hammasi joyida" degan taassurot berardi.
+  */
+  const tone = cashGapTone(data.gap)
+  const clean = tone === 'ok'
   const collectedPct = data.expected ? (data.collected / data.expected) * 100 : 100
 
   return (
-    <Card className={cn('min-w-0', alarming && 'ring-1 ring-inset ring-bad/25')}>
+    <Card
+      className={cn(
+        'min-w-0',
+        tone === 'bad' && 'ring-1 ring-inset ring-bad/25',
+        tone === 'warn' && 'ring-1 ring-inset ring-warn/25',
+      )}
+    >
       <CardHeader
         title={
           <span className="inline-flex items-center gap-2">
             <span
               className={cn(
                 'flex h-6 w-6 items-center justify-center rounded-[7px]',
-                alarming ? 'bg-bad-soft text-bad' : 'bg-ok-soft text-ok',
+                tone === 'bad'
+                  ? 'bg-bad-soft text-bad'
+                  : tone === 'warn'
+                    ? 'bg-warn-soft text-warn'
+                    : 'bg-ok-soft text-ok',
               )}
             >
               <ShieldCheck size={14} />
@@ -147,14 +164,20 @@ export function CashMonitorCard() {
 
       <div className="mt-4 flex items-baseline gap-2">
         <span
-          className={cn('text-title-1 font-bold tnum', alarming ? 'text-bad' : 'text-ok')}
+          className={cn(
+            'text-title-1 font-bold tnum',
+            tone === 'bad' ? 'text-bad' : tone === 'warn' ? 'text-warn' : 'text-ok',
+          )}
         >
-          {data.gap === 0 ? t('cash.gapOk') : money(data.gap)}
+          {/* Minus belgisi tushiriladi — yo'nalishni ostidagi izoh aytadi */}
+          {clean ? t('cash.gapOk') : money(Math.abs(data.gap))}
         </span>
       </div>
-      <p className="mt-1 text-caption text-label-tertiary">{t('cash.gap')}</p>
+      <p className="mt-1 text-caption text-label-tertiary">
+        {clean ? t('cash.gap') : t(cashGapHint(data.gap))}
+      </p>
 
-      <ProgressBar value={collectedPct} tone={alarming ? 'warn' : 'ok'} className="mt-3" />
+      <ProgressBar value={collectedPct} tone={clean ? 'ok' : 'warn'} className="mt-3" />
 
       <dl className="mt-4 grid grid-cols-3 gap-3">
         <Figure

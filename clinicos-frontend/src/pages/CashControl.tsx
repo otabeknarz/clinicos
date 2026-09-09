@@ -21,6 +21,7 @@ import type { Column } from '@/components/ui/Table'
 import { cn } from '@/lib/cn'
 import { rangeFromPreset } from '@/lib/dates'
 import { dateShort, money, moneyShort } from '@/lib/format'
+import { cashGapHint, cashGapTone } from '@/lib/status'
 import { useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import type { DateRange, DateRangePreset, ShiftClosure } from '@/types/models'
@@ -198,45 +199,61 @@ export function CashControlPage() {
 /* ------------------------------------------------------------------ */
 
 /**
- * Eng muhim raqam. Musbat farq = kassaga yetib kelmagan pul.
- * Shuning uchun u alohida ajratib ko'rsatiladi.
+ * Eng muhim raqam — kassa farqi.
+ *
+ * UCH HOLAT: pul yetishmaydi (qizil), hisob to'g'ri (yashil), kassada
+ * ortiqcha (sariq). Uchinchisi ilgari yashil chiqardi — izohi
+ * `cashGapTone` da.
  */
 function GapCard({ gap }: { gap: number }) {
   const { t } = useI18n()
-  // Kichik farq normal (yaxlitlash, chegirma). 1% dan oshsa — signal.
-  const alarming = gap > 0
+  const tone = cashGapTone(gap)
+  const clean = tone === 'ok'
 
   return (
     <div
       className={cn(
-        'card squircle p-5',
-        alarming && 'ring-1 ring-inset ring-bad/30',
+        'card squircle p-4 sm:p-5',
+        tone === 'bad' && 'ring-1 ring-inset ring-bad/30',
+        tone === 'warn' && 'ring-1 ring-inset ring-warn/30',
       )}
     >
       <div className="flex items-center gap-2">
         <span
           className={cn(
             'flex h-6 w-6 items-center justify-center rounded-[7px]',
-            alarming ? 'bg-bad-soft text-bad' : 'bg-ok-soft text-ok',
+            GAP_CHIP[tone],
           )}
         >
-          {alarming ? <ShieldCheck size={14} /> : <CheckCircle2 size={14} />}
+          {clean ? <CheckCircle2 size={14} /> : <ShieldCheck size={14} />}
         </span>
         <p className="text-footnote text-label-secondary">{t('cash.gap')}</p>
       </div>
 
-      <p
-        className={cn(
-          'mt-2.5 text-title-2 font-bold tnum',
-          alarming ? 'text-bad' : 'text-ok',
-        )}
-      >
-        {gap === 0 ? t('cash.gapOk') : money(gap)}
+      <p className={cn('mt-2.5 text-title-2 font-bold tnum', GAP_TEXT[tone])}>
+        {/*
+          Ortiqcha pulda MINUS BELGISI TUSHIRILADI: "−29 808 523"
+          o'zi "kam" degan taassurot berardi, holbuki teskarisi.
+          Yo'nalishni ostidagi izoh aytadi.
+        */}
+        {clean ? t('cash.gapOk') : money(Math.abs(gap))}
       </p>
 
-      <p className="mt-1 text-caption text-label-tertiary">{t('cash.expectedHint')}</p>
+      <p className="mt-1 text-caption text-label-tertiary">{t(cashGapHint(gap))}</p>
     </div>
   )
+}
+
+const GAP_CHIP: Record<string, string> = {
+  ok: 'bg-ok-soft text-ok',
+  warn: 'bg-warn-soft text-warn',
+  bad: 'bg-bad-soft text-bad',
+}
+
+const GAP_TEXT: Record<string, string> = {
+  ok: 'text-ok',
+  warn: 'text-warn',
+  bad: 'text-bad',
 }
 
 /* ------------------------------------------------------------------ */

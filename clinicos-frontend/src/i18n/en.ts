@@ -1167,6 +1167,8 @@ export const dict: Dict = {
   'cash.collected': 'Collected',
   'cash.gap': 'Gap',
   'cash.gapOk': 'No gap',
+  'cash.gapShort': 'This much never reached the register',
+  'cash.gapSurplus': 'Surplus in the register — needs checking',
   'cash.unpaidVisits': 'Unpaid visits',
   'cash.pending': 'Pending payments',
   'cash.refunds': 'Refunds',

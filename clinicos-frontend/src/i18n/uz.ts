@@ -1216,6 +1216,9 @@ export const dict: Dict = {
   'cash.collected': 'Kassaga tushgan',
   'cash.gap': 'Farq',
   'cash.gapOk': 'Farq yo’q',
+  /* Farq qaysi tomonga og'gani — raqamning o'zi buni aytmaydi */
+  'cash.gapShort': 'Shuncha pul kassaga yetib kelmagan',
+  'cash.gapSurplus': 'Kassada shuncha ortiqcha — tekshirish kerak',
   'cash.unpaidVisits': 'To’lanmagan tashriflar',
   'cash.pending': 'Kutilayotgan to’lovlar',
   'cash.refunds': 'Qaytarilganlar',

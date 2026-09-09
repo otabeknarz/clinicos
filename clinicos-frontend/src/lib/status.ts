@@ -96,3 +96,32 @@ export function deltaTone(changePct: number | null, lowerIsBetter = false): Tone
   const good = lowerIsBetter ? changePct < 0 : changePct > 0
   return good ? 'ok' : 'bad'
 }
+
+/**
+ * KASSA FARQI — UCH HOLAT, IKKITA EMAS.
+ *
+ * `gap = kutilgan − yig'ilgan`:
+ *
+ *   0 dan katta  — pul kassaga yetib kelmagan. Eng og'iri, qizil.
+ *   0            — hisob to'g'ri keldi. Yashil.
+ *   0 dan kichik — kassada ORTIQCHA pul bor. Bu ham nomuvofiqlik:
+ *                  yozilmagan to'lov, noto'g'ri qaytim yoki xato
+ *                  kiritish. Sariq — tekshirish kerak.
+ *
+ * NEGA MUHIM: ilgari shart `gap > 0` edi va qolgan hammasi yashil
+ * chiqardi. Ya'ni kassada 29 million ortiqcha turgani "hammasi joyida"
+ * deb ko'rsatilardi. Kassa nazoratining butun ma'nosi esa
+ * NOMUVOFIQLIKNI ko'rsatishda — qaysi tomonga og'ishidan qat'i nazar.
+ */
+export function cashGapTone(gap: number): Tone {
+  if (gap > 0) return 'bad'
+  if (gap < 0) return 'warn'
+  return 'ok'
+}
+
+/** Farq nimani anglatishini aytadigan izoh kaliti */
+export function cashGapHint(gap: number): string {
+  if (gap > 0) return 'cash.gapShort'
+  if (gap < 0) return 'cash.gapSurplus'
+  return 'cash.expectedHint'
+}

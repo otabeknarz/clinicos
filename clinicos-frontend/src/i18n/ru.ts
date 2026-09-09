@@ -1171,6 +1171,8 @@ export const dict: Dict = {
   'cash.collected': 'Поступило в кассу',
   'cash.gap': 'Расхождение',
   'cash.gapOk': 'Расхождений нет',
+  'cash.gapShort': 'Эта сумма не дошла до кассы',
+  'cash.gapSurplus': 'В кассе излишек — нужна проверка',
   'cash.unpaidVisits': 'Неоплаченные визиты',
   'cash.pending': 'Платежи в ожидании',
   'cash.refunds': 'Возвраты',
