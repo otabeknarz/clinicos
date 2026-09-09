@@ -1067,6 +1067,7 @@ export const dict: Dict = {
   'doctorHome.today': 'Bugungi qabullar',
   'doctorHome.todayCount': '{count} ta qabul',
   'doctorHome.todayEmpty': 'Bugunga qabul yo’q',
+  'doctorHome.recordVisitShort': 'Yozish',
   'doctorHome.recordVisit': 'Tashrifni yozish',
   'doctorHome.feedback': 'Siz haqingizdagi fikrlar',
   'doctorHome.feedbackHint': 'Anonim — kim yozgani ko’rsatilmaydi',

@@ -82,9 +82,18 @@ export function AppointmentsPage() {
   const rows = data?.items ?? []
 
   async function changeStatus(id: string, next: AppointmentStatus) {
-    await setAppointmentStatus(id, next)
-    toast.success(t('toast.updated'))
-    reload()
+    try {
+      await setAppointmentStatus(id, next)
+      toast.success(t('toast.updated'))
+      reload()
+    } catch (e) {
+      /*
+        Server xabarini O'ZINI ko'rsatamiz: "tashrifsiz qabul
+        yakunlanmaydi" degan sabab umumiy "xatolik" dan foydaliroq —
+        odam nima qilishi kerakligini biladi.
+      */
+      toast.error(e instanceof Error ? e.message : t('toast.error'))
+    }
   }
 
   const columns: Column<AppointmentExpanded>[] = [

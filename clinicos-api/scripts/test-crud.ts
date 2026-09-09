@@ -467,6 +467,23 @@ async function main() {
       })
       check('qabul qisman tahrir', only.status === 200, short(only.data))
 
+      /*
+        TASHRIFSIZ YAKUNLANMAYDI.
+
+        Tashrif yozilmagan qabulni "tugallandi" deb yopib bo'lmaydi:
+        aks holda bemor kelgan, ko'rilgan, lekin kartochkasida hech
+        narsa qolmagan bo'lardi. Yozuv yagona yo'l bilan tugaydi —
+        shifokor tashrifni yozadi.
+      */
+      const early = await call('POST', `/appointments/${appointmentId}/status`, reception, {
+        status: 'completed',
+      })
+      check(
+        'tashrifsiz yakunlash RAD ETILDI',
+        early.status === 400,
+        `status: ${early.status} ${short(early.data)}`,
+      )
+
       const visit = await call('POST', '/visits', doctor, {
         appointmentId,
         complaint: 'bosh og‘rig‘i',
@@ -474,6 +491,14 @@ async function main() {
         treatment: 'dam olish',
       })
       check('tashrif yozildi (shifokor)', visit.status < 300, short(visit.data))
+
+      /* Tashrif qabulni O'ZI yakunlaydi — alohida amal kerak emas */
+      const after = await call('GET', `/appointments/${appointmentId}`, reception)
+      check(
+        '  qabul o‘z-o‘zidan yakunlandi',
+        after.data?.status === 'completed',
+        `holat: ${after.data?.status}`,
+      )
     }
   }
 

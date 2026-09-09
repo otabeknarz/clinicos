@@ -183,11 +183,24 @@ export async function setAppointmentStatus(
   const current = db.appointments.find(id, clinicId)
   if (!current) throw new Error('Qabul topilmadi')
 
+  /*
+    TASHRIFSIZ YAKUNLANMAYDI — serverdagi qoidaning nusxasi.
+
+    Bu tekshiruv demo rejimga ATAYLAB takrorlangan: qoida faqat
+    serverda tursa, interfeys demo'da "ishlaydi" va nosozlik faqat
+    haqiqiy backend ulanganda chiqadi.
+  */
   const now = new Date()
   const patch: Partial<Appointment> = { status }
 
   if (status === 'checked_in') patch.checkedInAt = now.toISOString()
   if (status === 'completed') {
+    const visit = db.visits
+      .all(clinicId)
+      .find((v) => v.appointmentId === id)
+    if (!visit) {
+      throw new Error('Avval tashrif yozilishi kerak — tashrifsiz qabul yakunlanmaydi')
+    }
     patch.completedAt = now.toISOString()
     if (!current.checkedInAt) patch.checkedInAt = addMinutes(now, -5).toISOString()
   }

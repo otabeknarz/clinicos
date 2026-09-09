@@ -191,6 +191,18 @@ reception collects it. The payment ceiling then comes from `Visit.price` instead
 such a payment **must** carry `appointmentId` — without it there is no ceiling at all. Loyalty
 discounts do not apply (the doctor already priced the case), and `DOCTOR_SET` forces `POSTPAID`.
 
+**An appointment cannot be completed without a visit.** `setStatus('completed')` rejects the
+change when no `Visit` row points at the appointment — a completed appointment with no medical
+record means the patient was seen and nothing was written down, and the next doctor has no history
+to read. The only path to `COMPLETED` is `visits.service.create`, which flips the appointment
+itself inside the same transaction; the check in `appointments.service` exists to stop anyone
+routing around that (the receptionist and owner hold `appointments.edit`, the doctor does not).
+The doctor's home therefore has one button, "record visit" — the old "complete" button beside it
+called an endpoint the doctor has no permission for, so it 403'd against a real backend while
+appearing to work in demo mode. The receptionist's queue lost its complete button for the same
+reason: the row leaves the queue on its own once the visit is saved. The mock layer repeats the
+rule deliberately — kept server-only, the UI would look fine in demo mode and break on the API.
+
 **A visit can carry images** (`VisitImage`) — X-rays, tooth photos. Attached only while the visit is
 being written, because there is no `PATCH /visits/:id` and there should not be. It is a separate
 table rather than a `String[]` on `Visit` because `SignedUrlInterceptor` signs a **string** field

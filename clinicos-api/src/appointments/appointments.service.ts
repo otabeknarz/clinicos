@@ -234,6 +234,32 @@ export class AppointmentsService {
       )
     }
 
+    /*
+      TASHRIFSIZ YAKUNLANMAYDI.
+
+      Qabul "tugallangan" bo'lsa-yu, tibbiy yozuv bo'lmasa — bemor
+      kelgan, ko'rilgan, lekin kartochkasida hech narsa qolmagan
+      degani. Keyingi safar shifokor o'tgan safar nima bo'lganini
+      bilmaydi va bemor tarixi teshik bo'lib qoladi.
+
+      Yozuv YAGONA yo'l bilan tugaydi: shifokor tashrifni yozadi va
+      `visits.service` qabulni o'zi `COMPLETED` ga o'tkazadi. Bu
+      yerdagi tekshiruv esa o'sha yo'lni chetlab o'tishga yo'l
+      qo'ymaydi — registrator ham, egasi ham qabulni "tugallandi"
+      deb yopib qo'ya olmaydi.
+    */
+    if (dto.status === 'completed') {
+      const visit = await this.db.visit.findFirst({
+        where: { appointmentId: id },
+        select: { id: true },
+      })
+      if (!visit) {
+        throw new BadRequestException(
+          'Avval tashrif yozilishi kerak — tashrifsiz qabul yakunlanmaydi',
+        )
+      }
+    }
+
     const now = new Date()
     const data: Prisma.AppointmentUpdateInput = { status: toDb(dto.status) }
 

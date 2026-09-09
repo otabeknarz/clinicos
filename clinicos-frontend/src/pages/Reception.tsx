@@ -614,13 +614,21 @@ function QueueCard({
   const navigate = useNavigate()
   const [busy, setBusy] = useState<string | null>(null)
 
-  async function advance(item: ReceptionQueueItem, status: 'completed' | 'no_show') {
+  /*
+    Navbatdan chiqarish — FAQAT "kelmadi".
+
+    "Yakunlash" ham shu yerda edi, lekin qabulni yakunlash endi
+    tashrif yozilishini talab qiladi va uni SHIFOKOR yozadi. Ya'ni
+    registrator bosganda tugma har safar xato qaytarardi. Qabul
+    tashrif saqlangach o'z-o'zidan navbatdan chiqadi.
+  */
+  async function markNoShow(item: ReceptionQueueItem) {
     setBusy(item.appointmentId)
     try {
-      await setAppointmentStatus(item.appointmentId, status)
+      await setAppointmentStatus(item.appointmentId, 'no_show')
       onReload()
-    } catch {
-      toast.error(t('toast.error'))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('toast.error'))
     } finally {
       setBusy(null)
     }
@@ -700,26 +708,16 @@ function QueueCard({
                       </Button>
                     </>
                   ) : (
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Button
-                        variant="gray"
-                        size="sm"
-                        icon={<UserX size={14} />}
-                        disabled={busy === item.appointmentId}
-                        onClick={() => advance(item, 'no_show')}
-                      >
-                        <span className="hidden sm:inline">{t('reception.noShow')}</span>
-                      </Button>
-                      <Button
-                        variant="tinted"
-                        size="sm"
-                        icon={<CheckCircle2 size={14} />}
-                        loading={busy === item.appointmentId}
-                        onClick={() => advance(item, 'completed')}
-                      >
-                        {t('reception.complete')}
-                      </Button>
-                    </div>
+                    <Button
+                      variant="gray"
+                      size="sm"
+                      icon={<UserX size={14} />}
+                      className="shrink-0"
+                      loading={busy === item.appointmentId}
+                      onClick={() => markNoShow(item)}
+                    >
+                      {t('reception.noShow')}
+                    </Button>
                   )}
                 </div>
               </li>

@@ -13,7 +13,7 @@ import {
   UserX,
 } from 'lucide-react'
 
-import { listTodayAppointments, setAppointmentStatus } from '@/api/appointments'
+import { listTodayAppointments } from '@/api/appointments'
 import { getDoctor } from '@/api/doctors'
 import { listRecentFeedbackForDoctor } from '@/api/feedback'
 import { listFollowUpsDue } from '@/api/visits'
@@ -33,7 +33,6 @@ import type { AppointmentExpanded } from '@/types/models'
 import { useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
-import { useToast } from '@/store/toast-context'
 
 /** Tashrifni yozish oynasi og'ir — talab bo'yicha yuklanadi */
 const VisitFormModal = lazy(() =>
@@ -222,27 +221,13 @@ function KpiRow({ doctorId }: { doctorId: string }) {
  */
 function TodayCard() {
   const { t, tService } = useI18n()
-  const toast = useToast()
   const navigate = useNavigate()
 
-  const [busy, setBusy] = useState<string | null>(null)
   const [visitFor, setVisitFor] = useState<AppointmentExpanded | null>(null)
 
   const { data, loading, error, reload } = useAsync(() => listTodayAppointments(), [])
 
   const rows = (data ?? []).filter((a) => a.status !== 'cancelled')
-
-  async function complete(id: string) {
-    setBusy(id)
-    try {
-      await setAppointmentStatus(id, 'completed')
-      reload()
-    } catch {
-      toast.error(t('toast.error'))
-    } finally {
-      setBusy(null)
-    }
-  }
 
   return (
     <Card padded={false} className="min-w-0">
@@ -327,26 +312,38 @@ function TodayCard() {
                     </Badge>
                   </span>
 
+                  {/*
+                    BITTA TUGMA — TASHRIF YOZISH.
+
+                    Yonida "Yakunlash" turardi va u ikki jihatdan
+                    noto'g'ri edi. Birinchisi: shifokorda
+                    `appointments.edit` ruxsati yo'q, ya'ni tugma
+                    haqiqiy serverda 403 qaytarardi — demo rejimda
+                    bu ko'rinmasdi. Ikkinchisi: u yozuvsiz yakunlash
+                    yo'lini ochib turardi, holbuki tashrifsiz
+                    yakunlangan qabul bemor tarixida teshik qoldiradi.
+
+                    Tashrif saqlangach `visits.service` qabulni o'zi
+                    `COMPLETED` ga o'tkazadi — ya'ni bitta amal
+                    ikkalasini ham bajaradi.
+                  */}
                   {done ? null : (
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Button
-                        variant="gray"
-                        size="sm"
-                        icon={<ClipboardList size={14} />}
-                        onClick={() => setVisitFor(appointment)}
-                      >
-                        <span className="hidden sm:inline">{t('doctorHome.recordVisit')}</span>
-                      </Button>
-                      <Button
-                        variant="tinted"
-                        size="sm"
-                        icon={<CheckCircle2 size={14} />}
-                        loading={busy === appointment.id}
-                        onClick={() => complete(appointment.id)}
-                      >
-                        {t('reception.complete')}
-                      </Button>
-                    </div>
+                    <Button
+                      variant="tinted"
+                      size="sm"
+                      icon={<ClipboardList size={14} />}
+                      className="shrink-0"
+                      onClick={() => setVisitFor(appointment)}
+                    >
+                      {/*
+                        Telefonda QISQA yozuv: "Tashrifni yozish"
+                        140px olib, bemor ismini "Umi..." qilib
+                        qo'yardi. Ism esa shifokor uchun qatordagi
+                        eng muhim so'z.
+                      */}
+                      <span className="sm:hidden">{t('doctorHome.recordVisitShort')}</span>
+                      <span className="hidden sm:inline">{t('doctorHome.recordVisit')}</span>
+                    </Button>
                   )}
                 </div>
               </li>

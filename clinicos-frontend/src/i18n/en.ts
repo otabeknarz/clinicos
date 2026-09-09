@@ -1022,6 +1022,7 @@ export const dict: Dict = {
   'doctorHome.today': "Today's appointments",
   'doctorHome.todayCount': '{count} appointments',
   'doctorHome.todayEmpty': 'No appointments today',
+  'doctorHome.recordVisitShort': 'Record',
   'doctorHome.recordVisit': 'Record visit',
   'doctorHome.feedback': 'Feedback about you',
   'doctorHome.feedbackEmpty': 'No new feedback',
