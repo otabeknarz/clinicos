@@ -183,7 +183,17 @@ export function FeedbackPage() {
                 <span className="min-w-0 flex-1 truncate text-subhead text-label">
                   {row.doctorName}
                 </span>
-                <Stars value={row.average} size={13} />
+                {/*
+                  Beshta yulduz TELEFONDA CHIQMAYDI.
+
+                  Ular yonidagi "4.4" raqamini takrorlaydi, lekin 70px
+                  joy oladi va shifokorning ismi "Jasur Ibragi..."
+                  bo'lib kesilardi. Raqam aniqroq ham: yulduzchalardan
+                  4.3 va 4.4 ni ajratib bo'lmaydi.
+                */}
+                <span className="hidden shrink-0 sm:inline-flex">
+                  <Stars value={row.average} size={13} />
+                </span>
                 <StarValue value={row.average} count={row.count} />
               </li>
             ))}
