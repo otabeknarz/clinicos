@@ -312,19 +312,32 @@ function MobileNav() {
             aria-hidden
           />
 
-          <div className="animate-rise relative w-full rounded-t-[22px] bg-overlay pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg">
+          {/*
+            RO'YXAT EMAS, KATAKCHALAR.
+
+            O'n ikki band bitta ustunda turganda varaq butun ekranni
+            egallab, pastdagilariga barmoq surish kerak bo'lardi —
+            holbuki bu shunchaki menyu. Uch ustunli katakchada o'sha
+            o'n ikkitasi to'rt qatorga sig'adi va hammasi bir qarashda
+            ko'rinadi.
+
+            Ko'rinishi bosh sahifadagi "Tez kirish" bilan bir xil:
+            ikkalasi ham "bo'limga o'tish" degan bir ishni bajaradi,
+            ya'ni bir xil ko'rinishi kerak.
+          */}
+          <div className="animate-rise relative w-full rounded-t-[26px] bg-overlay pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg">
             {/* Tortish chizig'i — iOS varaqlaridagi kabi */}
-            <div className="flex justify-center pb-1 pt-2.5">
+            <div className="flex justify-center pb-2 pt-2.5">
               <span className="h-1 w-9 rounded-full bg-fill-2" />
             </div>
 
-            <div className="max-h-[70dvh] overflow-y-auto scroll-slim px-3 pb-3">
+            <div className="max-h-[72dvh] overflow-y-auto scroll-slim px-4 pb-3">
               {overflow.map((group) => (
-                <div key={group.labelKey} className="mb-3 last:mb-0">
-                  <p className="px-3 pb-1 pt-2 text-caption-2 font-semibold tracking-wider text-label-tertiary">
+                <div key={group.labelKey} className="mb-2 last:mb-0">
+                  <p className="pb-1.5 pt-1 text-caption-2 font-semibold uppercase tracking-wider text-label-tertiary">
                     {t(group.labelKey)}
                   </p>
-                  <ul>
+                  <ul className="grid grid-cols-3 gap-2">
                     {group.items.map((item) => (
                       <li key={item.to}>
                         <NavLink
@@ -333,14 +346,41 @@ function MobileNav() {
                           onClick={() => setMoreOpen(false)}
                           className={({ isActive }) =>
                             cn(
-                              'flex min-h-[48px] items-center gap-3 rounded-[12px] px-3',
-                              'text-body font-medium transition-colors duration-150',
-                              isActive ? 'bg-accent-soft text-accent' : 'text-label',
+                              'flex flex-col items-center gap-1.5 rounded-[16px] px-1 py-2.5',
+                              'transition-colors duration-200 ease-apple',
+                              isActive ? 'bg-navy-soft' : 'hover:bg-fill-4',
                             )
                           }
                         >
-                          <item.icon size={20} strokeWidth={1.9} className="shrink-0" />
-                          <span className="truncate">{t(item.labelKey)}</span>
+                          {({ isActive }) => (
+                            <>
+                              <span
+                                className={cn(
+                                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
+                                  'transition-colors duration-200',
+                                  isActive
+                                    ? 'bg-navy text-white'
+                                    : 'bg-navy-soft text-navy dark:text-white',
+                                )}
+                              >
+                                <item.icon size={20} strokeWidth={1.9} />
+                              </span>
+                              {/*
+                                Yozuv KESILMAYDI: "Mening ish jadvalim"
+                                kabi nom ikki qatorga tushadi, lekin
+                                butunicha o'qiladi — menyuda bandning
+                                nomi yagona ma'lumot.
+                              */}
+                              <span
+                                className={cn(
+                                  'text-center text-caption-2 font-medium leading-tight',
+                                  isActive ? 'text-label' : 'text-label-secondary',
+                                )}
+                              >
+                                {t(item.labelKey)}
+                              </span>
+                            </>
+                          )}
                         </NavLink>
                       </li>
                     ))}
