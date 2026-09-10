@@ -33,7 +33,7 @@ npm run dev              # nest start --watch
 
 | Command | Purpose |
 |---|---|
-| `npm run check` | typecheck → check:permissions → check:endpoints → check:dto → build. Run before shipping. |
+| `npm run check` | typecheck → check:permissions → check:endpoints → check:dto → build → check:boot. Run before shipping. |
 | `npm run test:isolation` | **The most important test.** Cross-tenant leak check. Needs a seeded DB. |
 | `npm run test:crud` | Write-path regression: every PATCH is sent with one field and the rest must survive. Needs a running, seeded server. |
 | `npm run check:dto` | Create/update DTO pairs must not drift. Static. |
@@ -458,6 +458,12 @@ Path alias `@/` → `src/`, configured in both `vite.config.ts` and `tsconfig.ap
   it for date math — the product is single-country by design. Tests must build dates
   in local time too: `new Date().toISOString().slice(0,10)` is UTC and disagrees with the server
   after 19:00 local, which made `test:crud` count 2 ward days instead of 3.
+- **NestJS wiring is checked at boot, not at compile time.** `tsc` and `nest build` both pass on a
+  module that is missing a provider; the app then dies on startup with `Nest can't resolve
+  dependencies of the X`. That reached production once (`PatientModule` used `JwtService`, which
+  `AuthModule` registers but does not export) and the container crash-looped behind a 502 while
+  every local check was green. `npm run check:boot` now starts the built app against a dummy
+  DATABASE_URL and waits for "Server tayyor" — Prisma connects lazily, so no database is needed.
 - **A page can be broken while `smoke` passes.** `smoke` only flags `>= 500`, but the frontend
   renders its error state for *any* non-OK response — a legitimate-looking 404 (`/me/profile`
   with no `Staff` row) is a dead page. When a page "just errors", check the status code, not
