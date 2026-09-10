@@ -953,8 +953,12 @@ export async function listTenantDoctors(
 
   const needle = (query.search ?? '').trim().toLowerCase()
 
+  /* O'chirilgan klinikaning shifokorlari ro'yxatda chiqmaydi */
+  const liveIds = new Set(livingTenants().map((t) => t.id))
+
   const rows = getDb()
     .tenantDoctors.allAcrossTenants()
+    .filter((d) => liveIds.has(d.tenantId))
     .filter((d) => !query.tenantId || d.tenantId === query.tenantId)
     .filter((d) => !query.specialty || d.specialty === query.specialty)
     /*
@@ -1053,8 +1057,12 @@ export async function listTenantPatients(
   const needle = (query.search ?? '').trim().toLowerCase()
   const group = AGE_GROUPS.find((g) => g.key === query.ageGroup)
 
+  /* O'chirilgan klinikaning bemorlari ham chiqmaydi */
+  const alive = new Set(livingTenants().map((t) => t.id))
+
   const rows = getDb()
     .tenantPatients.allAcrossTenants()
+    .filter((p) => alive.has(p.tenantId))
     .filter((p) => !query.tenantId || p.tenantId === query.tenantId)
     .filter((p) => !query.city || p.city === query.city)
     .filter((p) => !query.condition || p.condition === query.condition)

@@ -864,6 +864,14 @@ export class PlatformService {
 
     const where: Prisma.DoctorWhereInput = {
       AND: [
+        /*
+          O'CHIRILGAN KLINIKANING SHIFOKORLARI RO'YXATDA CHIQMAYDI.
+
+          Klinika ro'yxatdan olib tashlangan bo'lsa-yu, uning
+          shifokorlari "Ro'yxatlar" bo'limida turaversa — o'chirishning
+          ma'nosi qolmaydi va panel o'zi bilan zid bo'ladi.
+        */
+        LIVE_CLINIC,
         query.tenantId === 'all' ? {} : { clinicId: query.tenantId },
         search
           ? {
@@ -929,6 +937,8 @@ export class PlatformService {
 
     const where: Prisma.PatientWhereInput = {
       AND: [
+        /* O'chirilgan klinikaning bemorlari ham chiqmaydi */
+        LIVE_CLINIC,
         query.tenantId === 'all' ? {} : { clinicId: query.tenantId },
         search
           ? {
