@@ -188,7 +188,11 @@ export function PlatformClinicDetailPage() {
             onChangePlan={() => setChangingPlan(true)}
           />
           <OwnerCard tenant={data} />
-          <ModulesCard tenant={data} onDone={() => setVersion((v) => v + 1)} />
+          <ModulesCard
+            tenant={data}
+            plan={(plans ?? []).find((p) => p.id === data.planId) ?? null}
+            onDone={() => setVersion((v) => v + 1)}
+          />
         </div>
 
         <div className="grid content-start gap-5">
@@ -998,7 +1002,16 @@ function PlanModal({
  * bemorlar yozuvi joyida qoladi va bo'lim qayta yoqilganda hammasi
  * o'z o'rnida chiqadi.
  */
-function ModulesCard({ tenant, onDone }: { tenant: Tenant; onDone: () => void }) {
+function ModulesCard({
+  tenant,
+  plan,
+  onDone,
+}: {
+  tenant: Tenant
+  /** Obunadagi tarif — qaysi bo'lim to'langanini bilish uchun */
+  plan: Plan | null
+  onDone: () => void
+}) {
   const { t } = useI18n()
   const toast = useToast()
   const [saving, setSaving] = useState<string | null>(null)
@@ -1025,12 +1038,37 @@ function ModulesCard({ tenant, onDone }: { tenant: Tenant; onDone: () => void })
       <ul className="mt-3 space-y-1">
         {CLINIC_MODULES.map((module) => {
           const enabled = !tenant.disabledModules.includes(module)
-          return (
+
+            /*
+              TARIFGA KIRADIMI — SHU YERDA KO'RSATILADI.
+
+              Ikki xato jimgina sodir bo'lardi: tarifga kirmagan
+              bo'limni yoqib qo'yish (pulsiz berish) va to'langan
+              bo'limni o'chirib qo'yish. Endi ikkalasi ham qatorda
+              yozib turadi — qaror baribir platforma egasiniki,
+              lekin u ko'r-ko'rona bo'lmaydi.
+
+              `plan` hali yuklanmagan bo'lsa hech narsa yozilmaydi:
+              noto'g'ri ogohlantirishdan ko'ra jim turgani yaxshi.
+            */
+            const inPlan = plan?.features.includes(module) ?? null
+
+            return (
             <li key={module} className="flex items-center justify-between gap-3 py-1.5">
               <span className="min-w-0">
                 <span className="block text-subhead text-label">
                   {t(`platform.module.${module}`)}
                 </span>
+                {inPlan === false && enabled ? (
+                  <span className="block text-caption text-warn">
+                    {t('platform.moduleNotInPlan')}
+                  </span>
+                ) : null}
+                {inPlan === true && !enabled ? (
+                  <span className="block text-caption text-label-tertiary">
+                    {t('platform.modulePaidButOff')}
+                  </span>
+                ) : null}
               </span>
               <input
                 type="checkbox"

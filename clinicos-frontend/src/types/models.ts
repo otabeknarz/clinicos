@@ -61,6 +61,8 @@ export type Permission =
   | 'payments.view'
   | 'payments.create'
   | 'payments.refund'
+  /* Qarzdorlik — to'lovlardan alohida, tarifda cheklanishi uchun */
+  | 'debts.view'
   | 'debts.waive'
   | 'revenue.view'
   | 'analytics.view'
@@ -110,19 +112,18 @@ export type Permission =
  * pasaytirilsa, o'sha bo'lim yopiladi. Shuning uchun ro'yxat qisqa
  * va aniq — har biri sotilishi mumkin bo'lgan qiymat.
  */
-export type PlanFeature =
-  /** Statsionar: xonalar, koykalar, yotqizish */
-  | 'ward'
-  /** Tahlil va prognoz */
-  | 'analytics'
-  /** Kassa nazorati — kutilgan va olingan pulni solishtirish */
-  | 'cashControl'
-  /** Xodimlar: davomat, reyting, bonus, jarima */
-  | 'staff'
-  /** Ichki chat */
-  | 'chat'
-  /** Tashqi tizimlar uchun API */
-  | 'api'
+/**
+ * TARIFGA KIRADIGAN BO'LIM — klinika moduli bilan BIR XIL narsa.
+ *
+ * Ilgari bu alohida ro'yxat edi: tarifda `cashControl` va `staff`,
+ * modullarda esa `cashcontrol` va `attendance`. Bir xil narsa ikki
+ * xil atalgani uchun tarifda va'da qilingan bo'limni klinikada
+ * o'chirib bo'lmasdi, o'chiriladigan `feedback` esa tarifda umuman
+ * yo'q edi. Endi bitta lug'at: nima sotilsa, o'sha boshqariladi.
+ *
+ * `api` OLIB TASHLANDI — mahsulotda tashqi tizimlar uchun API yo'q.
+ */
+export type PlanFeature = ClinicModule
 
 export type PlanTier = 'starter' | 'standard' | 'premium'
 
@@ -193,6 +194,11 @@ export interface Plan {
     staff: number
   }
   features: PlanFeature[]
+  /**
+   * Qo'llab-quvvatlash darajasi. MODUL EMAS — yoqib-o'chiriladigan
+   * narsa emas, xizmat majburiyati.
+   */
+  supportLevel: SupportLevel
   isActive: boolean
   createdAt: ISODateTime
 }
@@ -292,9 +298,16 @@ export const CLINIC_MODULES = [
   'analytics',
   'attendance',
   'cashcontrol',
+  'calendar',
+  'debts',
+  'revenue',
 ] as const
 
 export type ClinicModule = (typeof CLINIC_MODULES)[number]
+
+/** Qo'llab-quvvatlash: navbat / 24 soat ichida / shaxsiy menejer */
+export const SUPPORT_LEVELS = ['queue', 'fast', 'manager'] as const
+export type SupportLevel = (typeof SUPPORT_LEVELS)[number]
 
 /** Yangi klinika qo’shishda tanlanadi — faqat boshlang’ich to’plam uchun */
 export const CLINIC_KINDS = ['general', 'dental', 'eye', 'lab'] as const

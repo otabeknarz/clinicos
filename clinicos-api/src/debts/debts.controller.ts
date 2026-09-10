@@ -21,7 +21,7 @@ export class DebtsController {
 
   // GET /debts
   @Get()
-  @RequirePermission('payments.view')
+  @RequirePermission('debts.view')
   list() {
     return this.debts.list()
   }

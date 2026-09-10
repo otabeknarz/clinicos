@@ -44,6 +44,12 @@ export type Permission =
   | 'payments.view'
   | 'payments.create'
   | 'payments.refund'
+  /* Qarzdorlik — to'lovlardan ALOHIDA ruxsat: ilgari ikkalasi
+     `payments.view` da edi va qarzdorlikni tarifdan chiqarib
+     bo'lmasdi — uni o'chirsak to'lovlar ham yopilardi.
+     IZOHDA BO'SH QATOR BO'LMASIN: `check:permissions` ro'yxatni
+     birinchi bo'sh qatorgacha o'qiydi. */
+  | 'debts.view'
   | 'debts.waive'
   | 'revenue.view'
   | 'analytics.view'
@@ -91,6 +97,7 @@ export const OWNER_PERMISSIONS: readonly Permission[] = [
   'services.view',
   'services.manage',
   'payments.view',
+  'debts.view',
   /*
     Qaytarish FAQAT egasida.
 
@@ -145,6 +152,7 @@ export const RECEPTIONIST_PERMISSIONS: readonly Permission[] = [
   'doctors.view',
   'services.view',
   'payments.view',
+  'debts.view',
   'payments.create',
   'ward.view',
   'ward.manage',
@@ -216,6 +224,7 @@ export const IMPERSONATION_PERMISSIONS: readonly Permission[] = [
   'doctors.view',
   'services.view',
   'payments.view',
+  'debts.view',
   'visits.view',
   'ward.view',
   'staff.view',

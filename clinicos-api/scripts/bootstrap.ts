@@ -3,6 +3,7 @@ import * as crypto from 'node:crypto'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PlanTier, PrismaClient, Role } from '@prisma/client'
 import * as argon2 from 'argon2'
+import { CLINIC_MODULES } from '../src/common/modules'
 
 /**
  * ISHLAB CHIQARISH UCHUN BOSHLANG'ICH YOZUVLAR.
@@ -111,7 +112,8 @@ async function bootstrapPlatform() {
           basePrice: 3_600_000,
           limitDoctors: 3,
           limitStaff: 10,
-          features: ['analytics'],
+          features: ['cashcontrol', 'attendance', 'chat', 'calendar'],
+          supportLevel: 'queue',
         },
         {
           tier: PlanTier.STANDARD,
@@ -119,7 +121,17 @@ async function bootstrapPlatform() {
           basePrice: 7_500_000,
           limitDoctors: 10,
           limitStaff: 40,
-          features: ['analytics', 'staff', 'cashControl', 'chat'],
+          features: [
+            'cashcontrol',
+            'attendance',
+            'chat',
+            'calendar',
+            'ward',
+            'analytics',
+            'feedback',
+            'debts',
+          ],
+          supportLevel: 'fast',
         },
         {
           tier: PlanTier.PREMIUM,
@@ -127,7 +139,8 @@ async function bootstrapPlatform() {
           basePrice: 13_500_000,
           limitDoctors: 40,
           limitStaff: 150,
-          features: ['analytics', 'staff', 'cashControl', 'chat', 'ward', 'forecast'],
+          features: [...CLINIC_MODULES],
+          supportLevel: 'manager',
         },
       ],
     })

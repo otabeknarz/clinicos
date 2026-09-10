@@ -665,6 +665,7 @@ export class PlatformService {
         limitDoctors: dto.limits?.doctors,
         limitStaff: dto.limits?.staff,
         features: dto.features,
+        supportLevel: dto.supportLevel,
         isActive: dto.isActive,
       },
     })
@@ -1497,6 +1498,7 @@ function toApiPlan(row: Plan) {
     basePrice: row.basePrice,
     limits: { doctors: row.limitDoctors, staff: row.limitStaff },
     features: row.features,
+    supportLevel: row.supportLevel,
     isActive: row.isActive,
     createdAt: toApiDateTime(row.createdAt)!,
   }

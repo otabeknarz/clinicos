@@ -1215,6 +1215,40 @@ Klinikaga alohida chegirma (platforma)')
       (otherClinic.data?.permissions ?? []).includes('ward.view'),
     )
 
+    /*
+      QARZDORLIK ALOHIDA CHEKLANADI, TO'LOVLAR OCHIQ QOLADI.
+
+      Ilgari qarzdorlar ro'yxati `payments.view` bilan ochilardi, ya'ni
+      uni tarifdan chiqarish uchun to'lovlarni ham yopish kerak edi —
+      bu esa klinikani ishlamas holga keltirardi. Endi `debts.view`
+      alohida.
+    */
+    const debtsOff = await call(
+      'PATCH',
+      `/platform/tenants/${mainClinicId}/modules`,
+      tokens.admin,
+      { disabledModules: ['debts'] },
+    )
+    check('qarzdorlik o‘chirildi', debtsOff.status === 200, short(debtsOff.data))
+
+    const afterDebts = await call('POST', '/auth/login', undefined, {
+      email: ACCOUNTS.owner,
+      password: PASSWORD,
+    })
+    const debtPerms = afterDebts.data?.permissions ?? []
+    check('  qarzdorlik ruxsati olib tashlandi', !debtPerms.includes('debts.view'))
+    check('  TO‘LOVLAR OCHIQ QOLDI', debtPerms.includes('payments.view'))
+
+    const debtsBlocked = await call('GET', '/debts', afterDebts.data?.token)
+    check('  /debts 403 qaytardi', debtsBlocked.status === 403, `status: ${debtsBlocked.status}`)
+
+    const paymentsOpen = await call('GET', '/payments?page=1', afterDebts.data?.token)
+    check(
+      '  /payments ishlayapti',
+      paymentsOpen.status === 200,
+      `status: ${paymentsOpen.status}`,
+    )
+
     /* Qaytarib qo'yamiz — keyingi ishga tushirish toza boshlansin */
     const on = await call('PATCH', `/platform/tenants/${mainClinicId}/modules`, tokens.admin, {
       disabledModules: [],

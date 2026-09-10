@@ -219,4 +219,9 @@ const MODULE_BY_PERMISSION: Partial<Record<Permission, ClinicModule>> = {
   'attendance.manage': 'attendance',
   'bonus.manage': 'attendance',
   'cashcontrol.view': 'cashcontrol',
+  'shift.close': 'cashcontrol',
+  'calendar.view': 'calendar',
+  'debts.view': 'debts',
+  'debts.waive': 'debts',
+  'revenue.view': 'revenue',
 }

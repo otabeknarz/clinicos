@@ -15,17 +15,19 @@ import { useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useToast } from '@/store/toast-context'
 import type { BillingTerm, ID, Plan, PlanFeature } from '@/types/models'
-import { termTotal, UNLIMITED } from '@/types/models'
+import { CLINIC_MODULES, SUPPORT_LEVELS, termTotal, UNLIMITED } from '@/types/models'
+import type { SupportLevel } from '@/types/models'
 
-/** Barcha imkoniyatlar — jadval ustunlari uchun */
-const ALL_FEATURES: PlanFeature[] = [
-  'ward',
-  'analytics',
-  'staff',
-  'cashControl',
-  'chat',
-  'api',
-]
+/*
+  Tarifdagi bo'limlar ro'yxati — KLINIKA MODULLARINING O'ZI.
+
+  Ilgari bu yerda alohida ro'yxat turardi va u modullar bilan mos
+  emas edi: tarifda `staff`/`cashControl`/`api`, modullarda esa
+  `attendance`/`cashcontrol`/`feedback`. Ya'ni tarifda sotilgan
+  narsani klinikada o'chirib bo'lmasdi. Endi manba bitta — yangi
+  modul qo'shilsa, u tarif jadvalida o'z-o'zidan paydo bo'ladi.
+*/
+const ALL_FEATURES: PlanFeature[] = [...CLINIC_MODULES]
 
 /**
  * TARIFLAR.
@@ -83,7 +85,10 @@ export function PlatformPlansPage() {
         to'laydigan raqam.
       */}
       {data && data.length > 0 ? (
-        <TermMatrix plans={data} onSaved={() => setVersion((v) => v + 1)} />
+        <>
+          <FeatureMatrix plans={data} />
+          <TermMatrix plans={data} onSaved={() => setVersion((v) => v + 1)} />
+        </>
       ) : null}
 
       <EditModal
@@ -146,33 +151,15 @@ function PlanCard({ plan, onEdit }: { plan: Plan; onEdit: () => void }) {
         </div>
       </dl>
 
-      {/* --- Imkoniyatlar --- */}
-      <ul className="mt-5 space-y-2">
-        {ALL_FEATURES.map((feature) => {
-          const included = plan.features.includes(feature)
+      {/*
+        IMKONIYATLAR RO'YXATI KARTADA EMAS, JADVALDA.
 
-          return (
-            <li key={feature} className="flex items-center gap-2.5">
-              <span
-                className={cn(
-                  'grid size-5 shrink-0 place-items-center rounded-full',
-                  included ? 'bg-ok-soft text-ok' : 'bg-fill-4 text-label-quaternary',
-                )}
-              >
-                {included ? <Check size={12} strokeWidth={3} /> : <Minus size={12} />}
-              </span>
-              <span
-                className={cn(
-                  'text-footnote',
-                  included ? 'text-label' : 'text-label-quaternary',
-                )}
-              >
-                {t(`platform.feature.${feature}`)}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
+        Uch karta yonma-yon turganda har birida bir xil olti qator
+        takrorlanardi va tariflarni solishtirish uchun ko'z uch marta
+        pastga-yuqoriga yurishi kerak edi. Jadvalda esa bir qator —
+        bitta bo'lim, uch ustun — uch tarif: farq bir qarashda
+        ko'rinadi.
+      */}
     </Card>
   )
 }
@@ -202,6 +189,7 @@ function EditModal({
   const [doctors, setDoctors] = useState('')
   const [staff, setStaff] = useState('')
   const [features, setFeatures] = useState<PlanFeature[]>([])
+  const [support, setSupport] = useState<SupportLevel>('queue')
   const [saving, setSaving] = useState(false)
   const [ready, setReady] = useState<string | null>(null)
 
@@ -221,6 +209,7 @@ function EditModal({
     setDoctors(plan.limits.doctors === UNLIMITED ? '' : String(plan.limits.doctors))
     setStaff(plan.limits.staff === UNLIMITED ? '' : String(plan.limits.staff))
     setFeatures(plan.features)
+    setSupport(plan.supportLevel)
   }
 
   async function submit() {
@@ -234,6 +223,7 @@ function EditModal({
           staff: staff.trim() === '' ? UNLIMITED : Number(staff),
         },
         features,
+        supportLevel: support,
       })
       toast.success(t('toast.saved'))
       onSaved()
@@ -326,10 +316,41 @@ function EditModal({
                   )}
                 >
                   {on ? <Check size={12} strokeWidth={3} /> : <Minus size={12} />}
-                  {t(`platform.feature.${feature}`)}
+                  {t(`platform.module.${feature}`)}
                 </button>
               )
             })}
+          </div>
+        </div>
+
+        {/*
+          Qo'llab-quvvatlash — BELGI EMAS, TANLOV.
+
+          Bo'limlar yoqib-o'chiriladi, qo'llab-quvvatlash esa uchta
+          darajadan biri bo'ladi: "o'chirilgan qo'llab-quvvatlash"
+          degan holat ma'nosiz. Shuning uchun u alohida boshqaruvda.
+        */}
+        <div>
+          <p className="text-footnote font-medium text-label">
+            {t('platform.supportLabel')}
+          </p>
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {SUPPORT_LEVELS.map((level) => (
+              <button
+                key={level}
+                type="button"
+                onClick={() => setSupport(level)}
+                className={cn(
+                  'rounded-[8px] px-3 py-1.5 text-caption font-medium',
+                  'transition-colors duration-150',
+                  support === level
+                    ? 'bg-navy text-white'
+                    : 'bg-fill-4 text-label-secondary hover:bg-fill-3',
+                )}
+              >
+                {t(`platform.support.${level}`)}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -354,6 +375,99 @@ function EditModal({
  * Chegirmani o'zgartirish MAVJUD OBUNALARGA TEGMAYDI: ularda narx ham,
  * foiz ham obuna paytida muzlatilgan.
  */
+/**
+ * TARIFLAR SOLISHTIRUVI — qator: bo'lim, ustun: tarif.
+ *
+ * Qatorlar `CLINIC_MODULES` dan olinadi, ya'ni platforma egasi
+ * klinikada yoqib-o'chira oladigan aynan o'sha ro'yxat. Ikkalasi bir
+ * manbadan bo'lgani uchun ular ajralib keta olmaydi: yangi modul
+ * qo'shilsa, u bu jadvalda o'z-o'zidan paydo bo'ladi.
+ *
+ * BIRINCHI QATOR — "asosiy": bemor, qabul, to'lov. Ular modul emas
+ * va o'chirilmaydi — ularsiz klinika umuman ishlamaydi. Lekin
+ * jadvalda turishi kerak, aks holda eng arzon tarif nima berishi
+ * ko'rinmay qoladi.
+ */
+function FeatureMatrix({ plans }: { plans: Plan[] }) {
+  const { t } = useI18n()
+
+  return (
+    <Card padded={false} className="mt-5">
+      <div className="p-5 sm:p-6 sm:pb-3">
+        <CardHeader title={t('platform.compare')} subtitle={t('platform.compareHint')} />
+      </div>
+
+      {/* Tor ekranda jadval o'zi suriladi — sahifa emas */}
+      <div className="overflow-x-auto scroll-slim px-5 pb-5 sm:px-6">
+        <table className="w-full min-w-[520px] border-collapse">
+          <thead>
+            <tr className="hairline">
+              <th className="py-2 pr-4 text-left text-caption font-medium text-label-tertiary">
+                {t('platform.features')}
+              </th>
+              {plans.map((plan) => (
+                <th
+                  key={plan.id}
+                  className="px-4 py-2 text-left text-footnote font-semibold text-label"
+                >
+                  {plan.name}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr className="hairline">
+              <td className="py-3 pr-4 text-footnote text-label">
+                {t('platform.coreFeatures')}
+              </td>
+              {plans.map((plan) => (
+                <td key={plan.id} className="px-4 py-3">
+                  <Check size={15} strokeWidth={3} className="text-ok" />
+                </td>
+              ))}
+            </tr>
+
+            {CLINIC_MODULES.map((module) => (
+              <tr key={module} className="hairline">
+                <td className="py-3 pr-4 text-footnote text-label">
+                  {t(`platform.module.${module}`)}
+                </td>
+                {plans.map((plan) => (
+                  <td key={plan.id} className="px-4 py-3">
+                    {plan.features.includes(module) ? (
+                      <Check size={15} strokeWidth={3} className="text-ok" />
+                    ) : (
+                      <Minus size={15} className="text-label-quaternary" />
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+
+            {/*
+              Qo'llab-quvvatlash qatori BELGI EMAS, MATN: u yoqilgan
+              yoki o'chirilgan emas, uchta darajadan biri.
+            */}
+            <tr>
+              <td className="py-3 pr-4 text-footnote text-label">
+                {t('platform.supportLabel')}
+              </td>
+              {plans.map((plan) => (
+                <td key={plan.id} className="px-4 py-3 text-footnote text-label-secondary">
+                  {t(`platform.support.${plan.supportLevel}`)}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+
 function TermMatrix({ plans, onSaved }: { plans: Plan[]; onSaved: () => void }) {
   const { t } = useI18n()
   const toast = useToast()

@@ -17,7 +17,12 @@ import {
   ValidateNested,
 } from 'class-validator'
 
-import { CLINIC_KINDS, CLINIC_MODULES, type ClinicKind } from '../common/modules'
+import {
+  CLINIC_KINDS,
+  CLINIC_MODULES,
+  SUPPORT_LEVELS,
+  type ClinicKind,
+} from '../common/modules'
 import { PageQueryDto } from '../common/pagination'
 
 export const TENANT_STATUSES = [
@@ -170,8 +175,27 @@ export class PlanInputDto {
   @Type(() => PlanLimitsDto)
   limits?: PlanLimitsDto
 
-  @IsOptional() @IsArray() @ArrayMaxSize(20) @IsString({ each: true })
+  /*
+    TARIFGA KIRADIGAN BO'LIMLAR — modul nomlari bilan BIR XIL lug'at.
+
+    `@IsIn` shu yerda muhim: ilgari ixtiyoriy matn qabul qilinardi va
+    tarifda `cashControl`, modulda esa `cashcontrol` turib qolgan edi.
+    Bir xil narsa ikki xil atalgani uchun tarifda va'da qilingan
+    bo'limni klinikada o'chirib bo'lmasdi.
+  */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsIn([...CLINIC_MODULES], { each: true })
   features?: string[]
+
+  /*
+    Qo'llab-quvvatlash darajasi. MODUL EMAS — mahsulotda yoqib
+    o'chiriladigan narsa emas, xizmat majburiyati.
+  */
+  @IsOptional()
+  @IsIn([...SUPPORT_LEVELS])
+  supportLevel?: string
 
   @IsOptional() @IsBoolean()
   isActive?: boolean

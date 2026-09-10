@@ -1295,8 +1295,23 @@ model Plan {
   limitDoctors  Int @map("limit_doctors")
   limitStaff    Int @map("limit_staff")
 
-  /// ward | analytics | cashControl | staff | chat | api
+  /// TARIFGA KIRADIGAN BO'LIMLAR.
+  ///
+  /// Qiymatlar `CLINIC_MODULES` bilan BIR XIL lug'atdan olinadi:
+  /// ward | chat | feedback | analytics | attendance | cashcontrol
+  ///
+  /// NEGA BIR XIL: bu ro'yxat "nima sotilyapti" degan savolga javob
+  /// beradi, `Clinic.disabledModules` esa "nima yoqilgan" degan
+  /// savolga. Ikkalasi ikki xil lug'atda bo'lganda, tarifda va'da
+  /// qilingan narsani o'chirib bo'lmasdi va o'chirilgan narsa
+  /// tarifda umuman yo'q edi.
   features String[] @default([])
+
+  /// Qo'llab-quvvatlash darajasi: queue | fast | manager
+  ///
+  /// Bu MODUL EMAS — mahsulotda yoqib-o'chiriladigan narsa emas,
+  /// balki xizmat majburiyati. Shuning uchun alohida ustun.
+  supportLevel String @default("queue") @map("support_level")
   isActive Boolean  @default(true) @map("is_active")
 
   createdAt DateTime @default(now()) @map("created_at")

@@ -3,6 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient, Role } from '@prisma/client'
 import * as argon2 from 'argon2'
 import { termTotal } from '../src/common/billing'
+import { CLINIC_MODULES } from '../src/common/modules'
 
 /**
  * Boshlang'ich ma'lumot.
@@ -128,7 +129,8 @@ async function main() {
         basePrice: 3_600_000,
         limitDoctors: 3,
         limitStaff: 10,
-        features: ['analytics'],
+        features: ['cashcontrol', 'attendance', 'chat', 'calendar'],
+        supportLevel: 'queue',
       },
     }),
     db.plan.create({
@@ -138,7 +140,17 @@ async function main() {
         basePrice: 7_500_000,
         limitDoctors: 10,
         limitStaff: 40,
-        features: ['analytics', 'staff', 'cashControl', 'chat'],
+        features: [
+          'cashcontrol',
+          'attendance',
+          'chat',
+          'calendar',
+          'ward',
+          'analytics',
+          'feedback',
+          'debts',
+        ],
+        supportLevel: 'fast',
       },
     }),
     db.plan.create({
@@ -149,7 +161,8 @@ async function main() {
         // -1 = cheksiz
         limitDoctors: -1,
         limitStaff: -1,
-        features: ['analytics', 'staff', 'cashControl', 'chat', 'ward', 'api'],
+        features: [...CLINIC_MODULES],
+        supportLevel: 'manager',
       },
     }),
   ])

@@ -60,6 +60,7 @@ const OWNER_PERMISSIONS: Permission[] = [
   'services.view',
   'services.manage',
   'payments.view',
+  'debts.view',
   // Qaytarish faqat egasida — registrator o'z kamomadini yopa olmasin
   'payments.refund',
   // Qarzni kechirish ham: pulni oladigan odam qarzni yopa olmasin
@@ -100,6 +101,7 @@ const RECEPTIONIST_PERMISSIONS: Permission[] = [
   'doctors.view',
   'services.view',
   'payments.view',
+  'debts.view',
   'payments.create',
   'ward.view',
   'ward.manage',

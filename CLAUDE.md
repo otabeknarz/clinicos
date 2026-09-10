@@ -233,6 +233,33 @@ Both reports that break revenue down by service therefore fold ward payments und
 `WARD_KEY` / `WARD_LABEL` pair from `src/common/ward-revenue.ts` — it lives in `common/` precisely
 because two callers must agree. Day counting here is the timezone trap below.
 
+**A plan's feature list and a clinic's modules are one vocabulary.** `Plan.features` holds the same
+keys as `CLINIC_MODULES` — what is sold and what can be switched off are the same set, so a new
+module appears in the plan comparison on its own. They used to be two lists (`cashControl`/`staff`/
+`api` against `cashcontrol`/`attendance`/`feedback`), which meant a plan could promise something
+with no switch and a switch could exist for something no plan mentioned; `api` was dropped in the
+migration because the product has no external API and selling it would be selling nothing.
+Plan features **do not enforce** — only `Clinic.disabledModules` does. The platform admin still
+decides per clinic, but the module editor now labels each row against the plan ("not in the plan —
+given for free" / "in the plan but switched off"), because both mistakes used to happen silently.
+`Plan.supportLevel` (queue/fast/manager) sits outside `features` on purpose: support is a service
+commitment, not something that can be switched off, and "disabled support" is a meaningless state.
+
+**Not every section is a module, and that is deliberate.** Patients, appointments, visits, payments,
+services, doctors and settings are never switchable — a clinic with "patients" turned off is not a
+product. **Staff is also core**, less obviously: a doctor is hired through Staff
+(`StaffService.create` opens the `Doctor` row), so switching it off would leave the clinic unable to
+add a doctor at all; attendance and bonuses are gated separately through the `attendance` module.
+Debt tracking needed its own permission before it could be a module — `GET /debts` used to run on
+`payments.view`, so switching debts off would have closed payments with it; `debts.view` now exists
+for exactly this. Adding a module means adding a row to `CLINIC_MODULES` **and** the
+permission→module map, in `src/common/modules.ts` and its mock twin in `src/api/auth.ts`; the twin
+is what makes demo mode agree with the server, and it was the copy that drifted last time.
+
+One trap in `src/common/permissions.ts`: `check:permissions` reads the `Permission` union up to the
+first **blank line**, so a comment with an empty line inside it silently truncates the list and
+every permission after it is reported missing.
+
 **Modules are a second gate, orthogonal to permissions** (`src/common/modules.ts`). A permission
 answers "may this *person* do it"; a module answers "does this *clinic* have it at all" — a dental
 clinic has no ward even though its owner holds `ward.manage`. `Clinic.disabledModules` stores the

@@ -24,7 +24,25 @@ export const CLINIC_MODULES = [
   'analytics',
   'attendance',
   'cashcontrol',
+  'calendar',
+  'debts',
+  'revenue',
 ] as const
+
+/*
+  NEGA HAMMA BO'LIM MODUL EMAS.
+
+  Bemorlar, qabullar, tashriflar, to'lovlar, xizmatlar, shifokorlar va
+  sozlamalar ro'yxatda YO'Q va bo'lmaydi ham: ularsiz klinika umuman
+  ishlamaydi, ya'ni "o'chirilgan bemorlar" degan holat mahsulotni
+  buzadi, sotilmaydi.
+
+  XODIMLAR ham ataylab qoldirilmadi. Shifokor aynan Xodimlar orqali
+  ishga olinadi (`StaffService.create` `Doctor` yozuvini ochadi) — bu
+  bo'lim o'chirilsa, klinika shifokor qo'sholmay qoladi va butun
+  mahsulot ishlamaydi. Davomat va rag'bat esa alohida modul
+  (`attendance`), o'sha yerdan cheklanadi.
+*/
 
 export type ClinicModule = (typeof CLINIC_MODULES)[number]
 
@@ -51,6 +69,11 @@ const MODULE_BY_PERMISSION: Record<string, ClinicModule> = {
   'attendance.manage': 'attendance',
   'bonus.manage': 'attendance',
   'cashcontrol.view': 'cashcontrol',
+  'shift.close': 'cashcontrol',
+  'calendar.view': 'calendar',
+  'debts.view': 'debts',
+  'debts.waive': 'debts',
+  'revenue.view': 'revenue',
 }
 
 /** Shu ruxsatga tegishli modul o'chirilganmi */
@@ -87,3 +110,15 @@ export const DISABLED_BY_KIND: Record<ClinicKind, ClinicModule[]> = {
   */
   lab: ['ward', 'attendance', 'analytics'],
 }
+
+/**
+ * QO'LLAB-QUVVATLASH DARAJASI — tarifning bir qismi, lekin MODUL EMAS.
+ *
+ * Modul "mahsulotda bu bo'lim bormi" degan savolga javob beradi va uni
+ * yoqib-o'chirish mumkin. Qo'llab-quvvatlash esa yoqiladigan narsa
+ * emas: u xizmat majburiyati va uchta darajada bo'ladi. Shuning uchun
+ * `features` ro'yxatiga qo'shilmaydi \u2014 aks holda "o'chirilgan
+ * qo'llab-quvvatlash" degan ma'nosiz holat paydo bo'lardi.
+ */
+export const SUPPORT_LEVELS = ['queue', 'fast', 'manager'] as const
+export type SupportLevel = (typeof SUPPORT_LEVELS)[number]

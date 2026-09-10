@@ -396,7 +396,9 @@ export interface PlanInput {
   /** UCH OYLIK narx */
   basePrice: UZS
   limits: Plan['limits']
+  /** Tarifga kiradigan bo'limlar — klinika modullari bilan bir xil lug'at */
   features: Plan['features']
+  supportLevel: Plan['supportLevel']
   isActive: boolean
 }
 

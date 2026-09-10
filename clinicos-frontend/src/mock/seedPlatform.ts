@@ -20,7 +20,7 @@ import type {
   TenantPatient,
   TenantStatus,
 } from '@/types/models'
-import { termTotal, UNLIMITED } from '@/types/models'
+import { CLINIC_MODULES, termTotal, UNLIMITED } from '@/types/models'
 import { addDays, toISODate } from '@/lib/dates'
 import { FEMALE_NAMES, MALE_NAMES, OPERATOR_CODES, SURNAME_STEMS } from './names'
 import { COMPLAINT_KEYS, SPECIALTIES } from '@/i18n/data'
@@ -116,8 +116,13 @@ export function generatePlans(now: Date): Plan[] {
       name: 'Boshlang‘ich',
       basePrice: 3_600_000,
       limits: { doctors: 3, staff: 10 },
-      // Kichik klinikaga statsionar ham, kassa nazorati ham kerak emas
-      features: ['chat'],
+      /*
+        Kichik klinikada statsionar ham, tahlil ham yo'q — lekin
+        kassa nazorati BOR: pulni sanash klinikaning kattaligiga
+        bog'liq emas, uni eng kichigi ham qiladi.
+      */
+      features: ['cashcontrol', 'attendance', 'chat', 'calendar'],
+      supportLevel: 'queue',
       isActive: true,
       createdAt,
     },
@@ -127,7 +132,17 @@ export function generatePlans(now: Date): Plan[] {
       name: 'Standart',
       basePrice: 7_500_000,
       limits: { doctors: 10, staff: 40 },
-      features: ['ward', 'analytics', 'staff', 'chat'],
+      features: [
+        'cashcontrol',
+        'attendance',
+        'chat',
+        'calendar',
+        'ward',
+        'analytics',
+        'feedback',
+        'debts',
+      ],
+      supportLevel: 'fast',
       isActive: true,
       createdAt,
     },
@@ -137,7 +152,8 @@ export function generatePlans(now: Date): Plan[] {
       name: 'Premium',
       basePrice: 13_500_000,
       limits: { doctors: UNLIMITED, staff: UNLIMITED },
-      features: ['ward', 'analytics', 'cashControl', 'staff', 'chat', 'api'],
+      features: [...CLINIC_MODULES],
+      supportLevel: 'manager',
       isActive: true,
       createdAt,
     },
