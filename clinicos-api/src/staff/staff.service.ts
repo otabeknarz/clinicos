@@ -251,6 +251,14 @@ export class StaffService {
             phone: dto.phone.trim(),
             passwordHash: await argon2.hash(dto.password),
             role: toDb(dto.role),
+            /*
+              `mustChangePassword` DTO da qabul qilinardi-yu, hech
+              qayerga yozilmasdi: forma "birinchi kirishda parolni
+              almashtirsin" deb va'da berardi, xodimga esa hech narsa
+              ko'rsatilmasdi. Tahrirlash yo'lida bu yozilardi —
+              ikkalasi bir xil bo'lsin.
+            */
+            mustChangePassword: dto.mustChangePassword,
             // Shifokor o'z bemorlarini shu bog'lanish orqali ko'radi
             doctorId,
           },
