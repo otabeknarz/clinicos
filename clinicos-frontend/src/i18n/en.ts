@@ -45,6 +45,8 @@ export const dict: Dict = {
   'action.delete': 'Delete',
   'action.save': 'Save',
   'action.cancel': 'Cancel',
+  'visit.linkGone': 'Appointment not found',
+  'visit.linkGoneHint': 'It may have been cancelled or moved to another time.',
   'telegram.title': 'Telegram',
   'telegram.linked': 'Connected',
   'telegram.notLinked': 'Not connected',

@@ -183,17 +183,18 @@ export class AppointmentsService {
   /**
    * Yangi qabul haqida shifokorga Telegram xabari.
    *
-   * FAQAT BUGUN VA ERTAGA. Band shifokorga kuniga o'nlab qabul
-   * yoziladi va har biriga xabar kelsa, u xabarlarni o'qishni
-   * butunlay to'xtatadi — ya'ni muhimi ham ko'zdan qoladi. Bugungi
-   * va ertangi qabul esa shifokorning rejasini haqiqatan
-   * o'zgartiradi.
+   * FAQAT BIR HAFTA ICHIDA. Chegara kerak: uzoq muddatli qabullar
+   * shifokorning bugungi rejasini o'zgartirmaydi va telefon bekorga
+   * jiringlagani sayin xabarlar o'qilmay qo'yiladi. Lekin chegara
+   * juda tor bo'lsa ham yomon — ilgari u "ertaga" edi va indinga
+   * yozilgan qabulga xabar jimgina yuborilmasdi.
    *
    * O'ZIGA O'ZI XABAR YUBORMAYDI: shifokor o'z qabulini yozgan
    * bo'lsa (bunday holat kam, lekin bor), telefoni bekorga
    * jiringlamasin.
    */
   private async notifyDoctor(row: {
+    id: string
     doctorId: string
     startsAt: Date
     patient: { fullName: string }
@@ -215,9 +216,9 @@ export class AppointmentsService {
 
     const { userId } = this.ctx.require()
 
-    const cutoff = endOfTomorrow()
+    const cutoff = notifyCutoff()
     if (row.startsAt > cutoff) {
-      this.log.log('Telegram: qabul ertadan keyin — xabar yuborilmadi')
+      this.log.log('Telegram: qabul bir haftadan keyinga — xabar yuborilmadi')
       return
     }
 
@@ -239,23 +240,42 @@ export class AppointmentsService {
       return
     }
 
-    const when = row.startsAt.toLocaleString('uz-UZ', {
-      day: 'numeric',
-      month: 'long',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-
     this.log.log(`Telegram: shifokor ${row.doctorId} ga xabar yuborilmoqda`)
 
+    /*
+      XABARNING O'ZI YETARLI BO'LSIN.
+
+      Ilgari bu yerda uchta yalang'och qator turardi — ism, xizmat
+      va `11-sentabr, 14:00`. Shifokor sanani kalendarga solishtirib
+      o'tirardi, keyin ilovani ochib, ro'yxatdan o'sha bemorni
+      qidirardi. Endi vaqt SO'Z bilan yoziladi va xabarning ichida
+      tashrif yozadigan tugma bor.
+
+      TO'LOV TUGMASI ATAYLAB YO'Q: pulni registrator oladi, shifokor
+      emas — bu tizimning asosiy qoidalaridan biri (`payments.create`
+      shifokorda yo'q, tugma 403 bilan tugardi). "Ko'rikni tugatish"
+      ham alohida tugma emas: tashrif saqlangan zahoti qabul O'ZI
+      yakunlanadi, ikkinchi tugma esa ikkinchi yo'l ochib qo'yardi.
+    */
     await this.telegram.send(
       doctorUser.telegramUserId,
       [
         '<b>Yangi qabul</b>',
-        escapeHtml(row.patient.fullName),
-        escapeHtml(row.service.name),
-        escapeHtml(when),
+        '',
+        `<b>Bemor:</b> ${escapeHtml(row.patient.fullName)}`,
+        `<b>Sabab:</b> ${escapeHtml(row.service.name)}`,
+        `<b>Qachon:</b> ${escapeHtml(whenInWords(row.startsAt))}`,
       ].join('\n'),
+      {
+        inline_keyboard: [
+          [
+            {
+              text: 'Tashrif yozish',
+              web_app: { url: this.telegram.appLink(`/tashrif/${row.id}`) },
+            },
+          ],
+        ],
+      },
     )
   }
 
@@ -587,12 +607,72 @@ function timeToMinutes(value: string): number {
   return (h || 0) * 60 + (m || 0)
 }
 
-/** Ertangi kunning oxiri — undan keyingi qabullarga xabar yuborilmaydi */
-function endOfTomorrow(): Date {
+/**
+ * Xabar yuboriladigan oxirgi kun — bugundan bir hafta keyin.
+ *
+ * Ilgari bu ERTANGI kun edi va oqibati yomon bo'ldi: indinga
+ * yozilgan qabulga xabar jimgina yuborilmasdi, tashqaridan esa
+ * bu "bot buzuq" bilan bir xil ko'rinardi. Chegara umuman
+ * bo'lmasligi ham to'g'ri emas — bir yil keyingi qabul
+ * shifokorning bugungi rejasini o'zgartirmaydi va bunday
+ * xabarlar ko'payib ketsa, u xabarlarni butunlay o'qimay
+ * qo'yadi. Bir hafta — shifokor haqiqatan rejalashtiradigan
+ * oraliq.
+ */
+function notifyCutoff(): Date {
   const d = new Date()
-  d.setDate(d.getDate() + 1)
+  d.setDate(d.getDate() + 7)
   d.setHours(23, 59, 59, 999)
   return d
+}
+
+/** Hafta kunlari — xabarda sana raqam bilan emas, so'z bilan yoziladi */
+const WEEKDAYS = [
+  'yakshanba',
+  'dushanba',
+  'seshanba',
+  'chorshanba',
+  'payshanba',
+  'juma',
+  'shanba',
+] as const
+
+/**
+ * Qabul vaqti — O'QIB TUSHUNADIGAN ko'rinishda.
+ *
+ * `11-sentabr, 14:00` degan yozuv shifokordan kalendarni ochishni
+ * talab qiladi: bu qaysi kun, uzoqmi, yaqinmi? "Keyingi hafta
+ * seshanba kuni" esa o'sha zahoti tushunarli. Chegara bir hafta
+ * bo'lgani uchun eng uzoq holat ham "keyingi hafta" bilan tugaydi.
+ */
+function whenInWords(at: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const time = `soat ${pad(at.getHours())}:${pad(at.getMinutes())}`
+
+  const midnight = (d: Date) => {
+    const copy = new Date(d)
+    copy.setHours(0, 0, 0, 0)
+    return copy
+  }
+
+  const today = midnight(new Date())
+  const day = midnight(at)
+  const DAY_MS = 24 * 60 * 60 * 1000
+  const days = Math.round((day.getTime() - today.getTime()) / DAY_MS)
+
+  if (days === 0) return `bugun, ${time}`
+  if (days === 1) return `ertaga, ${time}`
+  if (days < 0) return `${WEEKDAYS[at.getDay()]} kuni, ${time}`
+
+  /* Hafta DUSHANBADAN boshlanadi — "keyingi hafta" shunga nisbatan */
+  const sinceMonday = (today.getDay() + 6) % 7
+  const thisMonday = new Date(today)
+  thisMonday.setDate(today.getDate() - sinceMonday)
+  const weeks = Math.floor((day.getTime() - thisMonday.getTime()) / (7 * DAY_MS))
+  const weekday = WEEKDAYS[at.getDay()]
+
+  if (weeks === 0) return `${weekday} kuni, ${time}`
+  return `keyingi hafta ${weekday} kuni, ${time}`
 }
 
 /**

@@ -45,6 +45,8 @@ export const dict: Dict = {
   'action.delete': 'Удалить',
   'action.save': 'Сохранить',
   'action.cancel': 'Отмена',
+  'visit.linkGone': 'Запись не найдена',
+  'visit.linkGoneHint': 'Возможно, её отменили или перенесли.',
   'telegram.title': 'Telegram',
   'telegram.linked': 'Подключён',
   'telegram.notLinked': 'Не подключён',

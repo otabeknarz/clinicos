@@ -49,6 +49,8 @@ export const dict: Dict = {
   'action.delete': "O'chirish",
   'action.save': 'Saqlash',
   'action.cancel': 'Bekor qilish',
+  'visit.linkGone': 'Qabul topilmadi',
+  'visit.linkGoneHint': 'U bekor qilingan yoki boshqa vaqtga ko‘chirilgan bo‘lishi mumkin.',
   'telegram.title': 'Telegram',
   'telegram.linked': 'Ulangan',
   'telegram.notLinked': 'Ulanmagan',

@@ -150,6 +150,16 @@ export class TelegramService {
     }
   }
 
+  /**
+   * Mini appning ichidagi sahifaga olib boradigan manzil.
+   *
+   * Xabardagi tugma shuni ochadi — shifokor ilovani qidirib,
+   * ro'yxatdan bemorni topib o'tirmasin.
+   */
+  appLink(path: string): string {
+    return `${this.appUrl}${path}`
+  }
+
   /** Botga kelgan xabardan kerakli ikki maydon */
   parseMessage(update: unknown): { chatId: string; text: string } | null {
     const message = (update as { message?: { chat?: { id?: number }; text?: string } })

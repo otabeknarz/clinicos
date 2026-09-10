@@ -339,8 +339,18 @@ The route is `@Public()` and gated on the `X-Telegram-Bot-Api-Secret-Token` head
 setting must not silently leave the route open. It always answers `{ ok: true }` — Telegram treats
 an error as "retry" and would resend the same update for hours. Sending is fire-and-forget: `appointments.service.create` calls it with `void`
 and `send()` swallows every error, because a booking must never fail on Telegram being slow — the
-appointment is the work, the message is a convenience. Only same-day and next-day bookings notify;
-a busy doctor gets dozens a day and a phone that buzzes twenty times is a phone that gets ignored.
+appointment is the work, the message is a convenience. Bookings **within a week** notify. Same-day-and-tomorrow was the first
+rule and it was wrong in practice: a booking for the day after tomorrow was skipped in silence,
+which from outside is indistinguishable from a broken bot — it cost an evening of debugging. No
+window at all is also wrong: a booking a year out does not change the doctor's plans, and a phone
+that buzzes for everything gets ignored. Every branch of `notifyDoctor` now logs why it did or did
+not send; `debug` is invisible in this deployment, so those lines are `log`/`warn`. The message
+itself carries the patient, the reason, the time **in words** ("keyingi hafta seshanba kuni, soat
+14:00" — a date like `11-sentabr` makes the doctor open a calendar to work out whether that is
+soon) and one `web_app` button to `/tashrif/:appointmentId`, which opens the visit form directly.
+There is deliberately no payment button (the receptionist takes money, and the doctor has no
+`payments.create`) and no separate "complete" button (saving the visit completes the appointment;
+a second button would be a second path).
 With `TELEGRAM_BOT_TOKEN` unset everything still works, exactly like `S3_*`.
 
 **Debt is computed, never stored.** `GET /debts` derives it as price − payments, in two lists

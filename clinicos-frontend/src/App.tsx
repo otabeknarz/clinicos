@@ -103,6 +103,11 @@ const MyProfilePage = lazy(() =>
 const SchedulePage = lazy(() =>
   import('@/pages/Schedule').then((m) => ({ default: m.SchedulePage })),
 )
+
+/* Telegram xabaridagi "Tashrif yozish" tugmasi shu manzilga keladi */
+const VisitFromLinkPage = lazy(() =>
+  import('@/pages/VisitFromLink').then((m) => ({ default: m.VisitFromLinkPage })),
+)
 const RevenuePage = lazy(() =>
   import('@/pages/Revenue').then((m) => ({ default: m.RevenuePage })),
 )
@@ -349,6 +354,19 @@ function AppRoutes() {
           element={
             <Guard permission="dashboard.view">
               <SchedulePage />
+            </Guard>
+          }
+        />
+        {/*
+          Telegram xabaridan keladigan havola. `visits.create` —
+          tashrifni faqat shifokor yozadi, ya'ni havola boshqa
+          rolga tushib qolsa ham foydasi yo'q.
+        */}
+        <Route
+          path="tashrif/:id"
+          element={
+            <Guard permission="visits.create">
+              <VisitFromLinkPage />
             </Guard>
           }
         />
