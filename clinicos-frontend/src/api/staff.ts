@@ -169,6 +169,8 @@ export async function createStaff(input: StaffInput): Promise<Staff> {
     createdAt: now,
     ...rest,
     role: input.hasSystemAccess ? input.role : null,
+    /* Yangi hisob hech qachon ulangan holda tug'ilmaydi */
+    telegramLinked: false,
     login: input.hasSystemAccess ? input.login.trim() : '',
     credentialsSetAt: input.hasSystemAccess && password ? now : null,
   }

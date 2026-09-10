@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Gift, KeyRound, Pencil, Search, Trash2, Users } from 'lucide-react'
+import { Gift, KeyRound, Send, Pencil, Search, Trash2, Users } from 'lucide-react'
 
 import { deleteStaff, listStaff, STAFF_POSITIONS } from '@/api/staff'
 import { BonusModal } from '@/components/modals/BonusModal'
@@ -177,10 +177,22 @@ export function StaffListTab({
       hideBelow: 'xl',
       render: (row) =>
         row.hasSystemAccess ? (
-          <Badge tone="accent">
-            <KeyRound size={11} />
-            {row.role ? t(`role.${row.role}`) : t('staff.access.on')}
-          </Badge>
+          <div className="flex flex-wrap items-center justify-center gap-1">
+            <Badge tone="accent">
+              <KeyRound size={11} />
+              {row.role ? t(`role.${row.role}`) : t('staff.access.on')}
+            </Badge>
+            {/*
+              TELEGRAM ULANGANMI — yangi qabul haqidagi xabar aynan
+              shunga bog'liq. Ulanmagan bo'lsa xabar jimgina
+              yuborilmaydi, ya'ni tashqaridan "bot ishlamayapti"
+              bilan farqi ko'rinmasdi.
+            */}
+            <Badge tone={row.telegramLinked ? 'ok' : 'neutral'}>
+              <Send size={11} />
+              {row.telegramLinked ? t('telegram.linked') : t('telegram.notLinked')}
+            </Badge>
+          </div>
         ) : (
           <span className="text-caption text-label-quaternary">—</span>
         ),

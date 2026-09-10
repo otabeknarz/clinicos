@@ -1553,6 +1553,15 @@ export interface Staff {
   credentialsSetAt: ISODateTime | null
   /** Birinchi kirishda parolni almashtirish talab qilinadimi */
   mustChangePassword: boolean
+  /**
+   * Telegram hisobi ulanganmi.
+   *
+   * Xabar aynan shunga bog'liq: ulanmagan shifokorga yangi qabul
+   * haqidagi xabar JIMGINA yuborilmaydi. Egasi buni ko'rib turishi
+   * kerak, aks holda "xabar kelmayapti" degan gapni tekshirib
+   * bo'lmaydi.
+   */
+  telegramLinked: boolean
 
   /**
    * position = 'doctor' bo'lsa, shifokor yozuviga bog'lanish.

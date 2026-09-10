@@ -638,7 +638,15 @@ export class StaffService {
  * va bo'lishi ham kerak emas (hamshirada mutaxassislik bo'lmaydi).
  */
 const STAFF_EXPAND = {
-  user: { select: { id: true, email: true, role: true } },
+  user: {
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      mustChangePassword: true,
+      telegramUserId: true,
+    },
+  },
   doctor: { select: { specialty: true, consultationFee: true } },
 } as const
 
@@ -873,7 +881,13 @@ async function syncUser(
 }
 
 type StaffRow = Staff & {
-  user: { id: string; email: string; role: string } | null
+  user: {
+    id: string
+    email: string
+    role: string
+    mustChangePassword: boolean
+    telegramUserId: string | null
+  } | null
   doctor: { specialty: string; consultationFee: number } | null
 }
 
@@ -901,7 +915,17 @@ function toApiStaff(row: StaffRow) {
     login: row.user?.email ?? '',
     // Parolning o'zi HECH QACHON javobga tushmaydi
     credentialsSetAt: row.user ? toApiDateTime(row.updatedAt) : null,
-    mustChangePassword: false,
+    /* Ilgari bu yerda `false` yozib qo'yilgandi — forma har safar
+       haqiqiy holatni emas, standart qiymatni ko'rsatardi */
+    mustChangePassword: row.user?.mustChangePassword ?? false,
+    /*
+      TELEGRAM ULANGANMI.
+      Xabar shu bittagina ustunga bog'liq: u bo'sh bo'lsa xabar
+      jimgina yuborilmaydi. Egasi kimga xabar borishini KO'RIB
+      turishi kerak — aks holda "kelmayapti" degan gapni tekshirib
+      bo'lmaydi.
+    */
+    telegramLinked: Boolean(row.user?.telegramUserId),
     doctorId: row.doctorId,
     specialty: row.doctor?.specialty ?? '',
     consultationFee: row.doctor?.consultationFee ?? 0,

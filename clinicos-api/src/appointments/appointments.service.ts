@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
@@ -44,6 +45,8 @@ const DEFAULT_SHIFT_MINUTES = 480
 
 @Injectable()
 export class AppointmentsService {
+  private readonly log = new Logger(AppointmentsService.name)
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
@@ -207,7 +210,16 @@ export class AppointmentsService {
       where: { doctorId: row.doctorId, isActive: true },
       select: { id: true, telegramUserId: true },
     })
-    if (!doctorUser?.telegramUserId || doctorUser.id === userId) return
+    if (!doctorUser?.telegramUserId) {
+      /*
+        Nima uchun xabar ketmaganini AYTIB qo'yamiz. Bu yo'l jimgina
+        to'xtaydi — qabul odatdagidek saqlanadi — va tashqaridan
+        "bot ishlamayapti" bilan farqi ko'rinmaydi.
+      */
+      this.log.debug(`Telegram: shifokor ${row.doctorId} ulanmagan`)
+      return
+    }
+    if (doctorUser.id === userId) return
 
     const when = row.startsAt.toLocaleString('uz-UZ', {
       day: 'numeric',
