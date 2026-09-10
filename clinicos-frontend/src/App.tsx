@@ -108,6 +108,11 @@ const SchedulePage = lazy(() =>
 const VisitFromLinkPage = lazy(() =>
   import('@/pages/VisitFromLink').then((m) => ({ default: m.VisitFromLinkPage })),
 )
+
+/* Telegram xabaridagi "To'lov olish" tugmasi shu manzilga keladi */
+const PaymentFromLinkPage = lazy(() =>
+  import('@/pages/PaymentFromLink').then((m) => ({ default: m.PaymentFromLinkPage })),
+)
 const RevenuePage = lazy(() =>
   import('@/pages/Revenue').then((m) => ({ default: m.RevenuePage })),
 )
@@ -367,6 +372,15 @@ function AppRoutes() {
           element={
             <Guard permission="visits.create">
               <VisitFromLinkPage />
+            </Guard>
+          }
+        />
+        {/* Ko'rik tugagach registratorga keladigan havola */}
+        <Route
+          path="tolov/:id"
+          element={
+            <Guard permission="payments.create">
+              <PaymentFromLinkPage />
             </Guard>
           }
         />

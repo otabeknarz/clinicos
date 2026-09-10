@@ -348,9 +348,16 @@ not send; `debug` is invisible in this deployment, so those lines are `log`/`war
 itself carries the patient, the reason, the time **in words** ("keyingi hafta seshanba kuni, soat
 14:00" — a date like `11-sentabr` makes the doctor open a calendar to work out whether that is
 soon) and one `web_app` button to `/tashrif/:appointmentId`, which opens the visit form directly.
-There is deliberately no payment button (the receptionist takes money, and the doctor has no
-`payments.create`) and no separate "complete" button (saving the visit completes the appointment;
-a second button would be a second path).
+The doctor's message deliberately has no payment button (the
+receptionist takes money, and the doctor has no `payments.create`) and no separate "complete"
+button (saving the visit completes the appointment; a second button would be a second path).
+Money gets its own message instead: `visits.service.create` fires `notifyReception`, which reaches
+**every** linked receptionist in the clinic — picking one would invite "the other one will take it"
+— with the amount and a button to `/tolov/:appointmentId`. The amount is computed exactly as
+`GET /debts` computes it (`priceMode === 'DOCTOR_SET' ? visit.price : service.price`, minus PAID
+payments); two formulas would show one number in the message and another in the debt list. Nothing
+is sent when the balance is already zero, which is the normal case for a prepaid service. Both
+messages' text lives in `src/common/telegram-text.ts` for the same reason.
 With `TELEGRAM_BOT_TOKEN` unset everything still works, exactly like `S3_*`.
 
 **Debt is computed, never stored.** `GET /debts` derives it as price − payments, in two lists

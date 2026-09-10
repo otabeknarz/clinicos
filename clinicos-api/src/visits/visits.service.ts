@@ -3,12 +3,15 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 
 import { toApi, toApiDate, toApiDateTime } from '../common/api-enum'
 import { RequestContext } from '../common/request-context'
+import { escapeHtml, money } from '../common/telegram-text'
+import { TelegramService } from '../telegram/telegram.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { StorageService } from '../storage/storage.service'
 import { FollowUpPatchDto, UpdateVisitDto, VisitInputDto } from './visits.dto'
@@ -36,10 +39,13 @@ const VISIT_EXPAND = {
  */
 @Injectable()
 export class VisitsService {
+  private readonly log = new Logger(VisitsService.name)
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
     private readonly storage: StorageService,
+    private readonly telegram: TelegramService,
   ) {}
 
   private get db() {
@@ -172,7 +178,114 @@ export class VisitsService {
       return created
     })
 
+    /*
+      Ko'rik tugadi — endi PUL OLINISHI kerak.
+
+      `void`: xabar qulaylik, tashrif esa ishning o'zi. Telegram
+      sekinlashsa yoki yiqilsa, shifokor tashxisini yozolmay
+      qolishi mumkin emas. Qabuldagi xabar ham xuddi shunday
+      yuboriladi.
+    */
+    void this.notifyReception(dto.appointmentId)
+
     return toApiVisit(visit)
+  }
+
+  /**
+   * Ko'rik tugagani haqida REGISTRATORGA xabar.
+   *
+   * NEGA SHIFOKORGA EMAS: pulni registrator oladi. Shifokorda
+   * `payments.create` yo'q va bo'lishi ham kerak emas — u o'z
+   * ishini o'zi tekshirib qo'ya olmasligi kerak. Ya'ni "to'lov
+   * olish" tugmasi qabul haqidagi xabarga emas, aynan shu yerga
+   * tegishli.
+   *
+   * ALLAQACHON TO'LANGAN BO'LSA XABAR YO'Q: oldindan to'lanadigan
+   * xizmatlarda pul ko'rikdan oldin olinadi va registratorni
+   * bekorga chaqirishning ma'nosi yo'q.
+   */
+  private async notifyReception(appointmentId: string) {
+    if (!this.telegram.enabled) return
+
+    const row = await this.db.appointment.findFirst({
+      where: { id: appointmentId },
+      select: {
+        patient: { select: { fullName: true } },
+        doctor: { select: { fullName: true } },
+        service: { select: { name: true, price: true, priceMode: true } },
+        visit: { select: { price: true } },
+      },
+    })
+    if (!row) return
+
+    /*
+      SUMMA `GET /debts` BILAN BIR XIL HISOBLANADI.
+
+      Narxni shifokor belgilaydigan xizmatda summa ko'rikda turadi,
+      qolganida katalogda. Ikki joyda ikki xil hisoblansa,
+      registrator xabarda bir raqamni, qarzdorlik ro'yxatida
+      boshqasini ko'rardi.
+    */
+    const total =
+      row.service.priceMode === 'DOCTOR_SET' ? row.visit?.price : row.service.price
+    if (total === null || total === undefined) return
+
+    const paid = await this.db.payment.aggregate({
+      where: { status: 'PAID', appointmentId },
+      _sum: { amount: true },
+    })
+    const due = total - (paid._sum.amount ?? 0)
+    if (due <= 0) {
+      this.log.log('Telegram: to‘lov allaqachon olingan — xabar yuborilmadi')
+      return
+    }
+
+    /*
+      HAMMA REGISTRATORGA. Klinikada bir nechta bo'lishi mumkin va
+      qaysi biri navbatda turganini bilmaymiz — bittasini tanlash
+      "men emas, u oladi" degan holatni tug'dirardi.
+    */
+    const receptionists = await this.db.user.findMany({
+      where: {
+        role: 'RECEPTIONIST',
+        isActive: true,
+        telegramUserId: { not: null },
+      },
+      select: { telegramUserId: true },
+    })
+
+    if (receptionists.length === 0) {
+      this.log.warn('Telegram: ulangan registrator yo‘q — to‘lov xabari yuborilmadi')
+      return
+    }
+
+    const text = [
+      '<b>To‘lov kutilmoqda</b>',
+      '',
+      `<b>Bemor:</b> ${escapeHtml(row.patient.fullName)}`,
+      `<b>Xizmat:</b> ${escapeHtml(row.service.name)}`,
+      `<b>Shifokor:</b> ${escapeHtml(row.doctor.fullName)}`,
+      `<b>Summa:</b> ${money(due)}`,
+    ].join('\n')
+
+    const markup = {
+      inline_keyboard: [
+        [
+          {
+            text: 'To‘lov olish',
+            web_app: { url: this.telegram.appLink(`/tolov/${appointmentId}`) },
+          },
+        ],
+      ],
+    }
+
+    this.log.log(`Telegram: ${receptionists.length} ta registratorga to‘lov xabari`)
+
+    await Promise.all(
+      receptionists.map((user) =>
+        this.telegram.send(user.telegramUserId as string, text, markup),
+      ),
+    )
   }
 
   async get(id: string) {
