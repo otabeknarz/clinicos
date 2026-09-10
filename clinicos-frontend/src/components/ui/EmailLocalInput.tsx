@@ -60,13 +60,19 @@ export function EmailLocalInput({
       suffix={<span className="text-footnote text-label-tertiary">@{PLATFORM_EMAIL_DOMAIN}</span>}
       onChange={(e) => {
         /*
-          `@` va bo'shliq TERILMAYDI: domen allaqachon yozib
-          qo'yilgan, ikkinchisi esa `nom@x@clinic-os.uz` kabi
-          buzuq qiymat berardi.
+          TO'LIQ EMAIL TERILSA/QO'YILSA — `@` DAN OLDINGI QISMI
+          OLINADI, o'chirilmaydi.
+
+          Ilgari bu yerda `replace(/[@\s]/g, '')` turardi va u
+          `aziz@gmail.com` ni `azizgmail.com` ga aylantirardi.
+          Natijada hisob `azizgmail.com@clinic-os.uz` bo'lib
+          ochilardi: egasi loginni to'g'ri yozdim deb o'ylardi,
+          xodim esa kira olmasdi va xabar ataylab umumiy edi.
         */
         const clean = e.target.value
           .toLowerCase()
-          .replace(/[@\s]/g, '')
+          .split('@')[0]
+          .replace(/\s/g, '')
           .slice(0, 64)
         onChange(clean)
       }}

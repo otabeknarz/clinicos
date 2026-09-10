@@ -213,7 +213,18 @@ export function StaffFormModal({
       toast.error(t('toast.error'))
       return
     }
-    toast.success(editing ? t('toast.updated') : t('toast.created'))
+    /*
+      LOGIN SAQLANGACH KO'RSATILADI.
+
+      Egasi xodimga login-parolni OG'ZAKI aytadi va aynan shu
+      yerda adashadi: maydonda faqat nom ko'rinadi, domen esa
+      chetda o'zgarmas yozuv bo'lib turadi va "login" emasdek
+      tuyuladi. Xodim nomni terib kira olmasdi. Endi to'liq
+      manzil xabarda turadi — nima aytish kerakligi ko'rinib
+      qoladi.
+    */
+    const done = editing ? t('toast.updated') : t('toast.created')
+    toast.success(hasAccess ? `${done} — ${buildPlatformEmail(login)}` : done)
     onSaved()
     onClose()
   }

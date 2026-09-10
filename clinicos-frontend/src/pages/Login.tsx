@@ -5,6 +5,7 @@ import { Activity, Lock, Mail } from 'lucide-react'
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '@/api/auth'
 import { USE_MOCK } from '@/api/client'
 import { Button } from '@/components/ui/Button'
+import { PLATFORM_EMAIL_DOMAIN } from '@/components/ui/EmailLocalInput'
 import { TextInput } from '@/components/ui/Form'
 import { cn } from '@/lib/cn'
 import { useI18n } from '@/i18n'
@@ -31,12 +32,29 @@ export function LoginPage() {
   const emailError = touched && !email.trim() ? t('valid.required') : undefined
   const passwordError = touched && !password ? t('valid.required') : undefined
 
+  /*
+    FAQAT NOM TERILSA HAM KIRSIN.
+
+    Xodimning logini `ism.familiya@clinic-os.uz` ko'rinishida
+    ochiladi va egasi ko'pincha faqat nomni aytadi — domen
+    formada o'zgarmas yozuv bo'lib turgani uchun u "login"
+    emasdek ko'rinadi. Nom terilganda kirish rad etilardi va
+    sabab "email yoki parol noto'g'ri" ostida yashiringan edi.
+
+    `@` bor bo'lsa TEGMAYMIZ: eski hisoblar boshqa domenda
+    (`@shifomed.uz`) va ularni buzib qo'ymaslik kerak.
+  */
+  function fullEmail(value: string): string {
+    const clean = value.trim().toLowerCase()
+    return clean.includes('@') ? clean : `${clean}@${PLATFORM_EMAIL_DOMAIN}`
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setTouched(true)
     if (!email.trim() || !password) return
     try {
-      await login(email, password)
+      await login(fullEmail(email), password)
     } catch {
       /* xato AuthContext'da saqlanadi va pastda ko'rsatiladi */
     }
@@ -65,7 +83,16 @@ export function LoginPage() {
         <form onSubmit={submit} className="card squircle space-y-4 p-6">
           <TextInput
             label={t('auth.email')}
-            type="email"
+            /*
+              `type="email"` EMAS: brauzer `@` siz qiymatni o'zi
+              rad etadi va forma umuman yuborilmasdi — xodim faqat
+              nomini tersa, hech qanday xabarsiz turib qolardi.
+            */
+            type="text"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             autoComplete="username"
             placeholder="owner@shifomed.uz"
             icon={<Mail size={16} />}
