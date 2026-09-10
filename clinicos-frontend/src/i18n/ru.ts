@@ -624,7 +624,7 @@ export const dict: Dict = {
   'staff.noRevenueData': 'В этой должности выручка не измеряется',
 
   'staff.login': 'Логин',
-  'staff.loginHint': 'Обычно email. С ним сотрудник входит в систему.',
+  'staff.loginHint': 'С этим email сотрудник входит в систему',
   'staff.newPassword': 'Новый пароль',
   'staff.passwordHint': 'Минимум 8 символов, буквы и цифры',
   'staff.passwordKeepHint': 'Оставьте пустым - старый пароль сохранится',

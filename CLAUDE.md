@@ -178,6 +178,18 @@ attach one to an appointment, `visits.service` rejects the visit because `appoin
 never matches a null `doctorId`, and percent-based pay computes against zero revenue. Migration
 `20260906120000_shifokor_xodimga_yozuv` backfills clinics created before this.
 
+**A staff member's login lives on a separate `User` row, and both write paths must touch it.**
+`StaffService.create` opens the `User` (its email is `dto.login`, *not* `dto.email` — the contact
+address is the person's own gmail and has nothing to do with signing in). `update` used to touch
+only `Staff`, so changing the login, the password or the role, or switching "tizimga kirish" on
+after the fact, saved nothing: the form said "saqlandi", the account was unchanged or absent, and
+the staff member simply could not log in — with no hint why, because the login error is
+deliberately generic. `syncUser` now mirrors `syncDoctor`. Revoking access sets
+`isActive: false` and bumps `passwordChangedAt` rather than deleting the row: visits, payments and
+the audit log point at it, and deleting would make past work unattributable. Login is
+domain-locked to `@clinic-os.uz` in the form (`EmailLocalInput`) — a login the owner typed by hand
+and mistyped is an account nobody can reach.
+
 **The clinic owner is also a `Staff` row.** `PlatformService.createTenant` opens one
 (position `MANAGER`, "Klinika egasi") alongside the `User`, because "Mening profilim" and
 "Mening ish jadvalim" read `GET /me/profile` / `GET /me/schedule`, both of which resolve

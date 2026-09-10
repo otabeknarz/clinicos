@@ -215,6 +215,10 @@ export class StaffService {
       )
     }
 
+    if (dto.hasSystemAccess && dto.login) {
+      await this.assertLoginFree(dto.login.trim().toLowerCase(), null)
+    }
+
     const row = await this.db.$transaction(async (tx) => {
       let userId: string | null = null
 
@@ -301,6 +305,8 @@ export class StaffService {
         shiftStart: true,
         shiftEnd: true,
         hiredAt: true,
+        hasSystemAccess: true,
+        user: { select: { id: true, email: true } },
       },
     })
     if (!current) throw new NotFoundException('Xodim topilmadi')
@@ -313,13 +319,44 @@ export class StaffService {
     const position = dto.position ?? toApi(current.position)
     const { clinicId } = this.ctx.require()
 
+    /*
+      TIZIMGA KIRISH TAHRIRLASHDA HAM YOZILADI.
+
+      `User` yozuvi ilgari FAQAT `create` da ochilardi, bu yerda
+      esa unga umuman tegilmasdi. Ya'ni egasi xodimni tahrirlab
+      loginini yoki parolini o'zgartirsa, forma "saqlandi" deb
+      yozardi, bazada esa hech narsa o'zgarmasdi — xodim yangi
+      paroli bilan kira olmasdi va sababi ko'rinmasdi, chunki
+      kirish xabari ataylab umumiy ("email yoki parol noto'g'ri").
+      Xuddi shunday, keyin yoqilgan "tizimga kirish" bandi ham
+      hisob ochmasdi: xodimda login bor edi, hisob esa yo'q.
+    */
+    const wantsAccess = dto.hasSystemAccess ?? current.hasSystemAccess
+    const login = dto.login?.trim().toLowerCase() || current.user?.email || ''
+
+    if (wantsAccess && !current.user && (!login || !dto.password || !dto.role)) {
+      throw new BadRequestException(
+        'Tizimga kirish uchun login, parol va rol kerak',
+      )
+    }
+    if (wantsAccess && login !== current.user?.email) {
+      await this.assertLoginFree(login, current.user?.id ?? null)
+    }
+
     const row = await this.db.$transaction(async (tx) => {
       const doctorId = await syncDoctor(tx, clinicId, current, dto, position)
+      const userId = await syncUser(tx, clinicId, current, dto, {
+        wantsAccess,
+        login,
+        doctorId,
+      })
 
       return tx.staff.update({
         where: { id },
         data: {
           doctorId,
+          userId,
+          hasSystemAccess: wantsAccess,
           fullName: dto.fullName?.trim(),
           phone: dto.phone?.trim(),
           email: dto.email?.trim(),
@@ -396,6 +433,29 @@ export class StaffService {
       where: { id: doctorId },
       data: { status: 'INACTIVE' },
     })
+  }
+
+  /**
+   * Login klinika ichida band emasligini tekshiradi.
+   *
+   * Bazada `@@unique([clinicId, email])` baribir ushlab qoladi,
+   * lekin u 500 bo'lib chiqardi — egasi nimani noto'g'ri
+   * qilganini bilishi kerak. Kirishi o'chirilgan hisob ham
+   * hisobga olinadi: yozuv joyida turadi, ya'ni email band.
+   */
+  private async assertLoginFree(login: string, exceptUserId: string | null) {
+    const taken = await this.db.user.findFirst({
+      where: {
+        email: login,
+        ...(exceptUserId ? { NOT: { id: exceptUserId } } : {}),
+      },
+      select: { fullName: true },
+    })
+    if (taken) {
+      throw new BadRequestException(
+        `Bu login klinikada band: ${taken.fullName}`,
+      )
+    }
   }
 
   /**
@@ -543,7 +603,7 @@ const STAFF_EXPAND = {
 } as const
 
 /** `$transaction` ichidagi mijoz — bu yerda ikki jadval yetarli */
-type DoctorSyncTx = Pick<
+type StaffSyncTx = Pick<
   ReturnType<PrismaService['forCurrentClinic']>,
   'doctor' | 'user'
 >
@@ -603,7 +663,7 @@ function doctorDataFrom(dto: {
  * yozuvga bog'langan.
  */
 async function syncDoctor(
-  tx: DoctorSyncTx,
+  tx: StaffSyncTx,
   clinicId: string,
   current: {
     userId: string | null
@@ -692,6 +752,84 @@ async function syncDoctor(
   }
 
   return current.doctorId
+}
+
+/**
+ * Xodim tahrirlanganda kirish hisobini moslash.
+ *
+ * `Staff` va `User` — ikki alohida yozuv: birinchisi kadrlar
+ * uchun, ikkinchisi kirish uchun. Ikkalasi birga yangilanmasa,
+ * formada ko'rinayotgan login bilan haqiqiy hisob bir-biridan
+ * uzilib qoladi va buni faqat kira olmagan xodim sezadi.
+ *
+ * KIRISH OLIB QO'YILSA HISOB O'CHIRILMAYDI, `isActive: false`
+ * ga o'tadi: yozuvni o'chirish tashrif, to'lov va audit
+ * qatorlaridagi bog'lanishni uzardi — ishni kim qilgani
+ * noma'lum bo'lib qolardi. `passwordChangedAt` yangilanadi,
+ * ya'ni qo'lidagi token o'sha zahoti yaroqsiz bo'ladi.
+ */
+async function syncUser(
+  tx: StaffSyncTx,
+  clinicId: string,
+  current: {
+    userId: string | null
+    fullName: string
+    phone: string
+    user: { id: string; email: string } | null
+  },
+  dto: Partial<StaffInputDto>,
+  opts: { wantsAccess: boolean; login: string; doctorId: string | null },
+): Promise<string | null> {
+  const { wantsAccess, login, doctorId } = opts
+
+  if (!wantsAccess) {
+    if (current.user) {
+      await tx.user.update({
+        where: { id: current.user.id },
+        data: { isActive: false, passwordChangedAt: new Date() },
+      })
+    }
+    return current.userId
+  }
+
+  /* Parol bo'sh qoldirilsa eskisi qoladi — forma ham shunday deydi */
+  const password = dto.password
+    ? {
+        passwordHash: await argon2.hash(dto.password),
+        passwordChangedAt: new Date(),
+      }
+    : {}
+
+  if (current.user) {
+    await tx.user.update({
+      where: { id: current.user.id },
+      data: {
+        isActive: true,
+        email: login,
+        fullName: dto.fullName?.trim(),
+        phone: dto.phone?.trim(),
+        role: dto.role ? toDb(dto.role) : undefined,
+        doctorId,
+        mustChangePassword: dto.mustChangePassword,
+        ...password,
+      },
+    })
+    return current.user.id
+  }
+
+  const user = await tx.user.create({
+    data: {
+      clinicId,
+      fullName: dto.fullName?.trim() || current.fullName,
+      email: login,
+      phone: dto.phone?.trim() || current.phone,
+      passwordHash: await argon2.hash(dto.password as string),
+      role: toDb(dto.role as 'owner' | 'receptionist' | 'doctor'),
+      doctorId,
+      mustChangePassword: dto.mustChangePassword ?? true,
+    },
+  })
+  return user.id
 }
 
 type StaffRow = Staff & {

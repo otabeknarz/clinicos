@@ -289,6 +289,57 @@ async function main() {
       `ism: ${one.data?.fullName}`,
     )
 
+    /*
+      KIRISH HISOBI TAHRIRLASHDA HAM YOZILISHI SHART.
+
+      `User` yozuvi ilgari faqat yaratishda ochilardi: egasi
+      loginni yoki parolni tahrirlasa forma "saqlandi" derdi,
+      xodim esa yangi paroli bilan kira olmasdi. Xato faqat
+      kirishga urinilganda ko'rinardi va sababi umumiy xabar
+      ostida yashiringan edi.
+    */
+    const asStaff = (email: string, password: string) =>
+      call('POST', '/auth/login', undefined, { email, password })
+
+    const first = await asStaff(`crud.docstaff.${RUN}@shifomed.uz`, 'crud-doctor-1234')
+    check('  yaratilgan hisob bilan kirildi', first.status === 200, short(first.data))
+
+    await call('PATCH', `/staff/${docStaffId}`, owner, { password: 'crud-doctor-5678' })
+    const withNew = await asStaff(`crud.docstaff.${RUN}@shifomed.uz`, 'crud-doctor-5678')
+    check('  yangi parol ishladi', withNew.status === 200, short(withNew.data))
+    const withOld = await asStaff(`crud.docstaff.${RUN}@shifomed.uz`, 'crud-doctor-1234')
+    check('  eski parol RAD ETILDI', withOld.status === 401, `status: ${withOld.status}`)
+
+    await call('PATCH', `/staff/${docStaffId}`, owner, {
+      login: `crud.docstaff.yangi.${RUN}@shifomed.uz`,
+    })
+    const renamedLogin = await asStaff(
+      `crud.docstaff.yangi.${RUN}@shifomed.uz`,
+      'crud-doctor-5678',
+    )
+    check('  yangi login ishladi', renamedLogin.status === 200, short(renamedLogin.data))
+
+    const shown = await call('GET', `/staff/${docStaffId}`, owner)
+    check(
+      '  ro‘yxatda ham yangi login',
+      shown.data?.login === `crud.docstaff.yangi.${RUN}@shifomed.uz`,
+      `login: ${shown.data?.login}`,
+    )
+
+    await call('PATCH', `/staff/${docStaffId}`, owner, { hasSystemAccess: false })
+    const revoked = await asStaff(
+      `crud.docstaff.yangi.${RUN}@shifomed.uz`,
+      'crud-doctor-5678',
+    )
+    check('  kirish olib qo‘yildi', revoked.status === 401, `status: ${revoked.status}`)
+
+    await call('PATCH', `/staff/${docStaffId}`, owner, { hasSystemAccess: true })
+    const restored = await asStaff(
+      `crud.docstaff.yangi.${RUN}@shifomed.uz`,
+      'crud-doctor-5678',
+    )
+    check('  kirish qaytarildi', restored.status === 200, short(restored.data))
+
     // Lavozim o'zgarsa yozuv o'chmaydi, faqat ro'yxatdan chiqadi
     await call('PATCH', `/staff/${docStaffId}`, owner, { position: 'nurse' })
     const after = await call('GET', '/doctors?fields=short', reception)

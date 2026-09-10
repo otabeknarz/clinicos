@@ -622,7 +622,7 @@ export const dict: Dict = {
   'staff.noRevenueData': 'Revenue is not measured for this position',
 
   'staff.login': 'Login',
-  'staff.loginHint': 'Usually the email. Used to sign in.',
+  'staff.loginHint': 'The staff member signs in with this email',
   'staff.newPassword': 'New password',
   'staff.passwordHint': 'At least 8 characters, letters and digits',
   'staff.passwordKeepHint': 'Leave empty to keep the current password',

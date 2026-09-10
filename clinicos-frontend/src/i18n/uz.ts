@@ -658,7 +658,7 @@ export const dict: Dict = {
 
   /* --- Login va parol --- */
   'staff.login': 'Login',
-  'staff.loginHint': 'Odatda email. Tizimga shu bilan kiradi.',
+  'staff.loginHint': 'Xodim tizimga shu email bilan kiradi',
   'staff.newPassword': 'Yangi parol',
   'staff.passwordHint': 'Kamida 8 belgi, harf va raqam aralash',
   'staff.passwordKeepHint': 'Bo’sh qoldirilsa - eski parol saqlanadi',

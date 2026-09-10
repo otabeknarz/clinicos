@@ -87,13 +87,7 @@ export function StaffFormModal({
     setTouched(false)
     setFullName(staff?.fullName ?? '')
     setPhone(staff?.phone ?? '+998 ')
-    /*
-      Tahrirlashda MAVJUD emaildan faqat nom qismi olinadi. Eski
-      xodimlarda boshqa domen bo'lishi mumkin (`@shifomed.uz`) —
-      saqlashda u platforma domeniga o'tadi va bu to'g'ri: hisoblar
-      bitta domenda yuritiladi.
-    */
-    setEmail(emailLocalPart(staff?.email ?? ''))
+    setEmail(staff?.email ?? '')
     setPosition(staff?.position ?? 'nurse')
     setPositionTitle(staff?.positionTitle ?? '')
     setSpecialty(staff?.specialty || 'therapist')
@@ -110,7 +104,13 @@ export function StaffFormModal({
     setStatus(staff?.status ?? 'active')
     setHasAccess(staff?.hasSystemAccess ?? false)
     setRole(staff?.role ?? 'receptionist')
-    setLogin(staff?.login ?? '')
+    /*
+      Login — hisobning emaili. Tahrirlashda mavjudidan faqat nom
+      qismi olinadi: eski xodimlarda boshqa domen bo'lishi mumkin
+      (`@shifomed.uz`), saqlashda u platforma domeniga o'tadi.
+      Bu ko'rinib turadi — domen maydonning o'ng chetida yozilgan.
+    */
+    setLogin(emailLocalPart(staff?.login ?? ''))
     setPassword('')
     setShowPassword(false)
     setMustChange(staff ? staff.mustChangePassword : true)
@@ -150,8 +150,16 @@ export function StaffFormModal({
   }
 
   const digits = phone.replace(/\D/g, '')
-  // Yangi xodimga parol majburiy; tahrirlashda bo'sh qoldirilsa — eskisi qoladi
-  const passwordRequired = hasAccess && !editing
+  /*
+    Parol yangi hisobga majburiy, mavjudiga esa yo'q — bo'sh
+    qoldirilsa eskisi qoladi.
+
+    "Mavjud" degani `staff.login` to'la: hisob bor. Xodimda
+    kirish yoqilgan bo'lib, hisobi bo'lmasligi ham mumkin —
+    tahrirlash hisob ochmagan davrdan qolgan yozuvlar shunday.
+    Ularga parol so'ralmasa, server so'rovni rad etardi.
+  */
+  const passwordRequired = hasAccess && (!editing || !staff?.login)
 
   const errors = {
     fullName: !fullName.trim() ? t('valid.required') : undefined,
@@ -171,7 +179,7 @@ export function StaffFormModal({
     const payload = {
       fullName: fullName.trim(),
       phone: phoneToE164(phone),
-      email: email.trim() ? buildPlatformEmail(email) : '',
+      email: email.trim(),
       position,
       positionTitle: positionTitle.trim() || t(`staff.position.${position}`),
       specialty: isDoctor ? specialty : '',
@@ -188,7 +196,7 @@ export function StaffFormModal({
       status,
       hasSystemAccess: hasAccess,
       role: hasAccess ? role : null,
-      login: hasAccess ? login.trim() : '',
+      login: hasAccess ? buildPlatformEmail(login) : '',
       password: password || undefined,
       mustChangePassword: mustChange,
       notes: notes.trim(),
@@ -300,11 +308,16 @@ export function StaffFormModal({
               error={touched ? errors.phone : undefined}
               onChange={setPhone}
             />
-            {/* Domen qo'lda yozilmaydi — izohi `EmailLocalInput` da */}
-            <EmailLocalInput
+            {/*
+              Bu — xodimning SHAXSIY aloqa emaili (gmail va h.k.),
+              tizimga kirish emas. Kirish logini quyida, "Tizimga
+              kirish" bandida va u platforma domenida bo'ladi.
+            */}
+            <TextInput
               label={t('common.email')}
+              type="email"
               value={email}
-              onChange={setEmail}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
@@ -532,13 +545,13 @@ export function StaffFormModal({
           {hasAccess ? (
             <div className="mt-4 space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <TextInput
+                <EmailLocalInput
                   label={t('staff.login')}
                   required
                   value={login}
                   error={touched ? errors.login : undefined}
                   hint={t('staff.loginHint')}
-                  onChange={(e) => setLogin(e.target.value)}
+                  onChange={setLogin}
                 />
                 <Select
                   label={t('staff.role')}

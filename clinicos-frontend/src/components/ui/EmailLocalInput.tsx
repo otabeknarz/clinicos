@@ -35,6 +35,7 @@ export function EmailLocalInput({
   value,
   onChange,
   error,
+  hint,
   required,
 }: {
   label: string
@@ -42,6 +43,7 @@ export function EmailLocalInput({
   value: string
   onChange: (local: string) => void
   error?: string
+  hint?: string
   required?: boolean
 }) {
   return (
@@ -50,6 +52,7 @@ export function EmailLocalInput({
       value={value}
       required={required}
       error={error}
+      hint={hint}
       autoCapitalize="none"
       autoCorrect="off"
       spellCheck={false}
