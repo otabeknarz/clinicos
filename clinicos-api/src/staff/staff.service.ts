@@ -331,7 +331,18 @@ export class StaffService {
       Xuddi shunday, keyin yoqilgan "tizimga kirish" bandi ham
       hisob ochmasdi: xodimda login bor edi, hisob esa yo'q.
     */
-    const wantsAccess = dto.hasSystemAccess ?? current.hasSystemAccess
+    /*
+      ISHDAN BO'SHAGAN XODIM TIZIMDA QOLMAYDI.
+
+      Holat `fired` ga o'tsa kirish o'z-o'zidan olinadi. Ilgari
+      bunday emasdi: egasi xodimni "ishdan bo'shadi" deb belgilardi,
+      hisobi esa faol qolaverardi va odam ertasiga ham bemorlar
+      bazasiga kira olardi. Qayta ishga olinsa, kirishni egasi
+      QO'LDA yoqadi — bu ataylab, unutilib ochilib qolgandan ko'ra
+      unutilib yopiq turgani xavfsizroq.
+    */
+    const fired = (dto.status ?? toApi(current.status)) === 'fired'
+    const wantsAccess = fired ? false : (dto.hasSystemAccess ?? current.hasSystemAccess)
     const login = dto.login?.trim().toLowerCase() || current.user?.email || ''
 
     if (wantsAccess && !current.user && (!login || !dto.password || !dto.role)) {
@@ -392,8 +403,11 @@ export class StaffService {
 
     const staff = await this.db.staff.findFirst({
       where: { id },
-      select: { doctorId: true },
+      select: { doctorId: true, userId: true },
     })
+
+    /* Yozuvi arxivlansa ham, o'chirilsa ham — kirishi yopiladi */
+    await this.revokeAccess(staff?.userId ?? null)
 
     const used =
       (await this.db.attendance.count({ where: { staffId: id } })) +
@@ -401,7 +415,10 @@ export class StaffService {
       (await this.db.penalty.count({ where: { staffId: id } }))
 
     if (used > 0) {
-      await this.db.staff.update({ where: { id }, data: { status: 'FIRED' } })
+      await this.db.staff.update({
+        where: { id },
+        data: { status: 'FIRED', hasSystemAccess: false },
+      })
       // Ro'yxatlarda ko'rinmasin, lekin tashrif tarixi joyida qolsin
       await this.deactivateDoctor(staff?.doctorId ?? null)
       return { archived: true }
@@ -425,6 +442,21 @@ export class StaffService {
     }
 
     return { archived: false }
+  }
+
+  /**
+   * Kirishni yopish.
+   *
+   * `User` yozuvi O'CHIRILMAYDI: tashrif, to'lov va audit
+   * qatorlari unga bog'langan. `passwordChangedAt` yangilanadi —
+   * qo'lidagi token o'sha zahoti yaroqsiz bo'ladi.
+   */
+  private async revokeAccess(userId: string | null) {
+    if (!userId) return
+    await this.db.user.update({
+      where: { id: userId },
+      data: { isActive: false, passwordChangedAt: new Date() },
+    })
   }
 
   private async deactivateDoctor(doctorId: string | null) {

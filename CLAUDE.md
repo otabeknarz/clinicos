@@ -188,7 +188,11 @@ deliberately generic. `syncUser` now mirrors `syncDoctor`. Revoking access sets
 `isActive: false` and bumps `passwordChangedAt` rather than deleting the row: visits, payments and
 the audit log point at it, and deleting would make past work unattributable. Login is
 domain-locked to `@clinic-os.uz` in the form (`EmailLocalInput`) — a login the owner typed by hand
-and mistyped is an account nobody can reach.
+and mistyped is an account nobody can reach. **Firing or removing a staff member revokes the
+login** (`status: 'fired'`, `DELETE /staff/:id`): the account used to stay active, so a dismissed
+employee could still open the patient database the next morning. Re-hiring does not restore access
+automatically — the owner ticks it again, because an account left open by accident is worse than
+one left closed by accident.
 
 **The clinic owner is also a `Staff` row.** `PlatformService.createTenant` opens one
 (position `MANAGER`, "Klinika egasi") alongside the `User`, because "Mening profilim" and

@@ -340,6 +340,24 @@ async function main() {
     )
     check('  kirish qaytarildi', restored.status === 200, short(restored.data))
 
+    // Ishdan bo'shagan xodim ertasiga ham kira olmasligi kerak
+    await call('PATCH', `/staff/${docStaffId}`, owner, { status: 'fired' })
+    const afterFired = await asStaff(
+      `crud.docstaff.yangi.${RUN}@shifomed.uz`,
+      'crud-doctor-5678',
+    )
+    check('  ishdan bo‘shagach kira olmadi', afterFired.status === 401, `status: ${afterFired.status}`)
+
+    await call('PATCH', `/staff/${docStaffId}`, owner, {
+      status: 'active',
+      hasSystemAccess: true,
+    })
+    const rehired = await asStaff(
+      `crud.docstaff.yangi.${RUN}@shifomed.uz`,
+      'crud-doctor-5678',
+    )
+    check('  qayta ishga olingach kirish tiklandi', rehired.status === 200, short(rehired.data))
+
     // Lavozim o'zgarsa yozuv o'chmaydi, faqat ro'yxatdan chiqadi
     await call('PATCH', `/staff/${docStaffId}`, owner, { position: 'nurse' })
     const after = await call('GET', '/doctors?fields=short', reception)
