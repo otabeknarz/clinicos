@@ -77,3 +77,53 @@ export async function listNotifications(): Promise<AppNotification[]> {
 
   return delay(items, 120)
 }
+
+/**
+ * YON MENYUDAGI SONLAR.
+ *
+ * Kalitlar — `navigation.ts` dagi `badge` nomlari. Yo'l bo'yicha
+ * emas ataylab: marshrut nomi o'zgarsa, son jimgina noto'g'ri
+ * bandga tushib qolardi yoki umuman yo'qolardi.
+ */
+export type NavBadges = Record<string, number>
+
+// GET /notifications/badges
+export async function getNavBadges(): Promise<NavBadges> {
+  if (!USE_MOCK) return request<NavBadges>('GET', '/notifications/badges')
+
+  /*
+    Demo rejimda ham haqiqiy sonlar: bo'sh qaytarilsa, bu bo'lim
+    umuman ishlamayotgandek ko'rinardi.
+  */
+  const { clinicId, scopeDoctorId } = apiContext()
+  const db = getDb()
+  const now = new Date()
+  const dayStart = startOfDay(now).getTime()
+  const dayEnd = endOfDay(now).getTime()
+
+  const appts = db.appointments
+    .all(clinicId)
+    .filter((a) => !scopeDoctorId || a.doctorId === scopeDoctorId)
+
+  const today = appts.filter((a) => {
+    const at = new Date(a.startsAt).getTime()
+    return at >= dayStart && at <= dayEnd
+  })
+
+  /* Belgi faqat oxirgi 30 kunni sanaydi — izohi backendda */
+  const monthAgo = now.getTime() - 30 * 24 * 60 * 60 * 1000
+  const newFeedback = db.feedback
+    .all(clinicId)
+    .filter((f) => f.status === 'new' && new Date(f.createdAt).getTime() >= monthAgo).length
+
+  return delay(
+    {
+      appointments:
+        today.filter((a) => a.status === 'scheduled').length +
+        today.filter((a) => a.status === 'no_show').length,
+      feedback: newFeedback,
+      chat: 0,
+    },
+    120,
+  )
+}

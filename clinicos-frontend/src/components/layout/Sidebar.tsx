@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { Activity, LogOut } from 'lucide-react'
 
+import { NavBadge } from './NavBadge'
 import { NAVIGATION } from './navigation'
 import { Avatar } from '@/components/ui/Avatar'
 import { IconButton } from '@/components/ui/Button'
@@ -14,7 +15,14 @@ import { useAuth } from '@/store/auth-context'
  * Desktopda doim ko'rinadi, planshetda ochiladi/yopiladi (`open` prop),
  * telefonda umuman ko'rinmaydi — u yerda pastki panel ishlaydi.
  */
-export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function Sidebar({
+  onNavigate,
+  badges,
+}: {
+  onNavigate?: () => void
+  /** Bo'lim yonida ko'rinadigan yangilik sonlari */
+  badges?: Record<string, number>
+}) {
   const { t } = useI18n()
   const { session, can, logout, impersonating } = useAuth()
 
@@ -94,6 +102,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                           className="shrink-0"
                         />
                         <span className="truncate">{t(item.labelKey)}</span>
+                        {item.badge ? (
+                          <NavBadge count={badges?.[item.badge]} />
+                        ) : null}
                       </>
                     )}
                   </NavLink>

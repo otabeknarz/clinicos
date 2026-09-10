@@ -16,4 +16,16 @@ export class NotificationsController {
   list() {
     return this.notifications.list()
   }
+
+  /*
+    GET /notifications/badges
+
+    Yon menyudagi sonlar. Bildirishnomalardan alohida, chunki
+    ular boshqa savolga javob beradi: bildirishnoma "nima
+    bo'ldi" desa, bu "qaysi bo'limga kirish kerak" deydi.
+  */
+  @Get('badges')
+  badges() {
+    return this.notifications.badges()
+  }
 }

@@ -3,14 +3,17 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
+import { NavDot } from './NavBadge'
 import { MOBILE_NAV, NAVIGATION, PLATFORM_MOBILE_NAV } from './navigation'
 import { Sidebar } from './Sidebar'
+import { getNavBadges } from '@/api/notifications'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ImpersonationBar } from './ImpersonationBar'
 import { Topbar } from './Topbar'
 import { IconButton } from '@/components/ui/Button'
 import { ErrorState } from '@/components/ui/States'
 import { cn } from '@/lib/cn'
+import { useAsync } from '@/lib/useAsync'
 import { useEntranceMotion } from '@/lib/useEntranceMotion'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
@@ -39,6 +42,17 @@ export function AppLayout() {
   const isPlatform = location.pathname.startsWith('/platform')
   const entering = useEntranceMotion(location.pathname)
 
+  /*
+    YANGILIK SONLARI.
+
+    Sahifa almashganda qayta o'qiladi: xodim izohni ko'rib chiqqach
+    yoki qabulni tasdiqlagach son o'zi kamayishi kerak. Alohida
+    taymer qo'ymadim — u fonda so'rov yuboraverardi va ochiq
+    turgan brauzer serverni bekorga bezovta qilardi.
+  */
+  const { data } = useAsync(getNavBadges, [location.pathname])
+  const badges = data ?? undefined
+
   // Sahifa almashganda ochiq panelni yopamiz
   useEffect(() => {
     setSidebarOpen(false)
@@ -60,7 +74,7 @@ export function AppLayout() {
       {/* --- Doimiy yon menyu (desktop) --- */}
       <aside className="hairline hidden w-64 shrink-0 border-r lg:block">
         <div className="sticky top-0 h-dvh">
-          <Sidebar />
+          <Sidebar badges={badges} />
         </div>
       </aside>
 
@@ -80,7 +94,7 @@ export function AppLayout() {
             >
               <X size={18} />
             </IconButton>
-            <Sidebar onNavigate={() => setSidebarOpen(false)} />
+            <Sidebar onNavigate={() => setSidebarOpen(false)} badges={badges} />
           </aside>
         </div>
       ) : null}
@@ -128,7 +142,7 @@ export function AppLayout() {
           </ErrorBoundary>
         </main>
 
-        <MobileNav moreOpen={moreOpen} setMoreOpen={setMoreOpen} />
+        <MobileNav moreOpen={moreOpen} setMoreOpen={setMoreOpen} badges={badges} />
       </div>
     </div>
   )
@@ -156,11 +170,14 @@ function NavItem({
   end,
   icon: Icon,
   label,
+  badge,
 }: {
   to: string
   end?: boolean
   icon: LucideIcon
   label: string
+  /** Yangilik soni — bu yerda faqat NUQTA bo'lib ko'rinadi */
+  badge?: number
 }) {
   return (
     <li className="min-w-0">
@@ -172,7 +189,15 @@ function NavItem({
       >
         {({ isActive }) => (
           <>
-            <Icon size={20} strokeWidth={isActive ? 2.2 : 1.9} className="shrink-0" />
+            {/*
+              Tabletkada son sig'maydi — yonma-yon turgan ikkita
+              ikkixonali son bandlarni siqib qo'yardi. Nuqta
+              "shu yerda yangilik bor" deyish uchun yetarli.
+            */}
+            <span className="relative shrink-0">
+              <Icon size={20} strokeWidth={isActive ? 2.2 : 1.9} className="shrink-0" />
+              <NavDot count={badge} />
+            </span>
             {/*
               Yozuv faqat faol bandda. `truncate` kerak emas — tabletka
               matnga qarab kengayadi va qolganlari siqilib turaveradi.
@@ -197,9 +222,11 @@ function NavItem({
 function MobileNav({
   moreOpen,
   setMoreOpen,
+  badges,
 }: {
   moreOpen: boolean
   setMoreOpen: (open: boolean) => void
+  badges?: Record<string, number>
 }) {
   const { t } = useI18n()
   const { can } = useAuth()
@@ -284,6 +311,7 @@ function MobileNav({
               end={item.end}
               icon={item.icon}
               label={t(item.labelKey)}
+              badge={item.badge ? badges?.[item.badge] : undefined}
             />
           ))}
 
@@ -348,7 +376,7 @@ function MobileNav({
                             <>
                               <span
                                 className={cn(
-                                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
+                                  'relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
                                   'transition-colors duration-200',
                                   isActive
                                     ? 'bg-navy text-white'
@@ -356,6 +384,9 @@ function MobileNav({
                                 )}
                               >
                                 <item.icon size={20} strokeWidth={1.9} />
+                                {item.badge ? (
+                                  <NavDot count={badges?.[item.badge]} />
+                                ) : null}
                               </span>
                               {/*
                                 Yozuv KESILMAYDI: "Mening ish jadvalim"

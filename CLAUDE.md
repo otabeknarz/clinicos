@@ -392,6 +392,19 @@ belong to patients in two clinics (`@@unique([clinicId, phone])` is per clinic),
 a clinic list to choose from rather than picking one. On the client, the patient token lives under
 its own key: a clinic owner may also be a patient, and one slot would log the other out.
 
+**The sidebar carries "what is new" counts, and only counts that can reach zero.**
+`GET /notifications/badges` returns a small map keyed by a `badge` name declared on each
+`NavItem` — not by route, so renaming a path cannot silently move a number onto the wrong entry.
+It exists because the notification bell was not enough: reading it requires clicking it, and a
+receptionist in a hurry never does — new feedback sat there for days with nothing beside "Izohlar"
+to suggest it. Only **appointments** (today's unconfirmed + no-shows), **feedback** (status `NEW`
+within 30 days) and **chat** (unread, excluding one's own messages) get a badge. Debts and due
+follow-ups were tried and removed: they are a standing backlog, never reach zero, and a permanent
+"99+" turns every badge in the product into wallpaper within a week — which is the exact failure
+this was built to fix. They remain in the bell, which is a list, not a signal. The 30-day bound on
+feedback exists for the same reason: without it a section left alone for a month freezes at "99+".
+The badge answers "something arrived", not "there is work somewhere".
+
 **Debt is computed, never stored.** `GET /debts` derives it as price − payments, in two lists
 (appointments and admissions). A stored balance column would drift from the payment rows and then
 nobody could say which one was true. `DebtWaiver` writes off a hopeless debt without touching the

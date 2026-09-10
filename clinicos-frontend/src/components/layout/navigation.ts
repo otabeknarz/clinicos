@@ -50,6 +50,25 @@ export interface NavItem {
   roles?: Role[]
   /** Aniq moslik talab qilinadimi (bosh sahifa uchun) */
   end?: boolean
+  /**
+   * Yangilik sonining kaliti (`GET /notifications/badges`).
+   *
+   * NEGA KERAK: xodim bo'limga kirmasdan turib u yerda yangi
+   * narsa borligini bilmasdi. Yangi izoh kelib turardi-yu,
+   * "Izohlar" bandi hech qanday belgi bermasdi — shoshib
+   * turganda odam uni umuman ochmaydi.
+   *
+   * Yo'l bo'yicha emas, ALOHIDA NOM bilan: marshrut o'zgarsa,
+   * son jimgina boshqa bandga tushib qolardi.
+   *
+   * FAQAT NOLGA TUSHADIGAN SONLAR. Qarzdorlar va muddati kelgan
+   * takroriy tashriflar ataylab YO'Q: ular yangilik emas, to'planib
+   * qolgan ish va hech qachon nolga tushmaydi. Doimiy "99+" esa bir
+   * hafta ichida devor qog'oziga aylanadi va odam BARCHA belgilarga
+   * qaramay qo'yadi — ya'ni belgilar tizimining o'zi buziladi.
+   * Ular qo'ng'iroqcha ostidagi ro'yxatda ko'rinib turadi.
+   */
+  badge?: string
 }
 
 export interface NavGroup {
@@ -134,12 +153,18 @@ export const NAVIGATION: NavGroup[] = [
   {
     labelKey: 'nav.group.patients',
     items: [
-      { to: '/patients', labelKey: 'nav.patients', icon: Users, permission: 'patients.view' },
+      {
+        to: '/patients',
+        labelKey: 'nav.patients',
+        icon: Users,
+        permission: 'patients.view',
+      },
       {
         to: '/appointments',
         labelKey: 'nav.appointments',
         icon: ClipboardList,
         permission: 'appointments.view',
+        badge: 'appointments',
       },
       {
         to: '/calendar',
@@ -168,7 +193,13 @@ export const NAVIGATION: NavGroup[] = [
         // shuning uchun eng keng tarqalgan ruxsatga bog'landi
         permission: 'dashboard.view',
       },
-      { to: '/chat', labelKey: 'nav.chat', icon: MessageCircle, permission: 'chat.use' },
+      {
+        to: '/chat',
+        labelKey: 'nav.chat',
+        icon: MessageCircle,
+        permission: 'chat.use',
+        badge: 'chat',
+      },
     ],
   },
   {
@@ -192,6 +223,7 @@ export const NAVIGATION: NavGroup[] = [
         labelKey: 'nav.feedback',
         icon: MessageSquare,
         permission: 'feedback.view',
+        badge: 'feedback',
       },
       {
         to: '/services',
