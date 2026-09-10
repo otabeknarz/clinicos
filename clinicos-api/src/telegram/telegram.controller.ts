@@ -1,5 +1,6 @@
-import { Body, Controller, Post } from '@nestjs/common'
+import { Body, Controller, Headers, Post } from '@nestjs/common'
 
+import { Public } from '../common/guards/jwt-auth.guard'
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
@@ -48,5 +49,28 @@ export class TelegramController {
       })
 
     return { linked: true }
+  }
+
+  /*
+    POST /telegram/webhook
+
+    Telegram botga kelgan xabarlarni shu yerga tashlaydi. Marshrut
+    OCHIQ bo'lishi shart — Telegram'da bizning tokenimiz yo'q —
+    shuning uchun `setWebhook` da berilgan maxfiy kalit sarlavhada
+    tekshiriladi.
+
+    HAR DOIM `{ ok: true }` QAYTADI. Telegram xato javobni qayta
+    urinish belgisi deb biladi va bir xil xabarni soatlab
+    yuboraverardi; yaroqsiz so'rov shunchaki e'tiborsiz qoldiriladi.
+  */
+  @Post('telegram/webhook')
+  @Public()
+  async webhook(
+    @Body() update: unknown,
+    @Headers('x-telegram-bot-api-secret-token') secret?: string,
+  ) {
+    if (!this.telegram.webhookAllowed(secret)) return { ok: true }
+    await this.telegram.handleUpdate(update)
+    return { ok: true }
   }
 }

@@ -29,6 +29,81 @@ export class TelegramService {
   }
 
   /**
+   * Webhook maxfiy kaliti.
+   *
+   * `POST /telegram/webhook` OCHIQ marshrut bo'lishi shart —
+   * Telegram'da bizning tokenimiz yo'q. Ochiq qoldirilsa, har kim
+   * o'zini Telegram deb ko'rsatib bot nomidan xabar yozdirardi.
+   * Telegram har so'rovda `X-Telegram-Bot-Api-Secret-Token`
+   * sarlavhasini qaytaradi — biz `setWebhook` da bergan qiymatni.
+   */
+  private get webhookSecret(): string | null {
+    return process.env.TELEGRAM_WEBHOOK_SECRET?.trim() || null
+  }
+
+  /**
+   * Mini app manzili.
+   *
+   * Alohida o'zgaruvchi ochmadik: `CORS_ORIGIN` da allaqachon
+   * ilovaning haqiqiy manzili turibdi va ikkitasi bir-biridan
+   * uzilib qolsa, tugma ishlamay qolardi.
+   */
+  private get appUrl(): string {
+    const fromCors = process.env.CORS_ORIGIN?.split(',')[0]?.trim()
+    return fromCors || 'https://clinic-os.uz'
+  }
+
+  /**
+   * Webhook so'rovi HAQIQATAN Telegram'danmi.
+   *
+   * Kalit o'rnatilmagan bo'lsa RAD ETAMIZ. "Kalit yo'q — hammaga
+   * ruxsat" degan yumshoq yo'l bu yerda xavfli: sozlash unutilsa
+   * marshrut jimgina ochiq qolardi.
+   */
+  webhookAllowed(headerValue: string | undefined): boolean {
+    const secret = this.webhookSecret
+    if (!secret || !headerValue) return false
+
+    const a = Buffer.from(secret)
+    const b = Buffer.from(headerValue)
+    return a.length === b.length && timingSafeEqual(a, b)
+  }
+
+  /**
+   * Botga kelgan xabarga javob.
+   *
+   * NEGA UMUMAN KERAK: Telegram bot O'ZI birinchi bo'lib yoza
+   * olmaydi — odam avval bot bilan suhbatni ochishi kerak. Ya'ni
+   * `/start` bosilmagan shifokorga qabul haqidagi xabar HECH
+   * QACHON yetib bormaydi va sababi hech qayerda ko'rinmaydi
+   * (`send()` 403 ni `debug` ga yozadi, xolos).
+   *
+   * Shuning uchun bot har qanday xabarga bir xil javob beradi:
+   * qisqa izoh va ilovani ochadigan tugma. Buyruqlar ro'yxati
+   * yo'q — botning vazifasi bitta.
+   */
+  async handleUpdate(update: unknown): Promise<void> {
+    const message = (update as { message?: { chat?: { id?: number } } })?.message
+    const chatId = message?.chat?.id
+    if (!chatId) return
+
+    await this.send(
+      String(chatId),
+      [
+        '<b>ClinicOS</b>',
+        '',
+        'Ilova shu bot ichida ochiladi. Yangi bemor yozilsa,',
+        'shu yerga xabar keladi.',
+      ].join('\n'),
+      {
+        inline_keyboard: [
+          [{ text: 'Ilovani ochish', web_app: { url: this.appUrl } }],
+        ],
+      },
+    )
+  }
+
+  /**
    * Mini app yuborgan `initData` ni tekshiradi va Telegram id qaytaradi.
    *
    * Telegram hujjatidagi tartib: `hash` ajratib olinadi, qolgan
@@ -91,7 +166,11 @@ export class TelegramService {
    * xabar qulaylik, qabul esa ishning o'zi. Shuning uchun xato
    * faqat jurnalga yoziladi.
    */
-  async send(telegramUserId: string, text: string): Promise<void> {
+  async send(
+    telegramUserId: string,
+    text: string,
+    replyMarkup?: unknown,
+  ): Promise<void> {
     const token = this.token
     if (!token || !telegramUserId) return
 
@@ -104,6 +183,7 @@ export class TelegramService {
           text,
           parse_mode: 'HTML',
           disable_web_page_preview: true,
+          ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
         }),
         /* Osilib qolmasin — qabul yaratish shuni kutib turmaydi */
         signal: AbortSignal.timeout(5000),
