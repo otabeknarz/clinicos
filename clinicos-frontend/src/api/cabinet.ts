@@ -13,7 +13,7 @@
  * yerga uzatiladi — bu FAQAT demo uchun, shuning uchun parametr
  * `demoPatientId` deb ataldi va haqiqiy so'rovga umuman qo'shilmaydi.
  */
-import { delay, request, USE_MOCK } from './client'
+import { delay, request, upload, USE_MOCK } from './client'
 import { getDb } from '@/mock/db'
 import { MAIN_CLINIC_ID } from '@/mock/seed'
 import type {
@@ -21,6 +21,7 @@ import type {
   CabinetProfile,
   CabinetVisit,
   ID,
+  ISODateTime,
 } from '@/types/models'
 
 /* ------------------------------------------------------------------ */
@@ -206,4 +207,93 @@ export async function cabinetSignIn(
   }
   /* Demo rejimda bot yo'q — kirish "Bemor" tugmasi orqali */
   return delay({ token: null, clinics: null }, 80)
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Ko'rik haqidagi fikr                                                */
+/* ------------------------------------------------------------------ */
+
+/** Bemor yozgan fikr — o'zi qayta o'qiy oladi */
+export interface CabinetGivenFeedback {
+  rating: number
+  text: string
+  /** Klinikaning javobi. Bo'sh — hali javob berilmagan. */
+  reply: string
+  images: { id: ID; imageUrl: string }[]
+  createdAt: ISODateTime
+}
+
+/** Fikr yozish mumkin bo'lgan ko'rik */
+export interface CabinetFeedbackItem {
+  appointmentId: ID
+  visitedAt: ISODateTime
+  doctorName: string
+  serviceName: string
+  /** `null` — hali fikr yozilmagan */
+  feedback: CabinetGivenFeedback | null
+}
+
+// GET /patient/feedback
+export async function listCabinetFeedback(
+  demoPatientId?: ID,
+): Promise<CabinetFeedbackItem[]> {
+  if (!USE_MOCK) {
+    return request<CabinetFeedbackItem[]>('GET', '/patient/feedback', {
+      session: 'patient',
+    })
+  }
+
+  const db = getDb()
+  const patient = requirePatient(demoPatientId)
+  const doctors = new Map(db.doctors.all(MAIN_CLINIC_ID).map((d) => [d.id, d]))
+  const services = new Map(db.services.all(MAIN_CLINIC_ID).map((s) => [s.id, s]))
+
+  const items = db.appointments
+    .all(MAIN_CLINIC_ID)
+    .filter((a) => a.patientId === patient.id && a.status === 'completed')
+    .sort((a, b) => b.startsAt.localeCompare(a.startsAt))
+    .slice(0, 20)
+    .map((a) => ({
+      appointmentId: a.id,
+      visitedAt: a.startsAt,
+      doctorName: doctors.get(a.doctorId)?.fullName ?? '',
+      serviceName: services.get(a.serviceId)?.name ?? '',
+      /* Demo rejimda yozilgan fikr saqlanmaydi — forma har safar bo'sh */
+      feedback: null,
+    }))
+
+  return delay(items, 150)
+}
+
+/**
+ * Fikr qoldirish.
+ *
+ * Shifokor id yuborilmaydi — server uni QABULDAN oladi. Aks holda
+ * bemor uni almashtirib, fikrni boshqa odamning reytingiga yozib
+ * qo'yishi mumkin bo'lardi.
+ */
+// POST /patient/feedback
+export async function leaveCabinetFeedback(input: {
+  appointmentId: ID
+  rating: number
+  text: string
+  imageKeys: string[]
+}): Promise<{ id: ID }> {
+  if (!USE_MOCK) {
+    return request<{ id: ID }>('POST', '/patient/feedback', {
+      body: input,
+      session: 'patient',
+    })
+  }
+  return delay({ id: 'demo' }, 200)
+}
+
+/** Fikrga biriktiriladigan rasm — javobda KALIT qaytadi, havola emas */
+// POST /patient/uploads
+export async function uploadCabinetImage(file: Blob): Promise<{ key: string }> {
+  if (!USE_MOCK) {
+    return upload<{ key: string }>('/patient/uploads', file, 'rasm.jpg', 'patient')
+  }
+  return delay({ key: 'demo' }, 200)
 }

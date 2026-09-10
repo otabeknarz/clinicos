@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt'
 import { ThrottlerModule } from '@nestjs/throttler'
 
 import { PatientAuthService } from './patient-auth.service'
+import { PatientFeedbackService } from './patient-feedback.service'
 import { PatientController } from './patient.controller'
 import { PatientGuard } from './patient.guard'
 import { PatientService } from './patient.service'
@@ -53,6 +54,6 @@ import { PatientService } from './patient.service'
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 30 }]),
   ],
   controllers: [PatientController],
-  providers: [PatientAuthService, PatientService, PatientGuard],
+  providers: [PatientAuthService, PatientFeedbackService, PatientService, PatientGuard],
 })
 export class PatientModule {}

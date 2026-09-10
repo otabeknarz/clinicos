@@ -1,9 +1,23 @@
-import { Body, Controller, Get, Headers, Post, UseGuards } from '@nestjs/common'
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Post,
+  ServiceUnavailableException,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
 import { ThrottlerGuard } from '@nestjs/throttler'
 
 import { Public } from '../common/guards/jwt-auth.guard'
 import { TelegramService } from '../telegram/telegram.service'
-import { PatientAuthDto } from './patient.dto'
+import { StorageService } from '../storage/storage.service'
+import { CabinetFeedbackDto, PatientAuthDto } from './patient.dto'
+import { PatientFeedbackService } from './patient-feedback.service'
 import { PatientAuthService } from './patient-auth.service'
 import { PatientGuard } from './patient.guard'
 import { PatientService } from './patient.service'
@@ -24,6 +38,8 @@ export class PatientController {
     private readonly auth: PatientAuthService,
     private readonly patient: PatientService,
     private readonly telegram: TelegramService,
+    private readonly feedback: PatientFeedbackService,
+    private readonly storage: StorageService,
   ) {}
 
   // POST /patient/auth
@@ -55,6 +71,48 @@ export class PatientController {
   @UseGuards(PatientGuard)
   debt() {
     return this.patient.debt()
+  }
+
+  // GET /patient/feedback
+  @Get('feedback')
+  @Public()
+  @UseGuards(PatientGuard)
+  feedbackList() {
+    return this.feedback.list()
+  }
+
+  // POST /patient/feedback
+  @Post('feedback')
+  @Public()
+  @UseGuards(PatientGuard)
+  leaveFeedback(@Body() dto: CabinetFeedbackDto) {
+    return this.feedback.create(dto)
+  }
+
+  /*
+    POST /patient/uploads   (multipart/form-data, maydon nomi: file)
+
+    Fikrga biriktiriladigan rasm. Alohida marshrut, chunki
+    `POST /uploads/:kind` xodim tokenini kutadi.
+
+    Turi BAYTLARDAN aniqlanadi: mijoz yuborgan `Content-Type` ga
+    ishonib bo'lmaydi — `.jpg` deb atalgan HTML fayl brauzerda
+    sahifa bo'lib ochilardi.
+  */
+  @Post('uploads')
+  @Public()
+  @UseGuards(PatientGuard)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  async upload(@UploadedFile() file?: Express.Multer.File) {
+    if (!this.storage.enabled) {
+      throw new ServiceUnavailableException('Fayl xotirasi sozlanmagan')
+    }
+    if (!file) throw new BadRequestException('Fayl yuborilmagan')
+
+    const type = this.storage.detectType(file.buffer)
+    if (!type) throw new BadRequestException('Faqat JPEG, PNG yoki WebP rasm')
+
+    return this.storage.put('feedback', file.buffer, type)
   }
 
   /*

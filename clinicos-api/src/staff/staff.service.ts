@@ -95,7 +95,7 @@ export class StaffService {
 
     const doctorIds = rows.map((r) => r.doctorId).filter((x): x is string => x !== null)
 
-    const [attendance, bonuses, revenue] = await Promise.all([
+    const [attendance, bonuses, revenue, ratings] = await Promise.all([
       this.db.attendance.groupBy({
         by: ['staffId', 'status'],
         where: { staffId: { in: ids }, date: { gte: monthStart } },
@@ -118,7 +118,33 @@ export class StaffService {
             _sum: { amount: true },
           })
         : Promise.resolve([]),
+      /*
+        REYTING — BEMOR FIKRIDAN.
+
+        Butun tarix bo'yicha, oylik emas: bitta yomon oy shifokorning
+        umumiy bahosini nolga tushirmasligi kerak. Kechikish
+        (`revealAt`) bu yerda TEKSHIRILMAYDI — u shifokor fikrni
+        qachon O'QIY olishini belgilaydi, egasi ko'radigan o'rtacha
+        bahoni emas.
+      */
+      doctorIds.length
+        ? this.db.feedback.groupBy({
+            by: ['doctorId'],
+            where: { doctorId: { in: doctorIds } },
+            _avg: { rating: true },
+            _count: { _all: true },
+          })
+        : Promise.resolve([]),
     ])
+
+    const ratingByDoctor = new Map(
+      ratings
+        .filter((r) => r.doctorId !== null && r._avg.rating !== null)
+        .map((r) => [
+          r.doctorId as string,
+          { value: Math.round((r._avg.rating as number) * 10) / 10, count: r._count._all },
+        ]),
+    )
 
     const bonusByStaff = new Map(bonuses.map((b) => [b.staffId, b._sum.amount ?? 0]))
     const revenueByDoctor = new Map(revenue.map((r) => [r.doctorId, r._sum.amount ?? 0]))
@@ -175,11 +201,27 @@ export class StaffService {
           : Math.round((generatedRevenue * staff.percentRate) / 100)
       const bonusThisPeriod = bonusByStaff.get(staff.id) ?? 0
 
+      /*
+        Fikr yo'q bo'lsa reyting `null` — nol EMAS. Nol "yomon
+        ishlaydi" degani, `null` esa "hali baholanmagan". Interfeys
+        ikkalasini boshqacha ko'rsatadi.
+      */
+      const rating = staff.doctorId ? ratingByDoctor.get(staff.doctorId) : undefined
+
       out[staff.id] = {
         staffId: staff.id,
-        // Reyting bemor fikridan keladi — fikr moduli ulanmaguncha null
-        rating: null,
-        factors: [],
+        rating: rating?.value ?? null,
+        factors: rating
+          ? [
+              {
+                labelKey: 'staff.rating.feedback',
+                /* 5 ballik baho 100 ballik shkalaga */
+                score: Math.round((rating.value / 5) * 100),
+                weight: 1,
+                display: `${rating.value} · ${rating.count} ta fikr`,
+              },
+            ]
+          : [],
         performancePct: workdays ? disciplineScore : null,
         metrics: [],
         bonusThisPeriod,

@@ -686,6 +686,7 @@ export const dict: Dict = {
 
   /* --- Reyting --- */
   'staff.rating': 'Reyting',
+  'staff.rating.feedback': 'Bemor fikri',
   'staff.ratingNone': 'Ma’lumot yetarli emas',
   'staff.ratingAuto': 'Ko’rsatkichlardan avtomatik hisoblangan',
   'staff.performance': 'Samaradorlik',
@@ -1331,6 +1332,14 @@ export const dict: Dict = {
   'cabinet.title': 'Bemor kabineti',
   'cabinet.chooseClinic': 'Qaysi klinikaning kartasini ochamiz?',
   'cabinet.notLinked': 'Kabinet Telegram bot ichida ochiladi. Botga kiring va telefon raqamingizni ulashing.',
+  'cabinet.feedbackTab': 'Fikr',
+  'cabinet.feedbackAnonymous': 'Fikringiz anonim: klinika uni kim yozganini ko’rmaydi. Shifokorga esa bir necha kundan keyin ochiladi.',
+  'cabinet.feedbackPlaceholder': 'Ko’rik qanday o’tdi? Nima yoqdi, nima yoqmadi?',
+  'cabinet.feedbackThanks': 'Rahmat, fikringiz yuborildi',
+  'cabinet.feedbackNone': 'Hali baholaydigan ko’rik yo’q',
+  'cabinet.feedbackNoneHint': 'Ko’rik yakunlangach shu yerda paydo bo’ladi.',
+  'cabinet.clinicReply': 'Klinika javobi',
+  'cabinet.addPhoto': 'Rasm qo’shish',
   'cabinet.home': 'Bosh sahifa',
   'cabinet.visits': 'Tashriflar',
   'cabinet.debt': 'Qarz',

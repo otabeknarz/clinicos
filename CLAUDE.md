@@ -362,7 +362,20 @@ With `TELEGRAM_BOT_TOKEN` unset everything still works, exactly like `S3_*`.
 
 **The patient cabinet is a second product on the same database, with its own bot.**
 `src/patient/` serves `GET /patient/card|visits|debt` — read-only: the patient books nothing (that
-touches the queue and the schedule) and pays nothing (the receptionist takes money). It runs on a
+touches the queue and the schedule) and pays nothing (the receptionist takes money). The one thing
+they **write** is feedback on a finished visit (`POST /patient/feedback`, with images through
+`POST /patient/uploads`). That path was the reason the whole feedback module sat closed: the old
+entry point looked a patient up **by phone number**, which let anyone enumerate the clinic's patient
+list. From the cabinet there is nothing to look up — the token says who they are. Feedback from the
+cabinet is always `isAnonymous`, never a choice: given the choice, the ones who reveal their name
+and the ones who don't become distinguishable, which defeats it. The doctor is taken from the
+appointment, never from the request, or a patient could aim a one-star review at someone else. It
+reaches the doctor through the existing `GET /me/feedback` on the usual 1-14 day random delay (a
+fixed delay would let them count back to the visit) and the owner through `GET /feedback`. It also
+now feeds `StaffPerformance.rating`, which had been hard-coded `null` with a comment saying it was
+waiting for exactly this — averaged over all time, because one bad month should not erase a
+doctor's record, and ignoring `revealAt`, which governs when the doctor may *read* a comment, not
+what the owner's average is. It runs on a
 **separate Telegram bot** (`PATIENT_BOT_TOKEN`, `@clinicos_BemorCabineti_bot`), and that separation
 is the security boundary: `initData` is verified against a bot token, so with one shared bot a
 string signed in the patient app would also be valid in the staff app. Sign-in has no password —

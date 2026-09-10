@@ -17,8 +17,12 @@ import { StorageService } from './storage.service'
  * `visits` — tashrifga biriktiriladigan rasm (rentgen, tish surati).
  * U MAXFIY TIBBIY MA'LUMOT: bucket yopiq, kalit klinika papkasida
  * yotadi va javobda faqat `visits.view` bori uchun havolaga o'giriladi.
+ *
+ * `feedback` — bemor fikriga biriktirgan rasm. Uni BEMOR yuklaydi,
+ * shuning uchun `POST /patient/uploads` alohida marshruti bor:
+ * bu marshrut xodim tokenini kutadi.
  */
-const KINDS = ['avatars', 'logos', 'visits'] as const
+const KINDS = ['avatars', 'logos', 'visits', 'feedback'] as const
 type Kind = (typeof KINDS)[number]
 
 /**

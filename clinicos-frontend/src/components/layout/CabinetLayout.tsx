@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { ClipboardList, House, LogOut, Wallet } from 'lucide-react'
+import { ClipboardList, House, LogOut, Star, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -13,7 +13,7 @@ import { usePatient } from '@/store/patient-context'
  * BEMOR KABINETI KARKASI.
  *
  * Xodimlar karkasidan (`AppLayout`) alohida va ataylab soddaroq:
- * yon menyu yo'q, qidiruv yo'q, bildirishnoma yo'q. Bemorda uch
+ * yon menyu yo'q, qidiruv yo'q, bildirishnoma yo'q. Bemorda to'rt
  * ekran bor, ya'ni yo'qolib qoladigan joyning o'zi yo'q.
  *
  * TELEFONGA MO'LJALLANGAN. Bu qism Telegram mini app ichida
@@ -86,6 +86,7 @@ function CabinetNav() {
         <Item to="/cabinet" end icon={House} label={t('cabinet.home')} />
         <Item to="/cabinet/visits" icon={ClipboardList} label={t('cabinet.visits')} />
         <Item to="/cabinet/debt" icon={Wallet} label={t('cabinet.debt')} />
+        <Item to="/cabinet/feedback" icon={Star} label={t('cabinet.feedbackTab')} />
       </ul>
     </nav>
   )

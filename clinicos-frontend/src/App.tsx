@@ -16,6 +16,7 @@ import type { Permission } from '@/types/models'
 import { DashboardPage } from '@/pages/Dashboard'
 import { LoginPage } from '@/pages/Login'
 import { CabinetDebtPage } from '@/pages/cabinet/CabinetDebt'
+import { CabinetFeedbackPage } from '@/pages/cabinet/CabinetFeedback'
 import { CabinetGatePage } from '@/pages/cabinet/CabinetGate'
 import { CabinetHomePage } from '@/pages/cabinet/CabinetHome'
 import { CabinetVisitsPage } from '@/pages/cabinet/CabinetVisits'
@@ -243,6 +244,7 @@ function AppRoutes() {
           <Route path="/cabinet" element={<CabinetHomePage />} />
           <Route path="/cabinet/visits" element={<CabinetVisitsPage />} />
           <Route path="/cabinet/debt" element={<CabinetDebtPage />} />
+          <Route path="/cabinet/feedback" element={<CabinetFeedbackPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/cabinet" replace />} />
       </Routes>

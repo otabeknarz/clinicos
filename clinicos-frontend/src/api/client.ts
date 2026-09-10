@@ -243,12 +243,18 @@ export async function request<T>(
  * brauzer o'zi hisoblaydi — sarlavhani QO'LDA qo'yish kerak emas va
  * qo'yilsa so'rov buziladi.
  */
-export async function upload<T>(path: string, file: Blob, filename = 'file'): Promise<T> {
+export async function upload<T>(
+  path: string,
+  file: Blob,
+  filename = 'file',
+  session: 'staff' | 'patient' = 'staff',
+): Promise<T> {
   const form = new FormData()
   form.append('file', file, filename)
 
   const headers: Record<string, string> = { Accept: 'application/json' }
-  if (authToken) headers.Authorization = `Bearer ${authToken}`
+  const token = session === 'patient' ? patientToken : authToken
+  if (token) headers.Authorization = `Bearer ${token}`
 
   let response: Response
   try {

@@ -25,6 +25,7 @@ export const TENANT_MODELS = new Set<string>([
   'DebtWaiver',
   'Doctor',
   'Feedback',
+  'FeedbackImage',
   'FollowUp',
   'ImpersonationLog',
   'Notification',

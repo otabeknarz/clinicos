@@ -17,6 +17,30 @@ import {
 const REVEAL_MIN_DAYS = 1
 const REVEAL_MAX_DAYS = 14
 
+/**
+ * Fikr shifokorga qachon ochiladi.
+ *
+ * TASODIFIY 1-14 KUN. Aniq kun bo'lsa, shifokor "bu fikr o'sha
+ * kungi bemordan" deb hisoblab topardi va anonimlik yo'qolardi.
+ *
+ * Bemor kabineti ham shu funksiyani chaqiradi — ikki joyda ikki
+ * xil hisoblansa, ochilish vaqti manbaga qarab farq qilardi.
+ */
+export function feedbackRevealDate(): Date {
+  const date = new Date()
+  date.setDate(
+    date.getDate() +
+      REVEAL_MIN_DAYS +
+      Math.floor(Math.random() * (REVEAL_MAX_DAYS - REVEAL_MIN_DAYS + 1)),
+  )
+  return date
+}
+
+/** Fikrga biriktirilgan rasmlar — egasi ham, shifokor ham ko'radi */
+const FEEDBACK_EXPAND = {
+  images: { select: { id: true, imageUrl: true }, orderBy: { createdAt: 'asc' } },
+} satisfies Prisma.FeedbackInclude
+
 @Injectable()
 export class FeedbackService {
   constructor(
@@ -90,6 +114,7 @@ export class FeedbackService {
     const [rows, total] = await Promise.all([
       this.db.feedback.findMany({
         where,
+        include: FEEDBACK_EXPAND,
         orderBy: { createdAt: 'desc' },
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
@@ -126,6 +151,7 @@ export class FeedbackService {
         // Vaqti kelmagan fikr ko'rinmaydi
         revealAt: { lte: new Date() },
       },
+      include: FEEDBACK_EXPAND,
       orderBy: { revealAt: 'desc' },
     })
 
@@ -145,12 +171,7 @@ export class FeedbackService {
   async create(dto: FeedbackInputDto) {
     const { clinicId } = this.ctx.require()
 
-    const revealAt = new Date()
-    revealAt.setDate(
-      revealAt.getDate() +
-        REVEAL_MIN_DAYS +
-        Math.floor(Math.random() * (REVEAL_MAX_DAYS - REVEAL_MIN_DAYS + 1)),
-    )
+    const revealAt = feedbackRevealDate()
 
     const row = await this.db.feedback.create({
       data: {
@@ -274,7 +295,7 @@ export class FeedbackService {
 
 /* ------------------------------------------------------------------ */
 
-function toApiFeedback(row: Feedback) {
+function toApiFeedback(row: Feedback & { images?: { id: string; imageUrl: string }[] }) {
   return {
     id: row.id,
     clinicId: row.clinicId,
@@ -291,6 +312,12 @@ function toApiFeedback(row: Feedback) {
     status: toApi(row.status),
     reply: row.reply,
     repliedAt: toApiDateTime(row.repliedAt),
+    /*
+      Bemor biriktirgan rasmlar. `imageUrl` ni
+      `SignedUrlInterceptor` 15 daqiqalik havolaga o'giradi —
+      bucket yopiq va kalitning o'zi hech kimga foyda bermaydi.
+    */
+    images: row.images ?? [],
     createdAt: toApiDateTime(row.createdAt)!,
   }
 }

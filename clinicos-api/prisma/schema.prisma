@@ -1193,10 +1193,31 @@ model Feedback {
   clinic  Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   patient Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
   doctor  Doctor?  @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  images  FeedbackImage[]
 
   @@index([clinicId, status])
   @@index([clinicId, doctorId, revealAt])
   @@map("feedback")
+}
+
+/// Fikrga biriktirilgan rasm.
+///
+/// Alohida jadval, `String[]` emas: `SignedUrlInterceptor` nomi
+/// `*Url` bo'lgan QATORNI imzolaydi, massivni emas. `VisitImage`
+/// ham aynan shu sababdan alohida turadi.
+model FeedbackImage {
+  id         String @id @default(uuid())
+  clinicId   String @map("clinic_id")
+  feedbackId String @map("feedback_id")
+
+  imageUrl String @map("image_url")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  feedback Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, feedbackId])
+  @@map("feedback_images")
 }
 
 /* ================================================================
