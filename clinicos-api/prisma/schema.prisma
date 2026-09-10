@@ -129,6 +129,18 @@ model User {
   /// Rol standartiga QO'SHIMCHA ruxsatlar, masalan ["revenue.view"]
   extraPermissions String[] @default([]) @map("extra_permissions")
 
+  /// TELEGRAM HISOBI — telefonga xabar yuborish uchun.
+  ///
+  /// Xodim ilovani Telegram mini app ichida ochganda o'z-o'zidan
+  /// to'ldiriladi: `initData` bot tokeni bilan tekshiriladi va shu
+  /// yerga yoziladi. Alohida "hisobni bog'lash" qadami yo'q — u
+  /// baribir unutilardi.
+  ///
+  /// GLOBAL NOYOB EMAS: bitta odam ikki klinikada ishlashi mumkin,
+  /// email ham shu sababdan klinika ichida noyob. Xabar har bir
+  /// foydalanuvchiga alohida yuboriladi.
+  telegramUserId String? @map("telegram_user_id")
+
   /// Rol = DOCTOR bo'lsa, shifokor profiliga bog'lanish
   doctorId String? @unique @map("doctor_id")
   doctor   Doctor? @relation(fields: [doctorId], references: [id])
@@ -160,6 +172,8 @@ model User {
   /// Email butun tizimda emas, KLINIKA ICHIDA noyob
   @@unique([clinicId, email])
   @@index([clinicId, role])
+  /// Xabar yuborishda telegram id bo'yicha qidiriladi
+  @@index([telegramUserId])
   @@map("users")
 }
 

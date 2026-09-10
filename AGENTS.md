@@ -298,6 +298,21 @@ in the body — absent means "leave the agreement alone", `null` cancels it back
 rate, a number sets a new one. Without the `null` case, clearing the field in the UI would
 silently keep the old rate.
 
+**The mobile app runs inside a Telegram mini app, and the bot pushes to the doctor's phone.**
+`TelegramService` does two things. It verifies `initData` — the signed string Telegram hands the
+page — against `TELEGRAM_BOT_TOKEN` using the documented HMAC (`HMAC_SHA256("WebAppData", token)`
+as the key over the sorted `key=value` lines), compared with `timingSafeEqual` and rejected after
+24h so a captured string cannot be replayed forever. The client never parses `initData` itself:
+without the signature check anyone could claim any Telegram id and redirect another person's
+messages. Linking happens **silently** on session start in `AuthContext` — there is no "link my
+account" button, because it would go unpressed and the doctor would never know why nothing arrives;
+it is skipped while impersonating, or the platform admin would write their own Telegram id onto the
+clinic owner's row. Sending is fire-and-forget: `appointments.service.create` calls it with `void`
+and `send()` swallows every error, because a booking must never fail on Telegram being slow — the
+appointment is the work, the message is a convenience. Only same-day and next-day bookings notify;
+a busy doctor gets dozens a day and a phone that buzzes twenty times is a phone that gets ignored.
+With `TELEGRAM_BOT_TOKEN` unset everything still works, exactly like `S3_*`.
+
 **Debt is computed, never stored.** `GET /debts` derives it as price − payments, in two lists
 (appointments and admissions). A stored balance column would drift from the payment rows and then
 nobody could say which one was true. `DebtWaiver` writes off a hopeless debt without touching the

@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**151 ta endpoint.**
+**152 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -147,6 +147,21 @@ Sozlamalardagi foydalanuvchilar ro'yxati
 
 ```ts
 listUsers(): Promise<User[]>
+```
+
+### `POST /me/telegram`
+
+Telegram hisobini joriy foydalanuvchiga bog'laydi.
+
+Xodim ilovani mini app ichida ochganda BIR MARTA chaqiriladi.
+Alohida "bog'lash" tugmasi yo'q: u baribir bosilmasdi va xodim
+xabar kelmayotganini bilmay yurardi.
+
+XATO QAYTARMAYDI. Imzo yaroqsiz bo'lishining odatiy sababi —
+ilova oddiy brauzerda ochilgan. Bu nosozlik emas.
+
+```ts
+linkTelegram(initData: string): Promise<{ linked: boolean }>
 ```
 
 ## Klinika sozlamalari

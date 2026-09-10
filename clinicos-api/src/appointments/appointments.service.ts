@@ -10,6 +10,7 @@ import { toApi, toApiDateTime, toDb } from '../common/api-enum'
 import { paginated } from '../common/pagination'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
+import { TelegramService } from '../telegram/telegram.service'
 import {
   AppointmentInputDto,
   AppointmentQueryDto,
@@ -46,6 +47,7 @@ export class AppointmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
+    private readonly telegram: TelegramService,
   ) {}
 
   private get db() {
@@ -161,7 +163,68 @@ export class AppointmentsService {
       include: EXPAND,
     })
 
+    /*
+      SHIFOKORNING TELEFONIGA XABAR.
+
+      KUTILMAYDI (`void`): xabar yuborish qabul yaratilishini
+      to'xtatib qo'ymasligi kerak. Telegram sekinlashsa yoki yiqilsa,
+      registrator bemorni yozolmay qolishi — xabar kelmasligidan
+      ancha yomon. `notifyDoctor` ichida ham hech qanday xato
+      tashlanmaydi.
+    */
+    void this.notifyDoctor(row)
+
     return toApiAppointment(row)
+  }
+
+  /**
+   * Yangi qabul haqida shifokorga Telegram xabari.
+   *
+   * FAQAT BUGUN VA ERTAGA. Band shifokorga kuniga o'nlab qabul
+   * yoziladi va har biriga xabar kelsa, u xabarlarni o'qishni
+   * butunlay to'xtatadi — ya'ni muhimi ham ko'zdan qoladi. Bugungi
+   * va ertangi qabul esa shifokorning rejasini haqiqatan
+   * o'zgartiradi.
+   *
+   * O'ZIGA O'ZI XABAR YUBORMAYDI: shifokor o'z qabulini yozgan
+   * bo'lsa (bunday holat kam, lekin bor), telefoni bekorga
+   * jiringlamasin.
+   */
+  private async notifyDoctor(row: {
+    doctorId: string
+    startsAt: Date
+    patient: { fullName: string }
+    service: { name: string }
+  }) {
+    if (!this.telegram.enabled) return
+
+    const { userId } = this.ctx.require()
+
+    const cutoff = endOfTomorrow()
+    if (row.startsAt > cutoff) return
+
+    const doctorUser = await this.db.user.findFirst({
+      where: { doctorId: row.doctorId, isActive: true },
+      select: { id: true, telegramUserId: true },
+    })
+    if (!doctorUser?.telegramUserId || doctorUser.id === userId) return
+
+    const when = row.startsAt.toLocaleString('uz-UZ', {
+      day: 'numeric',
+      month: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
+    await this.telegram.send(
+      doctorUser.telegramUserId,
+      [
+        '<b>Yangi qabul</b>',
+        escapeHtml(row.patient.fullName),
+        escapeHtml(row.service.name),
+        escapeHtml(when),
+      ].join('\n'),
+    )
   }
 
   async update(id: string, dto: UpdateAppointmentDto) {
@@ -490,4 +553,22 @@ function eachDay(from: Date, to: Date): Date[] {
 function timeToMinutes(value: string): number {
   const [h, m] = value.split(':').map(Number)
   return (h || 0) * 60 + (m || 0)
+}
+
+/** Ertangi kunning oxiri — undan keyingi qabullarga xabar yuborilmaydi */
+function endOfTomorrow(): Date {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  d.setHours(23, 59, 59, 999)
+  return d
+}
+
+/**
+ * Telegram `parse_mode: HTML` uchun.
+ *
+ * Bemor ismi yoki xizmat nomida `<` bo'lsa, Telegram butun xabarni
+ * rad etadi — ya'ni xabar umuman kelmaydi va sababi ko'rinmaydi.
+ */
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }

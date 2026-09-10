@@ -225,3 +225,22 @@ const MODULE_BY_PERMISSION: Partial<Record<Permission, ClinicModule>> = {
   'debts.waive': 'debts',
   'revenue.view': 'revenue',
 }
+
+/**
+ * Telegram hisobini joriy foydalanuvchiga bog'laydi.
+ *
+ * Xodim ilovani mini app ichida ochganda BIR MARTA chaqiriladi.
+ * Alohida "bog'lash" tugmasi yo'q: u baribir bosilmasdi va xodim
+ * xabar kelmayotganini bilmay yurardi.
+ *
+ * XATO QAYTARMAYDI. Imzo yaroqsiz bo'lishining odatiy sababi —
+ * ilova oddiy brauzerda ochilgan. Bu nosozlik emas.
+ */
+// POST /me/telegram
+export async function linkTelegram(initData: string): Promise<{ linked: boolean }> {
+  if (!USE_MOCK) {
+    return request<{ linked: boolean }>('POST', '/me/telegram', { body: { initData } })
+  }
+  /* Demo rejimda bog'lanadigan bot yo'q */
+  return delay({ linked: false }, 80)
+}

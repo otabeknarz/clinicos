@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import * as authApi from '@/api/auth'
+import { linkTelegram } from '@/api/auth'
 import * as platformApi from '@/api/platform'
 import { getAuthToken, setApiContext, setAuthToken, USE_MOCK } from '@/api/client'
 import { can as canCheck, scopedDoctorId } from '@/lib/permissions'
+import { announceReady, initData } from '@/lib/telegram'
 import { useLocalStorage } from '@/lib/useLocalStorage'
 import { AuthContext } from './auth-context'
 import type { AuthValue } from './auth-context'
@@ -98,6 +100,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clinicId: impersonating?.tenantId ?? session.clinic.id,
       scopeDoctorId: impersonating ? null : scopedDoctorId(session),
     })
+  }, [session, impersonating])
+
+  /*
+    TELEGRAM HISOBINI JIMGINA BOG'LASH.
+
+    Xodim ilovani mini app ichida ochsa, `initData` shu yerdan bir
+    marta serverga ketadi va shifokorga yangi qabul haqida xabar
+    kelaveradi. Alohida "hisobni bog'lash" tugmasi ATAYLAB yo'q:
+    u baribir bosilmasdi va xodim xabar nega kelmayotganini bilmay
+    yurardi.
+
+    IMPERSONATSIYADA BOG'LANMAYDI: o'sha paytda sessiya boshqa
+    odamniki, ya'ni platforma admini o'z Telegram hisobini klinika
+    egasining yozuviga yozib qo'yardi va xabarlar unga ketardi.
+  */
+  useEffect(() => {
+    if (!session || impersonating) return
+
+    const data = initData()
+    if (!data) return
+
+    announceReady()
+    /* Xato bo'lsa jim o'tamiz — bu qulaylik, ishning o'zi emas */
+    void linkTelegram(data).catch(() => {})
   }, [session, impersonating])
 
   // Sahifa ochilganda sessiyani tiklash
