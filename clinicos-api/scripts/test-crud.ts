@@ -1395,6 +1395,45 @@ Klinikaga alohida chegirma (platforma)')
     check('faollashtirgach kirish tiklandi', back.status < 300, `${back.status}`)
   }
 
+  /* ---------------- Email band bo'lsa klinika ochilmaydi ---------------- */
+  /*
+    ILDIZI: email KLINIKA ICHIDA noyob, ya'ni bir xil email bilan
+    ikkinchi klinikada yozuv ochilaverardi. Natijada yangi klinika
+    egasi o'ziga berilgan parol bilan kira olmasdi — kirish o'sha
+    emaildagi ESKI hisobga tushardi va "email yoki parol noto'g'ri"
+    deb qaytarardi.
+  */
+  console.log('\nEgasining emaili band bo‘lsa (platforma)')
+  {
+    const plansForDup = items((await call('GET', '/platform/plans', tokens.admin)).data)
+    const anyPlan = plansForDup[0]
+
+    if (anyPlan) {
+      const dup = await call('POST', '/platform/tenants', tokens.admin, {
+        name: 'Sinov klinikasi',
+        phone: '+998 90 000 00 01',
+        address: 'Toshkent',
+        planId: anyPlan.id,
+        ownerName: 'Sinov Egasi',
+        /* ATAYLAB mavjud email — Shifo Med egasiniki */
+        ownerEmail: ACCOUNTS.owner,
+        ownerPhone: '+998 90 000 00 02',
+      })
+      check(
+        'band email bilan klinika ochilmadi',
+        dup.status === 400,
+        `status: ${dup.status} ${short(dup.data)}`,
+      )
+
+      /* Egasi o'z paroli bilan kiraveradi — yozuv buzilmagan */
+      const still = await call('POST', '/auth/login', undefined, {
+        email: ACCOUNTS.owner,
+        password: PASSWORD,
+      })
+      check('  mavjud egasi kiraveradi', still.status < 300, `status: ${still.status}`)
+    }
+  }
+
   /* ---------------- Egasining parolini tiklash ---------------- */
   console.log('\nEgasining parolini tiklash (platforma)')
   {

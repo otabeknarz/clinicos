@@ -204,6 +204,34 @@ export class PlatformService {
     const passwordHash = await argon2.hash(password)
     const email = dto.ownerEmail.trim().toLowerCase()
 
+    /*
+      EMAIL BOSHQA KLINIKADA BAND EMASMI.
+
+      Baza darajasida email KLINIKA ICHIDA noyob
+      (`@@unique([clinicId, email])`), ya'ni bir xil email bilan
+      ikkinchi klinikada yozuv ochilaverardi va bazadan xato
+      chiqmasdi. Natijasi esa og'ir edi: yangi klinika egasi o'ziga
+      berilgan parol bilan kira olmasdi — kirish o'sha emaildagi
+      ESKI hisobga tushib, "email yoki parol noto'g'ri" deb
+      qaytarardi. Sababi ko'rinmasdi, chunki xabar ataylab umumiy.
+
+      O'CHIRILGAN KLINIKA HAM HISOBGA OLINADI: uning foydalanuvchisi
+      faol qolaveradi (yozuvlar o'chirilmaydi), ya'ni email baribir
+      band. Kerak bo'lsa o'sha klinikani qaytarish yoki boshqa email
+      berish kerak — jimgina ikkinchi yozuv ochish emas.
+    */
+    const taken = await this.db.user.findFirst({
+      where: { email, isActive: true },
+      select: { clinic: { select: { name: true, deletedAt: true } } },
+    })
+    if (taken) {
+      throw new BadRequestException(
+        taken.clinic.deletedAt
+          ? `Bu email o‘chirilgan "${taken.clinic.name}" klinikasida band`
+          : `Bu email "${taken.clinic.name}" klinikasida allaqachon ishlatilgan`,
+      )
+    }
+
     const now = new Date()
 
     /*

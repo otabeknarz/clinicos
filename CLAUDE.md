@@ -414,8 +414,15 @@ Path alias `@/` → `src/`, configured in both `vite.config.ts` and `tsconfig.ap
   marks the build as done and the subsequent `nest build` emits nothing.
 - `main.ts` imports `dotenv/config` on its first line because `PrismaService` reads
   `process.env.DATABASE_URL` inside `super()`, before `ConfigModule` is up.
-- `AuthService.login` verifies against a dummy hash when the email is unknown, to keep response
-  timing constant. Email is unique per clinic, not globally.
+- **Email is unique per clinic, not globally — so login must try every match.** `AuthService.login`
+  loads *all* active users with that address and verifies the password against each, then prefers
+  the one whose clinic actually passes `checkClinicAccess`. It used to be a single `findFirst` with
+  no ordering, and that broke a real case: opening a new clinic for an address that already had an
+  account (often one whose clinic was later deleted — deleting a clinic leaves its users active)
+  meant the new owner's password was checked against the *old* account's hash and login failed with
+  "email yoki parol noto‘g‘ri", giving no hint why. `PlatformService.createTenant` now refuses the
+  duplicate up front, naming the clinic that holds the address. When the email is unknown, login
+  still verifies against a dummy hash to keep response timing constant.
 
 ## Reference docs
 

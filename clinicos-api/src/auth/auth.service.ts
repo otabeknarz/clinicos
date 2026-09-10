@@ -38,8 +38,27 @@ export class AuthService {
    * ro'yxatda borligini aniqlab olish mumkin bo'lardi.
    */
   async login(email: string, password: string, meta: LoginMeta = {}) {
-    const user = await this.db.acrossAllClinics().user.findFirst({
+    /*
+      BITTA EMAIL BILAN BIR NECHTA HISOB BO'LISHI MUMKIN.
+
+      Email butun tizimda emas, KLINIKA ICHIDA noyob
+      (`@@unique([clinicId, email])`) — ya'ni bitta odam ikki
+      klinikada ishlashi mumkin va bu ataylab shunday.
+
+      Ilgari bu yerda `findFirst` turardi va u tartibsiz bitta
+      yozuvni olardi. Natijada: platforma egasi yangi klinika
+      ochib, egasiga allaqachon mavjud emailni bersa, o'sha odam
+      YANGI paroli bilan kira olmasdi — tekshiruv ESKI hisobning
+      xeshiga qarshi ketardi va "email yoki parol noto'g'ri" deb
+      chiqardi. Sababi ko'rinmasdi, chunki xabar ataylab umumiy.
+
+      Endi barcha mos hisob olinadi va parol har biriga solishtiriladi:
+      qaysi biriga to'g'ri kelsa, o'shanikiga kiriladi.
+    */
+    const candidates = await this.db.acrossAllClinics().user.findMany({
       where: { email: email.trim().toLowerCase(), isActive: true },
+      /* Barqaror tartib: bir xil parolli ikki hisobda ham javob o'zgarmasin */
+      orderBy: { createdAt: 'asc' },
       include: {
         clinic: {
           select: {
@@ -53,10 +72,43 @@ export class AuthService {
       },
     })
 
-    const hash = user?.passwordHash ?? DUMMY_HASH
-    const ok = await argon2.verify(hash, password).catch(() => false)
+    const matched: typeof candidates = []
+    for (const candidate of candidates) {
+      if (await argon2.verify(candidate.passwordHash, password).catch(() => false)) {
+        matched.push(candidate)
+      }
+    }
 
-    if (!user || !ok) {
+    /*
+      PAROL TO'G'RI KELGANLAR ICHIDAN ISHLAYDIGANINI TANLAYMIZ.
+
+      Eski hisob o'chirilgan yoki to'xtatilgan klinikaga tegishli
+      bo'lishi mumkin. Faqat birinchi mos kelganini olsak, odam
+      yangi klinikasiga kira turib "klinika o'chirilgan" degan
+      xabarni ko'rardi — holbuki uning ishlaydigan hisobi ham bor.
+    */
+    const user =
+      matched.find(
+        (candidate) =>
+          checkClinicAccess({
+            role: candidate.role,
+            clinicIsActive: candidate.clinic.isActive,
+            subscriptionStatus: candidate.clinic.subscription?.status ?? null,
+            clinicDeletedAt: candidate.clinic.deletedAt,
+          }).ok,
+      ) ??
+      matched[0] ??
+      null
+
+    if (!user) {
+      /*
+        Email umuman topilmagan bo'lsa ham vaqt bir xil ketsin — aks
+        holda javob tezligiga qarab qaysi email ro'yxatda borligini
+        bilib olish mumkin edi.
+      */
+      if (candidates.length === 0) {
+        await argon2.verify(DUMMY_HASH, password).catch(() => false)
+      }
       // Bir xil xabar: qaysi biri noto'g'ri ekanini aytmaymiz
       throw new UnauthorizedException('Email yoki parol noto‘g‘ri')
     }
