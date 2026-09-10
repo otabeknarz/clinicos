@@ -16,6 +16,7 @@ import type { Permission } from '@/types/models'
 import { DashboardPage } from '@/pages/Dashboard'
 import { LoginPage } from '@/pages/Login'
 import { CabinetDebtPage } from '@/pages/cabinet/CabinetDebt'
+import { CabinetGatePage } from '@/pages/cabinet/CabinetGate'
 import { CabinetHomePage } from '@/pages/cabinet/CabinetHome'
 import { CabinetVisitsPage } from '@/pages/cabinet/CabinetVisits'
 import { PatientProvider } from '@/store/PatientContext'
@@ -246,6 +247,19 @@ function AppRoutes() {
         <Route path="*" element={<Navigate to="/cabinet" replace />} />
       </Routes>
     )
+  }
+
+  /*
+    KABINET MANZILIDA XODIM KIRISHI KO'RSATILMAYDI.
+
+    Bemor sessiyasi hali ochilmagan bo'lishi mumkin: klinika
+    tanlanmagan, raqam ulanmagan yoki ilova Telegramdan tashqarida
+    ochilgan. Ilgari bunday bemor xodim kirish sahifasiga tushib
+    qolardi va undan email bilan parol so'ralardi — uning esa
+    ikkalasi ham yo'q.
+  */
+  if (!session && window.location.pathname.startsWith('/cabinet')) {
+    return <CabinetGatePage />
   }
 
   if (!session) {

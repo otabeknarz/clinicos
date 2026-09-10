@@ -1328,6 +1328,9 @@ export const dict: Dict = {
     'Topshirilgandan keyin o’zgartirib bo’lmaydi. Farq bo’lsa, u klinika egasining hisobotiga tushadi.',
 
   /* ---------------- Bemor kabineti ---------------- */
+  'cabinet.title': 'Bemor kabineti',
+  'cabinet.chooseClinic': 'Qaysi klinikaning kartasini ochamiz?',
+  'cabinet.notLinked': 'Kabinet Telegram bot ichida ochiladi. Botga kiring va telefon raqamingizni ulashing.',
   'cabinet.home': 'Bosh sahifa',
   'cabinet.visits': 'Tashriflar',
   'cabinet.debt': 'Qarz',

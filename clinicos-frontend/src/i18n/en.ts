@@ -1274,6 +1274,9 @@ export const dict: Dict = {
     'Once handed over it cannot be changed. Any difference goes into the owner report.',
 
   /* ---------------- Patient cabinet ---------------- */
+  'cabinet.title': 'Patient cabinet',
+  'cabinet.chooseClinic': 'Which clinic record should we open?',
+  'cabinet.notLinked': 'The cabinet opens inside the Telegram bot. Open the bot and share your phone number.',
   'cabinet.home': 'Home',
   'cabinet.visits': 'Visits',
   'cabinet.debt': 'Balance',

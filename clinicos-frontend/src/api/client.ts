@@ -94,6 +94,44 @@ export function getAuthToken(): string | null {
 }
 
 /* ------------------------------------------------------------------ */
+/* Bemor sessiyasi — XODIMNIKIDAN ALOHIDA                              */
+/* ------------------------------------------------------------------ */
+
+/*
+  ALOHIDA KALIT VA ALOHIDA O'ZGARUVCHI.
+
+  Bemor tokeni xodimnikidan butunlay boshqa narsa: u faqat
+  `/patient/*` marshrutlarini ochadi va serverda ham alohida
+  qorovul tekshiradi. Ikkalasini bitta joyda saqlasak, bir
+  qurilmada ham xodim, ham bemor sifatida kirib bo'lmasdi —
+  ikkinchisi birinchisini o'chirib yuborardi. Klinika egasi
+  o'z klinikasida bemor ham bo'lishi mumkin.
+*/
+const PATIENT_TOKEN_KEY = 'clinicos.cabinet.token'
+
+let patientToken: string | null = (() => {
+  try {
+    return localStorage.getItem(PATIENT_TOKEN_KEY)
+  } catch {
+    return null
+  }
+})()
+
+export function setPatientToken(token: string | null) {
+  patientToken = token
+  try {
+    if (token) localStorage.setItem(PATIENT_TOKEN_KEY, token)
+    else localStorage.removeItem(PATIENT_TOKEN_KEY)
+  } catch {
+    // Saqlanmasa ham joriy sessiya ishlaydi
+  }
+}
+
+export function getPatientToken(): string | null {
+  return patientToken
+}
+
+/* ------------------------------------------------------------------ */
 /* So'rov konteksti                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -130,6 +168,14 @@ export interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined | null>
   body?: unknown
   signal?: AbortSignal
+  /**
+   * Qaysi sessiya bilan yuborilsin.
+   *
+   * `patient` — bemor kabineti. Yo'lga qarab avtomatik tanlamadim:
+   * marshrut nomi o'zgarsa, tanlov jimgina noto'g'ri tomonga
+   * o'tib ketardi va bemor xodim tokeni bilan so'rov yuborardi.
+   */
+  session?: 'staff' | 'patient'
 }
 
 /**
@@ -155,7 +201,9 @@ export async function request<T>(
 
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (options.body !== undefined) headers['Content-Type'] = 'application/json'
-  if (authToken) headers.Authorization = `Bearer ${authToken}`
+
+  const token = options.session === 'patient' ? patientToken : authToken
+  if (token) headers.Authorization = `Bearer ${token}`
 
   let response: Response
   try {

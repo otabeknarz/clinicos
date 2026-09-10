@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**152 ta endpoint.**
+**159 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -162,6 +162,39 @@ ilova oddiy brauzerda ochilgan. Bu nosozlik emas.
 
 ```ts
 linkTelegram(initData: string): Promise<{ linked: boolean }>
+```
+
+### `GET /me/telegram`
+
+Telegram ulangan-ulanmaganini aytadi.
+
+Ilgari buni bilishning yo'li yo'q edi: ulanish ham, ulanmaganlik
+ham jimgina edi va shifokor xabar kelmayotganining sababini
+topa olmasdi.
+
+```ts
+telegramStatus(): Promise<TelegramStatus>
+```
+
+### `POST /me/telegram/link`
+
+Botga olib boradigan bir martalik havola.
+
+Mini app ichidagi jimgina ulanish yetmaydi: ilovani brauzerdan
+ochgan xodim hech qachon ulanmasdi. Bundan tashqari bot o'zi
+birinchi bo'lib yoza olmaydi — odam suhbatni ochishi shart.
+Havola ikkalasini bir yo'la bajaradi.
+
+```ts
+telegramLinkUrl(): Promise<{ url: string | null }>
+```
+
+### `DELETE /me/telegram`
+
+Ulanishni uzadi — telefon almashtirilganda kerak
+
+```ts
+unlinkTelegram(): Promise<{ linked: boolean }>
 ```
 
 ## Klinika sozlamalari
@@ -3241,8 +3274,12 @@ pageSize,
 const needle = (query.search ?? '').trim().toLowerCase()
 const group = AGE_GROUPS.find((g) => g.key === query.ageGroup)
 
+O'chirilgan klinikaning bemorlari ham chiqmaydi
+const alive = new Set(livingTenants().map((t) => t.id))
+
 const rows = getDb()
 .tenantPatients.allAcrossTenants()
+.filter((p) => alive.has(p.tenantId))
 .filter((p) => !query.tenantId || p.tenantId === query.tenantId)
 .filter((p) => !query.city || p.city === query.city)
 .filter((p) => !query.condition || p.condition === query.condition)
@@ -3379,6 +3416,81 @@ almashtirilganda qo'llanadi.
 
 ```ts
 updateBillingTerm(id: ID, patch: { discountPct?: number; isActive?: boolean }): Promise<BillingTerm>
+```
+
+## cabinet
+
+`src/api/cabinet.ts`
+
+> BEMOR KABINETI.
+> 
+> Telegram mini app ichida ochiladigan qism. Bemor faqat O'Z
+> ma'lumotini ko'radi: tashriflari, tashxislari va qarzi.
+> 
+> BEMOR ID SO'ROVDA KELMAYDI. Haqiqiy backendda u tokendan olinadi —
+> `/patient/*` marshrutlari bemor tokeni bilan ochiladi va token
+> ichida qaysi bemor ekani yozilgan. So'rovdan olinsa, bemor id ni
+> almashtirib qo'shnisining tashxisini o'qib olardi.
+> 
+> Demo rejimda "kim kirgani" `patient-context` da saqlanadi va shu
+> yerga uzatiladi — bu FAQAT demo uchun, shuning uchun parametr
+> `demoPatientId` deb ataldi va haqiqiy so'rovga umuman qo'shilmaydi.
+
+### `GET /patient/card`
+
+BEMOR KABINETI.
+
+Telegram mini app ichida ochiladigan qism. Bemor faqat O'Z
+ma'lumotini ko'radi: tashriflari, tashxislari va qarzi.
+
+BEMOR ID SO'ROVDA KELMAYDI. Haqiqiy backendda u tokendan olinadi —
+`/patient/*` marshrutlari bemor tokeni bilan ochiladi va token
+ichida qaysi bemor ekani yozilgan. So'rovdan olinsa, bemor id ni
+almashtirib qo'shnisining tashxisini o'qib olardi.
+
+Demo rejimda "kim kirgani" `patient-context` da saqlanadi va shu
+yerga uzatiladi — bu FAQAT demo uchun, shuning uchun parametr
+`demoPatientId` deb ataldi va haqiqiy so'rovga umuman qo'shilmaydi.
+
+import { delay, request, USE_MOCK } from './client'
+import { getDb } from '@/mock/db'
+import { MAIN_CLINIC_ID } from '@/mock/seed'
+import type {
+CabinetDebt,
+CabinetProfile,
+CabinetVisit,
+ID,
+} from '@/types/models'
+
+------------------------------------------------------------------
+
+```ts
+getCabinetProfile(demoPatientId?: ID): Promise<CabinetProfile>
+```
+
+### `GET /patient/visits`
+
+```ts
+listCabinetVisits(demoPatientId?: ID): Promise<CabinetVisit[]>
+```
+
+### `GET /patient/debt`
+
+```ts
+getCabinetDebt(demoPatientId?: ID): Promise<CabinetDebt>
+```
+
+### `POST /patient/auth`
+
+Telegram imzosi bilan kabinetga kirish.
+
+Parol yo'q va bo'lmaydi: bemor kabinetni mini app ichida ochadi,
+Telegram imzolangan `initData` beradi, server uni BEMOR BOTINING
+tokeni bilan tekshiradi. Biz `initData` ni O'QIMAYMIZ — imzoni
+tekshirish uchun bot tokeni kerak, u esa mijozda bo'lmasligi shart.
+
+```ts
+cabinetSignIn(initData: string, clinicId?: ID): Promise<CabinetAuthResult>
 ```
 
 ## debts

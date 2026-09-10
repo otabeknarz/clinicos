@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 
+import type { CabinetClinicChoice } from '@/api/cabinet'
 import type { CabinetProfile } from '@/types/models'
 
 /**
@@ -22,10 +23,18 @@ export interface PatientValue {
   profile: CabinetProfile | null
   /** Sessiya tiklanib bo'ldimi */
   ready: boolean
+  /**
+   * Bir odam ikki klinikada bemor bo'lsa — tanlash ro'yxati.
+   * `null` bo'lsa tanlash kerak emas.
+   */
+  clinics: CabinetClinicChoice[] | null
+  /** Kira olmaganining sababi — bemorga ko'rsatiladi */
+  error: string | null
   /** Demo rejim uchun: qaysi bemor sifatida kirish */
   enter: (patientId: string) => Promise<void>
   leave: () => void
   reload: () => void
+  chooseClinic: (clinicId: string) => Promise<void>
 }
 
 export const PatientContext = createContext<PatientValue | null>(null)

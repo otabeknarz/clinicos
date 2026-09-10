@@ -27,7 +27,7 @@ import type {
 
 // GET /patient/card
 export async function getCabinetProfile(demoPatientId?: ID): Promise<CabinetProfile> {
-  if (!USE_MOCK) return request<CabinetProfile>('GET', '/patient/card')
+  if (!USE_MOCK) return request<CabinetProfile>('GET', '/patient/card', { session: 'patient' })
 
   const db = getDb()
   const patient = requirePatient(demoPatientId)
@@ -73,7 +73,7 @@ export async function getCabinetProfile(demoPatientId?: ID): Promise<CabinetProf
 
 // GET /patient/visits
 export async function listCabinetVisits(demoPatientId?: ID): Promise<CabinetVisit[]> {
-  if (!USE_MOCK) return request<CabinetVisit[]>('GET', '/patient/visits')
+  if (!USE_MOCK) return request<CabinetVisit[]>('GET', '/patient/visits', { session: 'patient' })
 
   const db = getDb()
   const patient = requirePatient(demoPatientId)
@@ -105,7 +105,7 @@ export async function listCabinetVisits(demoPatientId?: ID): Promise<CabinetVisi
 
 // GET /patient/debt
 export async function getCabinetDebt(demoPatientId?: ID): Promise<CabinetDebt> {
-  if (!USE_MOCK) return request<CabinetDebt>('GET', '/patient/debt')
+  if (!USE_MOCK) return request<CabinetDebt>('GET', '/patient/debt', { session: 'patient' })
 
   const patient = requirePatient(demoPatientId)
   return delay(debtOf(patient.id), 200)
@@ -167,4 +167,43 @@ function debtOf(patientId: ID): CabinetDebt {
     .sort((a, b) => b.completedAt.localeCompare(a.completedAt))
 
   return { items, total: items.reduce((sum, row) => sum + row.remaining, 0) }
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Kirish                                                              */
+/* ------------------------------------------------------------------ */
+
+/** Bir odam ikki klinikada bemor bo'lsa — tanlash uchun */
+export interface CabinetClinicChoice {
+  id: ID
+  name: string
+}
+
+export interface CabinetAuthResult {
+  /** `null` — avval klinika tanlanishi kerak */
+  token: string | null
+  clinics: CabinetClinicChoice[] | null
+}
+
+/**
+ * Telegram imzosi bilan kabinetga kirish.
+ *
+ * Parol yo'q va bo'lmaydi: bemor kabinetni mini app ichida ochadi,
+ * Telegram imzolangan `initData` beradi, server uni BEMOR BOTINING
+ * tokeni bilan tekshiradi. Biz `initData` ni O'QIMAYMIZ — imzoni
+ * tekshirish uchun bot tokeni kerak, u esa mijozda bo'lmasligi shart.
+ */
+// POST /patient/auth
+export async function cabinetSignIn(
+  initData: string,
+  clinicId?: ID,
+): Promise<CabinetAuthResult> {
+  if (!USE_MOCK) {
+    return request<CabinetAuthResult>('POST', '/patient/auth', {
+      body: { initData, clinicId },
+    })
+  }
+  /* Demo rejimda bot yo'q — kirish "Bemor" tugmasi orqali */
+  return delay({ token: null, clinics: null }, 80)
 }

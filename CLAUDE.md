@@ -360,6 +360,25 @@ is sent when the balance is already zero, which is the normal case for a prepaid
 messages' text lives in `src/common/telegram-text.ts` for the same reason.
 With `TELEGRAM_BOT_TOKEN` unset everything still works, exactly like `S3_*`.
 
+**The patient cabinet is a second product on the same database, with its own bot.**
+`src/patient/` serves `GET /patient/card|visits|debt` — read-only: the patient books nothing (that
+touches the queue and the schedule) and pays nothing (the receptionist takes money). It runs on a
+**separate Telegram bot** (`PATIENT_BOT_TOKEN`, `@clinicos_BemorCabineti_bot`), and that separation
+is the security boundary: `initData` is verified against a bot token, so with one shared bot a
+string signed in the patient app would also be valid in the staff app. Sign-in has no password —
+the mini app posts `initData`, the server checks it against the patient bot and reads the Telegram
+id, which is matched against `Patient.telegramUserId`. That column is filled by the bot's
+**"share phone" button**: Telegram itself vouches for the number, which is what closes the
+phone-enumeration risk that kept this feature blocked (nobody can type someone else's number);
+`contact.user_id === from.id` is still checked, because Telegram also lets a person forward an
+address-book contact. The patient token is signed with the same secret as a staff token and
+distinguished by `kind: 'patient'` — checked in **both** directions (`jwt.strategy` rejects it,
+`PatientGuard` requires it). `RequestUser.role` gained `PATIENT` with an empty permission list so
+`forCurrentClinic()` works normally and any stray `@RequirePermission` fails closed. One phone can
+belong to patients in two clinics (`@@unique([clinicId, phone])` is per clinic), so sign-in returns
+a clinic list to choose from rather than picking one. On the client, the patient token lives under
+its own key: a clinic owner may also be a patient, and one slot would log the other out.
+
 **Debt is computed, never stored.** `GET /debts` derives it as price − payments, in two lists
 (appointments and admissions). A stored balance column would drift from the payment rows and then
 nobody could say which one was true. `DebtWaiver` writes off a hopeless debt without touching the
