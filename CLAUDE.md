@@ -320,10 +320,24 @@ page — against `TELEGRAM_BOT_TOKEN` using the documented HMAC (`HMAC_SHA256("W
 as the key over the sorted `key=value` lines), compared with `timingSafeEqual` and rejected after
 24h so a captured string cannot be replayed forever. The client never parses `initData` itself:
 without the signature check anyone could claim any Telegram id and redirect another person's
-messages. Linking happens **silently** on session start in `AuthContext` — there is no "link my
-account" button, because it would go unpressed and the doctor would never know why nothing arrives;
-it is skipped while impersonating, or the platform admin would write their own Telegram id onto the
-clinic owner's row. Sending is fire-and-forget: `appointments.service.create` calls it with `void`
+messages. Linking happens silently on session start in `AuthContext` (skipped while impersonating, or the
+platform admin would write their own Telegram id onto the clinic owner's row) — **but silent
+linking alone was not enough.** It only fires inside the mini app, so a doctor who uses the browser
+was never linked, and nothing anywhere said so: `notifyDoctor` returns early on a null
+`telegramUserId` and the appointment saves normally. Worse, a Telegram bot cannot open a
+conversation — the person must press Start first, or every send is a 403 logged at `debug`. So
+Settings → Telegram now shows the state (`GET /me/telegram`) and offers one button:
+`POST /me/telegram/link` mints a single-use code and returns `https://t.me/<bot>?start=<code>`,
+which opens the bot (starting the conversation) and carries the code, and `POST /telegram/webhook`
+resolves it to the user. The codes live in a `Map` in `TelegramService`, not the database — they
+last 15 minutes and are used once, so a restart just means pressing the button again; this assumes
+the API runs as **one** container, and a second replica means moving them to a table. That webhook
+is the third legitimate caller of `acrossAllClinics()` (after `platform/` and `auth/`): Telegram
+sends no token, so there is no clinic context, and the one-time code is what identifies the user.
+The route is `@Public()` and gated on the `X-Telegram-Bot-Api-Secret-Token` header compared with
+`timingSafeEqual`; with `TELEGRAM_WEBHOOK_SECRET` unset it rejects everything, because a forgotten
+setting must not silently leave the route open. It always answers `{ ok: true }` — Telegram treats
+an error as "retry" and would resend the same update for hours. Sending is fire-and-forget: `appointments.service.create` calls it with `void`
 and `send()` swallows every error, because a booking must never fail on Telegram being slow — the
 appointment is the work, the message is a convenience. Only same-day and next-day bookings notify;
 a busy doctor gets dozens a day and a phone that buzzes twenty times is a phone that gets ignored.

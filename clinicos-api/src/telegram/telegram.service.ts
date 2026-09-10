@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { randomBytes, createHmac, timingSafeEqual } from 'node:crypto'
 
 import { Injectable, Logger } from '@nestjs/common'
 
@@ -16,9 +16,30 @@ import { Injectable, Logger } from '@nestjs/common'
  * xuddi `S3_*` yo'q bo'lganda fayl yuklash 503 qaytarib, qolgan
  * hamma narsa ishlagani kabi.
  */
+/** Ulanish kodining amal qilish muddati */
+const LINK_CODE_TTL_MS = 15 * 60 * 1000
+
 @Injectable()
 export class TelegramService {
   private readonly log = new Logger(TelegramService.name)
+
+  /**
+   * BIR MARTALIK ULANISH KODLARI.
+   *
+   * Xotirada, bazada emas — ataylab. Kod 15 daqiqa yashaydi va
+   * bir marta ishlatiladi, ya'ni saqlashga arzimaydi; server
+   * qayta yuklansa odam tugmani yana bosadi, xolos. Buning
+   * evaziga migratsiya ham, tozalab turadigan fon vazifasi ham
+   * kerak emas.
+   *
+   * SHART: API bitta nusxada ishlaydi. Ikkinchi nusxa qo'shilsa
+   * kod boshqa nusxaga tushib qolishi mumkin — o'shanda bu
+   * jadvalga ko'chiriladi.
+   */
+  private readonly linkCodes = new Map<string, { userId: string; expiresAt: number }>()
+
+  /** Bot foydalanuvchi nomi — `getMe` dan bir marta olinadi */
+  private botUsername: string | null = null
 
   private get token(): string | null {
     return process.env.TELEGRAM_BOT_TOKEN?.trim() || null
@@ -70,31 +91,104 @@ export class TelegramService {
   }
 
   /**
+   * Foydalanuvchiga bir martalik ulanish kodi beradi.
+   *
+   * NEGA KERAK: mini app ichida ulanish O'ZIDAN bo'ladi, lekin
+   * ilovani brauzerdan ochgan shifokor hech qachon ulanmasdi va
+   * buni bilmasdi ham — xabar shunchaki kelmasdi. Bundan
+   * tashqari bot O'ZI birinchi bo'lib yoza olmaydi: odam bot
+   * bilan suhbatni ochishi shart. Kod bilan havola ikkalasini
+   * bir vaqtda hal qiladi — odam botni ochadi (suhbat boshlanadi)
+   * va kod hisobni bog'laydi.
+   */
+  issueLinkCode(userId: string): string {
+    this.sweepLinkCodes()
+    /* base64url — Telegram `start` parametrida faqat shu belgilar mumkin */
+    const code = randomBytes(9).toString('base64url')
+    this.linkCodes.set(code, { userId, expiresAt: Date.now() + LINK_CODE_TTL_MS })
+    return code
+  }
+
+  /** Kodni ishlatadi va egasini qaytaradi. Ikkinchi marta ishlamaydi. */
+  consumeLinkCode(code: string): string | null {
+    this.sweepLinkCodes()
+    const found = this.linkCodes.get(code)
+    if (!found) return null
+    this.linkCodes.delete(code)
+    return found.expiresAt > Date.now() ? found.userId : null
+  }
+
+  private sweepLinkCodes(): void {
+    const now = Date.now()
+    for (const [code, value] of this.linkCodes) {
+      if (value.expiresAt <= now) this.linkCodes.delete(code)
+    }
+  }
+
+  /**
+   * Botning foydalanuvchi nomi (`@` siz).
+   *
+   * Alohida o'zgaruvchi ochmadik: nom tokenning O'ZIDAN kelib
+   * chiqadi va ikkitasi bir-biriga to'g'ri kelmasa, havola
+   * boshqa botga olib borardi.
+   */
+  async username(): Promise<string | null> {
+    if (this.botUsername) return this.botUsername
+    const token = this.token
+    if (!token) return null
+
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/getMe`, {
+        signal: AbortSignal.timeout(5000),
+      })
+      const data = (await res.json()) as { result?: { username?: string } }
+      this.botUsername = data.result?.username ?? null
+      return this.botUsername
+    } catch (error) {
+      this.log.warn(`Bot nomi olinmadi: ${String(error)}`)
+      return null
+    }
+  }
+
+  /** Botga kelgan xabardan kerakli ikki maydon */
+  parseMessage(update: unknown): { chatId: string; text: string } | null {
+    const message = (update as { message?: { chat?: { id?: number }; text?: string } })
+      ?.message
+    const chatId = message?.chat?.id
+    if (!chatId) return null
+    return { chatId: String(chatId), text: (message.text ?? '').trim() }
+  }
+
+  /** `/start KOD` dan kodni ajratadi */
+  startPayload(text: string): string {
+    const [command, payload] = text.split(/\s+/)
+    return command === '/start' && payload ? payload : ''
+  }
+
+  /**
    * Botga kelgan xabarga javob.
    *
-   * NEGA UMUMAN KERAK: Telegram bot O'ZI birinchi bo'lib yoza
-   * olmaydi — odam avval bot bilan suhbatni ochishi kerak. Ya'ni
-   * `/start` bosilmagan shifokorga qabul haqidagi xabar HECH
-   * QACHON yetib bormaydi va sababi hech qayerda ko'rinmaydi
-   * (`send()` 403 ni `debug` ga yozadi, xolos).
-   *
-   * Shuning uchun bot har qanday xabarga bir xil javob beradi:
-   * qisqa izoh va ilovani ochadigan tugma. Buyruqlar ro'yxati
-   * yo'q — botning vazifasi bitta.
+   * Bot har qanday xabarga javob beradi — javobsiz bot buzuq
+   * bot bo'lib ko'rinadi. Buyruqlar ro'yxati yo'q: botning
+   * vazifasi bitta.
    */
-  async handleUpdate(update: unknown): Promise<void> {
-    const message = (update as { message?: { chat?: { id?: number } } })?.message
-    const chatId = message?.chat?.id
-    if (!chatId) return
-
+  async sendWelcome(chatId: string, linked: boolean): Promise<void> {
     await this.send(
-      String(chatId),
-      [
-        '<b>ClinicOS</b>',
-        '',
-        'Ilova shu bot ichida ochiladi. Yangi bemor yozilsa,',
-        'shu yerga xabar keladi.',
-      ].join('\n'),
+      chatId,
+      linked
+        ? [
+            '<b>Hisob ulandi</b>',
+            '',
+            'Endi sizga bemor yozilsa, shu yerga xabar keladi.',
+          ].join('\n')
+        : [
+            '<b>ClinicOS</b>',
+            '',
+            'Ilova shu bot ichida ochiladi.',
+            '',
+            'Xabar kelishi uchun ilovaga kiring:',
+            'Sozlamalar -> Telegram -> Ulash.',
+          ].join('\n'),
       {
         inline_keyboard: [
           [{ text: 'Ilovani ochish', web_app: { url: this.appUrl } }],

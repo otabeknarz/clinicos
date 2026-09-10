@@ -244,3 +244,52 @@ export async function linkTelegram(initData: string): Promise<{ linked: boolean 
   /* Demo rejimda bog'lanadigan bot yo'q */
   return delay({ linked: false }, 80)
 }
+
+/** Telegram ulanishining holati */
+export interface TelegramStatus {
+  /** Hisob ulanganmi */
+  linked: boolean
+  /** Serverda bot tokeni bormi — yo'q bo'lsa bo'limni ko'rsatishning ma'nosi yo'q */
+  available: boolean
+}
+
+/**
+ * Telegram ulangan-ulanmaganini aytadi.
+ *
+ * Ilgari buni bilishning yo'li yo'q edi: ulanish ham, ulanmaganlik
+ * ham jimgina edi va shifokor xabar kelmayotganining sababini
+ * topa olmasdi.
+ */
+// GET /me/telegram
+export async function telegramStatus(): Promise<TelegramStatus> {
+  if (!USE_MOCK) {
+    return request<TelegramStatus>('GET', '/me/telegram')
+  }
+  /* Demo rejimda bot yo'q */
+  return delay({ linked: false, available: false }, 80)
+}
+
+/**
+ * Botga olib boradigan bir martalik havola.
+ *
+ * Mini app ichidagi jimgina ulanish yetmaydi: ilovani brauzerdan
+ * ochgan xodim hech qachon ulanmasdi. Bundan tashqari bot o'zi
+ * birinchi bo'lib yoza olmaydi — odam suhbatni ochishi shart.
+ * Havola ikkalasini bir yo'la bajaradi.
+ */
+// POST /me/telegram/link
+export async function telegramLinkUrl(): Promise<{ url: string | null }> {
+  if (!USE_MOCK) {
+    return request<{ url: string | null }>('POST', '/me/telegram/link')
+  }
+  return delay({ url: null }, 80)
+}
+
+/** Ulanishni uzadi — telefon almashtirilganda kerak */
+// DELETE /me/telegram
+export async function unlinkTelegram(): Promise<{ linked: boolean }> {
+  if (!USE_MOCK) {
+    return request<{ linked: boolean }>('DELETE', '/me/telegram')
+  }
+  return delay({ linked: false }, 80)
+}

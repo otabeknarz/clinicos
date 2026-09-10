@@ -6,6 +6,7 @@ import { uploadImage } from '@/api/uploads'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { PhoneInput, TextInput } from '@/components/ui/Form'
+import { TelegramSection } from './TelegramSection'
 import { cn } from '@/lib/cn'
 import { prepareAvatar } from '@/lib/image'
 import type { ImageError } from '@/lib/image'
@@ -228,6 +229,7 @@ export function ProfileTab() {
       </Button>
 
       <PasswordSection />
+      <TelegramSection />
     </div>
   )
 }
