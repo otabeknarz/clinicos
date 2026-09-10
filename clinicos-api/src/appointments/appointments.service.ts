@@ -216,7 +216,7 @@ export class AppointmentsService {
         to'xtaydi — qabul odatdagidek saqlanadi — va tashqaridan
         "bot ishlamayapti" bilan farqi ko'rinmaydi.
       */
-      this.log.debug(`Telegram: shifokor ${row.doctorId} ulanmagan`)
+      this.log.warn(`Telegram: shifokor ${row.doctorId} ulanmagan — xabar yuborilmadi`)
       return
     }
     if (doctorUser.id === userId) return

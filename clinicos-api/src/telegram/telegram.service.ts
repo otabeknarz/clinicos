@@ -285,11 +285,13 @@ export class TelegramService {
 
       if (!res.ok) {
         /*
-          403 — odam botni bloklagan yoki hech qachon ochmagan. Bu
-          xato emas, odatiy holat; shuning uchun `warn` emas `debug`.
+          403 — odam botni ochmagan yoki bloklagan. Ilgari bu `debug`
+          ga yozilardi "odatiy holat" deb, lekin amalda AYNAN SHU
+          holat "xabar kelmayapti" ning eng ko'p uchraydigan sababi
+          bo'lib chiqdi va logda ko'rinmasdi. `debug` esa bu muhitda
+          umuman chiqmaydi ekan.
         */
-        const level = res.status === 403 ? 'debug' : 'warn'
-        this.log[level](`Telegram ${res.status}: ${await res.text()}`)
+        this.log.warn(`Telegram ${res.status}: ${await res.text()}`)
       }
     } catch (error) {
       this.log.warn(`Telegram yuborilmadi: ${String(error)}`)
