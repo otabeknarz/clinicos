@@ -11,6 +11,24 @@
       content="ClinicOS — xususiy klinikalar uchun boshqaruv tizimi: bemorlar, qabullar, shifokorlar, to'lovlar va tahlil."
     />
     <title>ClinicOS</title>
+
+    <!--
+      TELEGRAM MINI APP SDK.
+
+      `window.Telegram.WebApp` SHU SKRIPT bilan paydo bo'ladi —
+      Telegram uni sahifaga o'zi qo'shmaydi. Skriptsiz `initData`
+      hech qachon kelmaydi, ya'ni bot ichida ochilgan ilova ham
+      "men bot ichida emasman" deb o'ylaydi va bemor kabinetga
+      kira olmaydi. Aynan shunday bo'ldi: kabinet ochilib, "bot
+      ichida ochiladi" degan yozuv chiqdi.
+
+      `head` da va MODULDAN OLDIN turishi shart: `main.tsx` ishga
+      tushganda `window.Telegram` allaqachon joyida bo'lishi kerak.
+
+      Brauzerda ochilganda ham zarari yo'q — skript yuklanadi,
+      `initData` esa bo'sh qoladi va ilova odatdagidek ishlaydi.
+    -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
     <div id="root"></div>
