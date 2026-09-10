@@ -16,6 +16,14 @@ import { Injectable, Logger } from '@nestjs/common'
  * xuddi `S3_*` yo'q bo'lganda fayl yuklash 503 qaytarib, qolgan
  * hamma narsa ishlagani kabi.
  */
+/**
+ * Qaysi bot.
+ *
+ * `staff` — xodimlar ilovasi va shifokorga keladigan xabarlar.
+ * `patient` — bemor kabineti, butunlay alohida bot va token.
+ */
+export type BotKind = 'staff' | 'patient'
+
 /** Ulanish kodining amal qilish muddati */
 const LINK_CODE_TTL_MS = 15 * 60 * 1000
 
@@ -38,15 +46,41 @@ export class TelegramService {
    */
   private readonly linkCodes = new Map<string, { userId: string; expiresAt: number }>()
 
-  /** Bot foydalanuvchi nomi — `getMe` dan bir marta olinadi */
-  private botUsername: string | null = null
+  /** Bot foydalanuvchi nomlari — `getMe` dan bir marta olinadi */
+  private botUsername: Record<BotKind, string | null> = {
+    staff: null,
+    patient: null,
+  }
+
+  /*
+    IKKITA BOT, IKKITA TOKEN.
+
+    Xodimlar boti ilovani ochadi va shifokorga xabar yuboradi.
+    Bemor boti esa butunlay boshqa dunyo: unda bemor o'z
+    kartasini ko'radi.
+
+    NEGA BIR BOTDA EMAS: `initData` imzosi bot tokeni bilan
+    tekshiriladi. Bitta token bo'lsa, bemor botida imzolangan
+    qator xodim ilovasida ham haqiqiy hisoblanardi — ya'ni
+    kimdir bemor sifatida kirib, xodim marshrutlariga token
+    so'rab ko'rishi mumkin bo'lardi. Ikki token bunday
+    savolning o'zini yo'q qiladi.
+  */
+  private tokenOf(bot: BotKind): string | null {
+    const name = bot === 'patient' ? 'PATIENT_BOT_TOKEN' : 'TELEGRAM_BOT_TOKEN'
+    return process.env[name]?.trim() || null
+  }
 
   private get token(): string | null {
-    return process.env.TELEGRAM_BOT_TOKEN?.trim() || null
+    return this.tokenOf('staff')
   }
 
   get enabled(): boolean {
     return this.token !== null
+  }
+
+  get patientEnabled(): boolean {
+    return this.tokenOf('patient') !== null
   }
 
   /**
@@ -58,8 +92,10 @@ export class TelegramService {
    * Telegram har so'rovda `X-Telegram-Bot-Api-Secret-Token`
    * sarlavhasini qaytaradi — biz `setWebhook` da bergan qiymatni.
    */
-  private get webhookSecret(): string | null {
-    return process.env.TELEGRAM_WEBHOOK_SECRET?.trim() || null
+  private webhookSecretOf(bot: BotKind): string | null {
+    const name =
+      bot === 'patient' ? 'PATIENT_WEBHOOK_SECRET' : 'TELEGRAM_WEBHOOK_SECRET'
+    return process.env[name]?.trim() || null
   }
 
   /**
@@ -81,8 +117,8 @@ export class TelegramService {
    * ruxsat" degan yumshoq yo'l bu yerda xavfli: sozlash unutilsa
    * marshrut jimgina ochiq qolardi.
    */
-  webhookAllowed(headerValue: string | undefined): boolean {
-    const secret = this.webhookSecret
+  webhookAllowed(headerValue: string | undefined, bot: BotKind = 'staff'): boolean {
+    const secret = this.webhookSecretOf(bot)
     if (!secret || !headerValue) return false
 
     const a = Buffer.from(secret)
@@ -132,9 +168,11 @@ export class TelegramService {
    * chiqadi va ikkitasi bir-biriga to'g'ri kelmasa, havola
    * boshqa botga olib borardi.
    */
-  async username(): Promise<string | null> {
-    if (this.botUsername) return this.botUsername
-    const token = this.token
+  async username(bot: BotKind = 'staff'): Promise<string | null> {
+    const cached = this.botUsername[bot]
+    if (cached) return cached
+
+    const token = this.tokenOf(bot)
     if (!token) return null
 
     try {
@@ -142,8 +180,8 @@ export class TelegramService {
         signal: AbortSignal.timeout(5000),
       })
       const data = (await res.json()) as { result?: { username?: string } }
-      this.botUsername = data.result?.username ?? null
-      return this.botUsername
+      this.botUsername[bot] = data.result?.username ?? null
+      return this.botUsername[bot]
     } catch (error) {
       this.log.warn(`Bot nomi olinmadi: ${String(error)}`)
       return null
@@ -167,6 +205,42 @@ export class TelegramService {
     const chatId = message?.chat?.id
     if (!chatId) return null
     return { chatId: String(chatId), text: (message.text ?? '').trim() }
+  }
+
+  /**
+   * Bemor botiga kelgan xabar.
+   *
+   * `contact` — "raqamni ulashish" tugmasi bosilganda keladi.
+   *
+   * `contact.user_id === from.id` TEKSHIRUVI SHART: Telegram'da
+   * odam O'ZINING emas, ADRES DAFTARIDAGI boshqa odamning
+   * kontaktini ham yubora oladi. Tekshirilmasa, kimdir tanishining
+   * raqamini yuborib uning tibbiy kartasini ochib olardi.
+   */
+  parsePatientMessage(
+    update: unknown,
+  ): { chatId: string; text: string; ownPhone: string | null } | null {
+    const message = (
+      update as {
+        message?: {
+          chat?: { id?: number }
+          from?: { id?: number }
+          text?: string
+          contact?: { phone_number?: string; user_id?: number }
+        }
+      }
+    )?.message
+
+    const chatId = message?.chat?.id
+    if (!chatId) return null
+
+    const contact = message.contact
+    const ownPhone =
+      contact?.phone_number && contact.user_id && contact.user_id === message.from?.id
+        ? contact.phone_number
+        : null
+
+    return { chatId: String(chatId), text: (message.text ?? '').trim(), ownPhone }
   }
 
   /** `/start KOD` dan kodni ajratadi */
@@ -219,8 +293,11 @@ export class TelegramService {
    * id'ni "meniki" deb ko'rsatib, boshqa odamning hisobiga
    * bog'lanib olardi.
    */
-  verifyInitData(initData: string): { telegramUserId: string } | null {
-    const token = this.token
+  verifyInitData(
+    initData: string,
+    bot: BotKind = 'staff',
+  ): { telegramUserId: string } | null {
+    const token = this.tokenOf(bot)
     if (!token || !initData) return null
 
     const params = new URLSearchParams(initData)
@@ -274,8 +351,9 @@ export class TelegramService {
     telegramUserId: string,
     text: string,
     replyMarkup?: unknown,
+    bot: BotKind = 'staff',
   ): Promise<void> {
-    const token = this.token
+    const token = this.tokenOf(bot)
     if (!token || !telegramUserId) return
 
     try {

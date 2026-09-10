@@ -272,6 +272,22 @@ model Patient {
   primaryDoctorId String? @map("primary_doctor_id")
   primaryDoctor   Doctor? @relation("PrimaryDoctor", fields: [primaryDoctorId], references: [id], onDelete: SetNull)
 
+  /// TELEGRAM HISOBI — bemor kabinetiga kirish uchun.
+  ///
+  /// Bemor ALOHIDA botda ("bemor kabineti") telefon raqamini
+  /// ulashadi, Telegram raqamni O'ZI tasdiqlab beradi va server
+  /// uni `phone` bilan solishtirib shu ustunni to'ldiradi.
+  ///
+  /// NEGA ALOHIDA BOT: xodim boti va bemor boti bir xil bo'lsa,
+  /// `initData` imzosi bitta token bilan tekshirilardi va bemor
+  /// xodim ilovasiga o'tib ketishi mumkin bo'lardi. Ikki token —
+  /// ikki dunyo.
+  ///
+  /// Bir odam ikki klinikada bemor bo'lishi mumkin, ya'ni bu
+  /// ustun butun bazada NOYOB EMAS — kabinetga kirishda klinika
+  /// tanlanadi.
+  telegramUserId String? @map("telegram_user_id")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -286,6 +302,8 @@ model Patient {
 
   /// Bir klinikada bitta telefon — bitta bemor
   @@unique([clinicId, phone])
+  /// Kabinetga kirishda telegram id bo'yicha qidiriladi
+  @@index([telegramUserId])
   @@index([clinicId, status])
   @@index([clinicId, fullName])
   @@map("patients")

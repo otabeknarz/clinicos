@@ -34,11 +34,13 @@ import { WardModule } from './ward/ward.module'
 import { ServicesModule } from './services/services.module'
 import { SignedUrlInterceptor } from './storage/signed-url.interceptor'
 import { StorageModule } from './storage/storage.module'
+import { PatientModule } from './patient/patient.module'
 import { TelegramModule } from './telegram/telegram.module'
 
 @Module({
   imports: [
     TelegramModule,
+    PatientModule,
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     AuditModule,

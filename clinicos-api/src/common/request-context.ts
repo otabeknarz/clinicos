@@ -16,9 +16,20 @@ import { Injectable } from '@nestjs/common'
 export interface RequestUser {
   userId: string
   clinicId: string
-  role: 'SUPERADMIN' | 'OWNER' | 'RECEPTIONIST' | 'DOCTOR'
+  /**
+   * `PATIENT` — bemor kabineti.
+   *
+   * U xodim EMAS: `User` yozuvi yo'q, ruxsatlari bo'sh va faqat
+   * `/patient/*` marshrutlariga kiradi. Rol ro'yxatiga qo'shildi,
+   * chunki so'rov konteksti to'ldirilmasa `forCurrentClinic()`
+   * ishlamaydi — kabinet uchun filtrsiz mijoz ochish esa butun
+   * ijara ajratish qoidasini buzardi.
+   */
+  role: 'SUPERADMIN' | 'OWNER' | 'RECEPTIONIST' | 'DOCTOR' | 'PATIENT'
   /** Rol DOCTOR bo'lsa — shifokor profili id'si, aks holda null */
   doctorId: string | null
+  /** Rol PATIENT bo'lsa — bemor id'si. Faqat kabinetda ishlatiladi. */
+  patientId?: string | null
   permissions: string[]
   /**
    * Shu klinikada o'chirilgan modullar.

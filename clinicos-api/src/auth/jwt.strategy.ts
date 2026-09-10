@@ -45,6 +45,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<RequestUser> {
+    /*
+      BEMOR TOKENI BU YERGA KIRMAYDI.
+
+      Kabinet tokeni xuddi shu kalit bilan imzolanadi, ya'ni
+      imzosi to'g'ri chiqadi. Farq faqat `kind` da — tekshirilmasa,
+      bemorning tokeni xodim marshrutlarida ham haqiqiy bo'lardi.
+      `PatientGuard` teskarisini talab qiladi: tekshiruv ikki
+      tomonlama.
+    */
+    if ((payload as { kind?: string }).kind === 'patient') {
+      throw new UnauthorizedException('Sessiya yaroqsiz')
+    }
+
     const user = await this.db.acrossAllClinics().user.findUnique({
       where: { id: payload.sub },
       select: {
