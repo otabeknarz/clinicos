@@ -17,6 +17,11 @@ import { Modal } from '@/components/ui/Modal'
 import { Field, PhoneInput, Select, TextArea, TextInput } from '@/components/ui/Form'
 import { cn } from '@/lib/cn'
 import { toISODate } from '@/lib/dates'
+import {
+  buildPlatformEmail,
+  EmailLocalInput,
+  emailLocalPart,
+} from '@/components/ui/EmailLocalInput'
 import { money, phoneToE164, weekdaysShort } from '@/lib/format'
 import { useAction } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
@@ -82,7 +87,13 @@ export function StaffFormModal({
     setTouched(false)
     setFullName(staff?.fullName ?? '')
     setPhone(staff?.phone ?? '+998 ')
-    setEmail(staff?.email ?? '')
+    /*
+      Tahrirlashda MAVJUD emaildan faqat nom qismi olinadi. Eski
+      xodimlarda boshqa domen bo'lishi mumkin (`@shifomed.uz`) —
+      saqlashda u platforma domeniga o'tadi va bu to'g'ri: hisoblar
+      bitta domenda yuritiladi.
+    */
+    setEmail(emailLocalPart(staff?.email ?? ''))
     setPosition(staff?.position ?? 'nurse')
     setPositionTitle(staff?.positionTitle ?? '')
     setSpecialty(staff?.specialty || 'therapist')
@@ -160,7 +171,7 @@ export function StaffFormModal({
     const payload = {
       fullName: fullName.trim(),
       phone: phoneToE164(phone),
-      email: email.trim(),
+      email: email.trim() ? buildPlatformEmail(email) : '',
       position,
       positionTitle: positionTitle.trim() || t(`staff.position.${position}`),
       specialty: isDoctor ? specialty : '',
@@ -289,11 +300,11 @@ export function StaffFormModal({
               error={touched ? errors.phone : undefined}
               onChange={setPhone}
             />
-            <TextInput
+            {/* Domen qo'lda yozilmaydi — izohi `EmailLocalInput` da */}
+            <EmailLocalInput
               label={t('common.email')}
-              type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={setEmail}
             />
           </div>
 

@@ -32,6 +32,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { EmailLocalInput, buildPlatformEmail } from '@/components/ui/EmailLocalInput'
 import { PhoneInput, SearchInput, Select, TextArea, TextInput } from '@/components/ui/Form'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
 import { EmptyState, ErrorState } from '@/components/ui/States'
@@ -722,7 +723,7 @@ function NewClinicModal({
     name.trim().length > 1 &&
     address.trim().length > 1 &&
     ownerName.trim().length > 1 &&
-    /.+@.+\..+/.test(ownerEmail) &&
+    ownerEmail.trim().length > 1 &&
     chosenPlan
 
   function reset() {
@@ -754,7 +755,7 @@ function NewClinicModal({
         termMonths,
         discountPct: discount.trim() === '' ? undefined : Number(discount),
         ownerName: ownerName.trim(),
-        ownerEmail: ownerEmail.trim().toLowerCase(),
+        ownerEmail: buildPlatformEmail(ownerEmail),
         ownerPhone: phoneToE164(ownerPhone),
       })
       setCreated(result)
@@ -930,10 +931,13 @@ function NewClinicModal({
           required
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          <TextInput
+          {/*
+            Domen qo'lda yozilmaydi — izohi `EmailLocalInput` da.
+          */}
+          <EmailLocalInput
             label={t('platform.ownerEmailLabel')}
             value={ownerEmail}
-            onChange={(e) => setOwnerEmail(e.target.value)}
+            onChange={setOwnerEmail}
             required
           />
           <PhoneInput

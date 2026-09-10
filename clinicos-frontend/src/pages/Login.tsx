@@ -85,9 +85,26 @@ export function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
 
+          {/*
+            SERVER AYTGAN SABAB KO'RSATILADI.
+
+            Ilgari bu yerda har qanday xatoda `auth.invalid` — ya'ni
+            "email yoki parol noto'g'ri" — chiqardi. Lekin server
+            boshqa sabablarni ham qaytaradi: "Klinika arxivlangan",
+            "Klinika hisobi to'xtatilgan", "Klinika o'chirilgan".
+            Ular parolga umuman aloqador emas.
+
+            Natijasi og'ir edi: klinika egasi TO'G'RI parolini terib
+            "parol noto'g'ri" degan xabarni ko'rardi va parolini
+            qidirib yurardi — muammo esa obunada edi.
+
+            `auth.invalid` — tarjima kaliti (demo rejim va noma'lum
+            xato shu bilan keladi), qolgani serverdan kelgan tayyor
+            o'zbekcha matn.
+          */}
           {error ? (
             <p className="rounded-[10px] bg-bad-soft px-3 py-2 text-footnote text-bad">
-              {t('auth.invalid')}
+              {error === 'auth.invalid' ? t('auth.invalid') : error}
             </p>
           ) : null}
 
