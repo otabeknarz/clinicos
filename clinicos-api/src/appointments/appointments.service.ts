@@ -199,12 +199,27 @@ export class AppointmentsService {
     patient: { fullName: string }
     service: { name: string }
   }) {
-    if (!this.telegram.enabled) return
+    /*
+      HAR BIR TARMOQ LOGGA YOZILADI.
+
+      Ilgari bu yerdan besh xil yo'l bilan JIMGINA chiqib ketish
+      mumkin edi va tashqaridan hammasi bir xil ko'rinardi: qabul
+      saqlanadi, xabar kelmaydi, logda hech narsa yo'q. "Xabar
+      kelmayapti" ni tekshirishning imkoni bo'lmasdi — muvaffaqiyat
+      ham, o'tkazib yuborish ham sukut bilan tugardi.
+    */
+    if (!this.telegram.enabled) {
+      this.log.warn('Telegram: bot tokeni yo‘q — xabar yuborilmadi')
+      return
+    }
 
     const { userId } = this.ctx.require()
 
     const cutoff = endOfTomorrow()
-    if (row.startsAt > cutoff) return
+    if (row.startsAt > cutoff) {
+      this.log.log('Telegram: qabul ertadan keyin — xabar yuborilmadi')
+      return
+    }
 
     const doctorUser = await this.db.user.findFirst({
       where: { doctorId: row.doctorId, isActive: true },
@@ -219,7 +234,10 @@ export class AppointmentsService {
       this.log.warn(`Telegram: shifokor ${row.doctorId} ulanmagan — xabar yuborilmadi`)
       return
     }
-    if (doctorUser.id === userId) return
+    if (doctorUser.id === userId) {
+      this.log.log('Telegram: shifokor qabulni o‘zi yozdi — xabar yuborilmadi')
+      return
+    }
 
     const when = row.startsAt.toLocaleString('uz-UZ', {
       day: 'numeric',
@@ -227,6 +245,8 @@ export class AppointmentsService {
       hour: '2-digit',
       minute: '2-digit',
     })
+
+    this.log.log(`Telegram: shifokor ${row.doctorId} ga xabar yuborilmoqda`)
 
     await this.telegram.send(
       doctorUser.telegramUserId,
