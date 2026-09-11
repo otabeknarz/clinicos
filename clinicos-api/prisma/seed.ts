@@ -46,6 +46,21 @@ async function main() {
     smenani kim yopgani, bonusni kim bergani). Foydalanuvchini
     ulardan oldin o'chirsak, baza tashqi kalit xatosini beradi.
   */
+  /*
+    Apteka — birinchi: sotuv qatori partiyaga `RESTRICT` bilan
+    bog'langan, klinika o'chirilganda kaskad tartibi kafolatlanmaydi.
+  */
+  await db.saleItem.deleteMany()
+  await db.sale.deleteMany()
+  await db.purchaseItem.deleteMany()
+  await db.medicineBatch.deleteMany()
+  await db.purchase.deleteMany()
+  await db.supplier.deleteMany()
+  await db.medicine.deleteMany()
+  await db.prescription.deleteMany()
+  await db.pharmacyShift.deleteMany()
+  await db.pharmacyStaff.deleteMany()
+
   await db.impersonationLog.deleteMany()
   await db.tenantInvoice.deleteMany()
   await db.subscription.deleteMany()
@@ -118,6 +133,12 @@ async function main() {
     patients: ['Otabek Sobirov', 'Nigora Ergasheva'],
     hash,
   })
+
+  /*
+    APTEKA — klinikalardan ALOHIDA mijoz. Klinikalardan KEYIN
+    yaratiladi: ajratish testi birinchi ikkita yozuvni klinika deb oladi.
+  */
+  await seedPharmacy(hash)
 
   /* ---------------- Platforma qatlami ---------------- */
 
@@ -417,6 +438,271 @@ async function seedClinic(input: {
     doctorLogin: `${slug(input.doctorName)}@${input.emailDomain}`,
     city: input.address.split(',')[0].trim(),
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Apteka                                                              */
+/* ------------------------------------------------------------------ */
+
+/** Mahalliy sana (`offset` kun) — `@db.Date` ustuni uchun */
+function dayOnly(offset: number): Date {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return new Date(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T00:00:00.000Z`)
+}
+
+/** Kun ichidagi vaqt (`offset` kun oldin, soat:daqiqa) */
+function at(offset: number, hour: number, minute: number): Date {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  d.setHours(hour, minute, 0, 0)
+  return d
+}
+
+/**
+ * Demo apteka.
+ *
+ * Loginlar frontenddagi demo hisoblar bilan BIR XIL
+ * (`apteka@clinic-os.uz`, `apteka.rahbar@clinic-os.uz`) — kirish
+ * sahifasidagi tugmalar haqiqiy server bilan ham ishlasin.
+ *
+ * Tasodif QAT'IY urug' bilan: har seed bir xil ma'lumot beradi,
+ * xato qayta tiklanadigan bo'lsin.
+ */
+async function seedPharmacy(hash: string) {
+  let state = 20260911
+  const rand = () => {
+    state = (state * 1103515245 + 12345) % 2147483648
+    return state / 2147483648
+  }
+  const pick = <T,>(list: T[]) => list[Math.floor(rand() * list.length)]
+
+  const clinic = await db.clinic.create({
+    data: {
+      kind: 'PHARMACY',
+      name: 'Sog‘lom dorixonasi',
+      phone: '+998 71 250 30 30',
+      address: 'Chilonzor tumani, Bunyodkor ko‘chasi 12',
+      city: 'Toshkent',
+    },
+  })
+  const clinicId = clinic.id
+
+  const people = [
+    { fullName: 'Gulnora Yusupova', email: 'apteka.rahbar@clinic-os.uz', role: Role.PHARMACY_OWNER, start: '09:00', end: '18:00', receive: true, salary: 7_000_000 },
+    { fullName: 'Dilshod Raximov', email: 'apteka@clinic-os.uz', role: Role.PHARMACIST, start: '08:00', end: '15:00', receive: true, salary: 4_500_000 },
+    { fullName: 'Ozoda Qodirova', email: 'apteka2@clinic-os.uz', role: Role.PHARMACIST, start: '15:00', end: '21:00', receive: false, salary: 4_200_000 },
+  ]
+
+  const staff = []
+  for (const [i, p] of people.entries()) {
+    const user = await db.user.create({
+      data: {
+        clinicId,
+        fullName: p.fullName,
+        email: p.email,
+        phone: `+998 90 555 00 0${i + 1}`,
+        passwordHash: hash,
+        role: p.role,
+        extraPermissions: p.role === Role.PHARMACIST && p.receive ? ['pharmacy.receive'] : [],
+      },
+    })
+    staff.push(
+      await db.pharmacyStaff.create({
+        data: {
+          clinicId,
+          fullName: p.fullName,
+          phone: user.phone,
+          login: p.email,
+          role: p.role,
+          salary: p.salary,
+          workdays: [1, 2, 3, 4, 5, 6],
+          shiftStart: p.start,
+          shiftEnd: p.end,
+          hiredAt: dayOnly(-420 + i * 60),
+          canReceive: p.receive,
+          userId: user.id,
+        },
+      }),
+    )
+  }
+  const [owner, dilshod, ozoda] = staff
+
+  const supplier = await db.supplier.create({
+    data: { clinicId, name: 'Grand Pharm Trade', phone: '+998 71 150 40 40', inn: '305112233' },
+  })
+
+  const catalog: [string, 'TABLET' | 'CAPSULE' | 'SYRUP' | 'DROPS' | 'OINTMENT', string, number, boolean, number, number][] = [
+    // nomi, shakli, ishlab chiqaruvchi, sotuv narxi, retseptli, qoldiq, muddatigacha kun
+    ['Paratsetamol 500 mg', 'TABLET', 'Nika Pharm', 3_500, false, 120, 420],
+    ['Amoksitsillin 500 mg', 'CAPSULE', 'Jurabek Laboratories', 18_000, true, 45, 300],
+    ['Ibuprofen 400 mg', 'TABLET', 'Radiks', 9_000, false, 80, 510],
+    ['No-shpa 40 mg', 'TABLET', 'Sanofi', 24_000, false, 8, 260],
+    ['Sitramon', 'TABLET', 'Nika Pharm', 4_000, false, 60, 45],
+    ['Nurofen sirop', 'SYRUP', 'Reckitt', 38_000, false, 22, 190],
+    ['Otipaks tomchi', 'DROPS', 'Biocodex', 52_000, false, 15, 70],
+    ['Vishnevskiy malhami', 'OINTMENT', 'Tula Pharm', 12_000, false, 30, 600],
+  ]
+
+  const purchase = await db.purchase.create({
+    data: {
+      clinicId,
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      invoiceNumber: 'GP-2026/0917',
+      receivedAt: dayOnly(-20),
+      total: 0,
+      payment: 'PARTIAL',
+      paidAmount: 0,
+      dueDate: dayOnly(10),
+      receivedById: dilshod.id,
+      receivedByName: dilshod.fullName,
+      note: 'Oylik buyurtma',
+    },
+  })
+
+  const medicines = []
+  let purchaseTotal = 0
+  for (const [name, form, maker, price, rx, qty, expiresIn] of catalog) {
+    const buyPrice = Math.round((price * 0.72) / 100) * 100
+    const medicine = await db.medicine.create({
+      data: {
+        clinicId,
+        name,
+        form,
+        manufacturer: maker,
+        country: 'O‘zbekiston',
+        barcode: `47800${String(Math.floor(rand() * 1e8)).padStart(8, '0')}`,
+        prescriptionOnly: rx,
+        sellPrice: price,
+      },
+    })
+    const batch = await db.medicineBatch.create({
+      data: {
+        clinicId,
+        medicineId: medicine.id,
+        code: `B${String(Math.floor(rand() * 1e5)).padStart(5, '0')}`,
+        expiresAt: dayOnly(expiresIn),
+        quantity: qty,
+        buyPrice,
+        supplierId: supplier.id,
+        purchaseId: purchase.id,
+        receivedAt: dayOnly(-20),
+      },
+    })
+    await db.purchaseItem.create({
+      data: {
+        clinicId,
+        purchaseId: purchase.id,
+        medicineId: medicine.id,
+        medicineName: name,
+        batchCode: batch.code,
+        expiresAt: batch.expiresAt,
+        quantity: qty + 40,
+        buyPrice,
+        sellPrice: price,
+      },
+    })
+    purchaseTotal += buyPrice * (qty + 40)
+    medicines.push({ medicine, batch })
+  }
+  await db.purchase.update({
+    where: { id: purchase.id },
+    data: { total: purchaseTotal, paidAmount: Math.round(purchaseTotal / 2) },
+  })
+
+  /* Muddati o'tgan, lekin javonda qolib ketgan partiya — nazorat buni ushlashi kerak */
+  await db.medicineBatch.create({
+    data: {
+      clinicId,
+      medicineId: medicines[4].medicine.id,
+      code: 'B00417',
+      expiresAt: dayOnly(-12),
+      quantity: 6,
+      buyPrice: 2_900,
+      supplierId: supplier.id,
+      receivedAt: dayOnly(-400),
+    },
+  })
+
+  /* Oxirgi 10 kun savdosi — bugun ham */
+  for (let day = -9; day <= 0; day++) {
+    const count = day === 0 ? 3 : 4 + Math.floor(rand() * 4)
+    for (let n = 0; n < count; n++) {
+      const seller = n % 2 === 0 ? dilshod : ozoda
+      const lines = [pick(medicines), pick(medicines)].filter(
+        (line, index, all) => all.findIndex((x) => x.batch.id === line.batch.id) === index,
+      )
+      const items = lines.map(({ medicine, batch }) => ({
+        clinicId,
+        medicineId: medicine.id,
+        medicineName: medicine.name,
+        batchId: batch.id,
+        quantity: 1 + Math.floor(rand() * 2),
+        price: medicine.sellPrice,
+        buyPrice: batch.buyPrice,
+      }))
+      const total = items.reduce((sum, it) => sum + it.price * it.quantity, 0)
+      await db.sale.create({
+        data: {
+          clinicId,
+          soldAt: day === 0 ? at(0, 8, 15 + n * 5) : at(day, seller === dilshod ? 10 : 17, 10 + n * 7),
+          total,
+          discount: 0,
+          method: rand() < 0.7 ? 'CASH' : 'CARD',
+          soldById: seller.id,
+          soldByName: seller.fullName,
+          items: { create: items },
+        },
+      })
+    }
+
+    /* Kechagi va undan oldingi kunlar — smena yopilgan */
+    if (day < 0) {
+      const difference = day === -3 ? -8_000 : day === -6 ? 2_000 : 0
+      await db.pharmacyShift.create({
+        data: {
+          clinicId,
+          sellerId: ozoda.id,
+          sellerName: ozoda.fullName,
+          date: dayOnly(day),
+          periodStart: at(day, 0, 0),
+          expectedCash: 150_000,
+          countedCash: 150_000 + difference,
+          difference,
+          cardTotal: 60_000,
+          receipts: 5,
+          note: difference < 0 ? 'Qaytim xatosi' : '',
+          flagged: difference < -5_000,
+          closedAt: at(day, 21, 5),
+        },
+      })
+    }
+  }
+
+  const rxPatients = ['Zarina Tursunova', 'Ulug‘bek Ergashev', 'Farrux Yusupov', 'Sevara Aliyeva']
+  for (const [i, patientName] of rxPatients.entries()) {
+    await db.prescription.create({
+      data: {
+        clinicId,
+        patientName,
+        doctorName: 'Jasur Ibragimov',
+        items: [
+          { medicineName: 'Amoksitsillin 500 mg', dosage: '1 kapsuladan kuniga 2 mahal, 7 kun', quantity: 2 },
+          { medicineName: 'Paratsetamol 500 mg', dosage: 'Harorat 38° dan oshsa, 1 tabletka', quantity: 1 },
+        ],
+        status: i === 3 ? 'DISPENSED' : 'PENDING',
+        dispensedAt: i === 3 ? at(-2, 11, 0) : null,
+        dispensedById: i === 3 ? dilshod.id : null,
+        createdAt: at(-i, 9, 30),
+      },
+    })
+  }
+
+  console.log(`  ${clinic.name} (apteka): 3 xodim, ${medicines.length} dori, 10 kunlik savdo`)
+  console.log(`    apteka rahbari  ${owner.login}`)
+  console.log(`    farmatsevt      ${dilshod.login}, ${ozoda.login}`)
 }
 
 main()

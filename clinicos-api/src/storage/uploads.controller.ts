@@ -22,7 +22,8 @@ import { StorageService } from './storage.service'
  * shuning uchun `POST /patient/uploads` alohida marshruti bor:
  * bu marshrut xodim tokenini kutadi.
  */
-const KINDS = ['avatars', 'logos', 'visits', 'feedback'] as const
+/* `pharmacy` — kirim hujjatlari (nakladnoy, sertifikat) */
+const KINDS = ['avatars', 'logos', 'visits', 'feedback', 'pharmacy'] as const
 type Kind = (typeof KINDS)[number]
 
 /**

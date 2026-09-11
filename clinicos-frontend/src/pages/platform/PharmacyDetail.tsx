@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Ban, KeyRound, MapPin, Pause, Pencil, Phone, Play } from 'lucide-react'
 
-import { USE_MOCK } from '@/api/client'
 import { activatePharmacy, getPharmacy, WATCH_DAYS } from '@/api/platformPharmacy'
 import type { PharmacyDetail } from '@/api/platformPharmacy'
 import { AreaTrend } from '@/components/charts/Charts'
@@ -26,7 +25,6 @@ import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
 import {
   EditPharmacyModal,
-  PharmacyNotConnected,
   ResetPharmacyOwnerModal,
   SuspendPharmacyModal,
 } from './PharmacyModals'
@@ -44,11 +42,6 @@ import {
  * savdo siri tegishli emas — faqat biznes sog'lommi, shu.
  */
 export function PlatformPharmacyDetailPage() {
-  if (!USE_MOCK) return <PharmacyNotConnected />
-  return <PharmacyDetailScreen />
-}
-
-function PharmacyDetailScreen() {
   const { t } = useI18n()
   const { id = '' } = useParams()
   const { can } = useAuth()

@@ -153,6 +153,33 @@ async function main() {
     `${touched.count} ta yozuvga tegdi`,
   )
 
+  /* ---------- 7. Apteka — alohida mijoz ---------- */
+  console.log('\nApteka')
+
+  const pharmacy = await base.clinic.findFirst({ where: { kind: 'PHARMACY' } })
+  if (!pharmacy) {
+    check('seedda apteka bor', false, 'avval: npm run db:seed')
+  } else {
+    const dbP = forClinic(base, pharmacy.id)
+    const allMedicines = await base.medicine.count()
+    const medicinesP = await dbP.medicine.findMany()
+
+    check(
+      'apteka faqat o‘z dorilarini ko‘radi',
+      allMedicines > 0 && medicinesP.length === allMedicines &&
+        medicinesP.every((m) => m.clinicId === pharmacy.id),
+    )
+    check('klinika aptekaning dorisini ko‘rmaydi', (await dbA.medicine.count()) === 0)
+    check('klinika aptekaning savdosini ko‘rmaydi', (await dbA.sale.count()) === 0)
+    check('apteka klinika bemorlarini ko‘rmaydi', (await dbP.patient.count()) === 0)
+
+    const foreignSale = await base.sale.findFirst({ where: { clinicId: pharmacy.id } })
+    if (foreignSale) {
+      const viaClinic = await dbA.sale.findUnique({ where: { id: foreignSale.id } })
+      check('klinika aptekaning chekini id bo‘yicha ham topa olmaydi', viaClinic === null)
+    }
+  }
+
   /* ---------- Tozalash ---------- */
   await base.patient.delete({ where: { id: created.id } })
 

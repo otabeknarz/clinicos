@@ -113,6 +113,10 @@ export const dict: Dict = {
   'pharmacy.noStaff': 'Xodim yo‘q',
   'pharmacy.staffFired': 'Xodim ishdan chiqarildi',
   'pharmacy.fire': 'Ishdan chiqarish',
+  'pharmacy.resetPassword': 'Parolni tiklash',
+  'pharmacy.credentialsTitle': 'Kirish ma’lumotlari',
+  'pharmacy.credentialsHint': 'Parol faqat hozir ko‘rinadi. Xodimga bering — u birinchi kirishda almashtiradi.',
+  'pharmacy.tempPassword': 'Vaqtinchalik parol bilan kirdingiz. Xavfsizlik uchun uni hozir almashtiring.',
   'pharmacy.fired': 'Ishdan chiqqan',
   'pharmacy.since': 'ishga kirgan',
   'pharmacy.salary': 'Oylik',
@@ -389,8 +393,6 @@ export const dict: Dict = {
   'login.promoAppointments': 'Qabullar',
   'login.promoPatients': 'Bemorlar',
   'login.promoFinance': 'Moliya',
-  'pharmacies.notConnected': 'Aptekalar bo‘limi serverga hali ulanmagan',
-  'pharmacies.notConnectedHint': 'Apteka tizimining server qismi keyingi bosqichda yoziladi. Hozir bu yerda haqiqiy ma’lumot yo‘q — namunaviy raqamlarni ko‘rsatish esa chalg‘itardi.',
 
   /* --- Bosh sahifa --- */
   'dash.greeting.morning': 'Xayrli tong',

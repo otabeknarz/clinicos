@@ -1,16 +1,14 @@
 /**
  * APTEKA.
  *
- * HOZIRCHA FAQAT DEMO QATLAMI. Backend hali yozilmagan, shuning
- * uchun bu yerda `// GET /path` izohlari ATAYLAB YO'Q: o'sha
- * izohlar `docs/API.md` va backenddagi `check:endpoints` uchun
- * manba bo'lib xizmat qiladi va marshrut mavjud bo'lmasa,
- * tekshiruv yiqilardi. Backend yozilganda izohlar qo'shiladi va
- * har bir funksiya `USE_MOCK` bo'yicha ikkiga bo'linadi —
- * qolgan modullardagi kabi.
+ * Har bir funksiya `USE_MOCK` bo'yicha ikkiga bo'linadi — qolgan
+ * modullardagi kabi: haqiqiy `request()` yoki demo baza.
+ *
+ * Kim sotgani, kim qabul qilgani, kutilgan kassa summasi va sotuv
+ * narxi — bularni SERVER tokendan va o'z hisobidan aniqlaydi.
+ * Demo shoxidagi `currentSeller()` faqat server yo'qligi uchun bor.
  */
-import { delay } from './client'
-import { apiContext } from './client'
+import { apiContext, delay, request, USE_MOCK } from './client'
 import { getDb } from '@/mock/db'
 import type { ID, ISODate, UZS } from '@/types/models'
 import type {
@@ -61,7 +59,18 @@ export interface MedicineQuery {
  * degan ustun yo'q va bo'lmasligi ham kerak — u partiyalar bilan
  * darrov ziddiyatga tushardi.
  */
+// GET /pharmacy/medicines?search=&stock=&prescriptionOnly=
 export async function listMedicines(query: MedicineQuery = {}): Promise<MedicineStock[]> {
+  if (!USE_MOCK) {
+    return request<MedicineStock[]>('GET', '/pharmacy/medicines', {
+      query: {
+        search: query.search,
+        stock: query.stock,
+        prescriptionOnly: query.prescriptionOnly,
+      },
+    })
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
 
@@ -120,7 +129,12 @@ export interface BatchRow extends Batch {
   daysLeft: number
 }
 
+// GET /pharmacy/batches?filter=
 export async function listBatches(filter: 'all' | 'expiring' | 'expired' = 'all') {
+  if (!USE_MOCK) {
+    return request<BatchRow[]>('GET', '/pharmacy/batches', { query: { filter } })
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
 
@@ -160,7 +174,12 @@ export async function listBatches(filter: 'all' | 'expiring' | 'expired' = 'all'
  * tanlab qo'ysa, kassadagi yozuv javondagi haqiqatdan uzilib
  * qolardi.
  */
+// GET /pharmacy/sale-search?term=
 export async function searchForSale(term: string): Promise<CartLine[]> {
+  if (!USE_MOCK) {
+    return request<CartLine[]>('GET', '/pharmacy/sale-search', { query: { term } })
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
   const search = term.trim().toLowerCase()
@@ -215,7 +234,20 @@ export interface SaleInput {
  * aks holda ekranlarni sinab ko'rib bo'lmasdi: sotgandan keyin
  * ham qoldiq o'zgarmasa, hech narsa ishlayotgani bilinmasdi.
  */
+// POST /pharmacy/sales
 export async function createSale(input: SaleInput): Promise<Sale> {
+  if (!USE_MOCK) {
+    return request<Sale>('POST', '/pharmacy/sales', {
+      /* Narxni server katalogdan oladi — faqat partiya va miqdor ketadi */
+      body: {
+        lines: input.lines.map((line) => ({ batchId: line.batchId, quantity: line.quantity })),
+        discount: input.discount,
+        method: input.method,
+        patientId: input.patientId,
+      },
+    })
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
 
@@ -263,7 +295,12 @@ export async function createSale(input: SaleInput): Promise<Sale> {
 /* Savdo tarixi va hisobot                                             */
 /* ------------------------------------------------------------------ */
 
+// GET /pharmacy/sales?days=
 export async function listSales(days = 7): Promise<Sale[]> {
+  if (!USE_MOCK) {
+    return request<Sale[]>('GET', '/pharmacy/sales', { query: { days } })
+  }
+
   const { clinicId } = apiContext()
   const from = Date.now() - days * 24 * 60 * 60 * 1000
 
@@ -291,7 +328,12 @@ export interface PharmacySummary {
   stockValue: UZS
 }
 
+// GET /pharmacy/summary
 export async function pharmacySummary(): Promise<PharmacySummary> {
+  if (!USE_MOCK) {
+    return request<PharmacySummary>('GET', '/pharmacy/summary')
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
 
@@ -342,9 +384,14 @@ export async function pharmacySummary(): Promise<PharmacySummary> {
 /* Retseptlar                                                          */
 /* ------------------------------------------------------------------ */
 
+// GET /pharmacy/prescriptions?status=
 export async function listPrescriptions(
   status: 'all' | Prescription['status'] = 'all',
 ): Promise<Prescription[]> {
+  if (!USE_MOCK) {
+    return request<Prescription[]>('GET', '/pharmacy/prescriptions', { query: { status } })
+  }
+
   const { clinicId } = apiContext()
 
   const rows = getDb()
@@ -356,7 +403,12 @@ export async function listPrescriptions(
 }
 
 /** Retseptni berilgan deb belgilash */
+// POST /pharmacy/prescriptions/:id/dispense
 export async function dispensePrescription(id: ID): Promise<Prescription | null> {
+  if (!USE_MOCK) {
+    return request<Prescription | null>('POST', `/pharmacy/prescriptions/${id}/dispense`)
+  }
+
   const { clinicId } = apiContext()
   const row = getDb().prescriptions.update(id, { status: 'dispensed' }, clinicId)
   return delay(row, 200)
@@ -374,7 +426,12 @@ export interface TodayShift {
   receipts: number
 }
 
+// GET /pharmacy/shift/today
 export async function todayShift(): Promise<TodayShift> {
+  if (!USE_MOCK) {
+    return request<TodayShift>('GET', '/pharmacy/shift/today')
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
 
@@ -409,12 +466,20 @@ export async function todayShift(): Promise<TodayShift> {
  * nazoratida alohida belgilanadi: tasodifiy kamomad bilan
  * ataylab kiritilganini ajratish kerak.
  */
+// POST /pharmacy/shift/close
 export async function closePharmacyShift(
   counted: UZS,
   note: string,
   flagged = false,
   handedToId: ID | null = null,
 ) {
+  if (!USE_MOCK) {
+    return request<PharmacyShift>('POST', '/pharmacy/shift/close', {
+      /* Kutilgan summa va "rahbarga yuborish" belgisini server o'zi aniqlaydi */
+      body: { countedCash: counted, note, handedToId },
+    })
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
   const state = await todayShift()
@@ -451,7 +516,12 @@ export async function closePharmacyShift(
  * O'zidan boshqa faol xodimlar. O'zini tanlash mumkin bo'lsa,
  * "topshirish" so'zining ma'nosi qolmasdi.
  */
+// GET /pharmacy/shift/handover-candidates
 export async function handoverCandidates(): Promise<PharmacyStaff[]> {
+  if (!USE_MOCK) {
+    return request<PharmacyStaff[]>('GET', '/pharmacy/shift/handover-candidates')
+  }
+
   const { clinicId } = apiContext()
   const me = currentSeller()
 
@@ -462,7 +532,12 @@ export async function handoverCandidates(): Promise<PharmacyStaff[]> {
   return delay(rows, 120)
 }
 
+// GET /pharmacy/shifts?days=
 export async function listPharmacyShifts(days = 30): Promise<PharmacyShift[]> {
+  if (!USE_MOCK) {
+    return request<PharmacyShift[]>('GET', '/pharmacy/shifts', { query: { days } })
+  }
+
   const { clinicId } = apiContext()
   const from = new Date()
   from.setDate(from.getDate() - days)
@@ -506,7 +581,12 @@ function isoToday(): string {
  * bo'lardi-yu, noto'g'ri chiqardi — bir dorida ustama 20%, boshqasida
  * 45% va sotuv tarkibi har kuni o'zgaradi.
  */
+// GET /pharmacy/analytics?days=
 export async function pharmacyAnalytics(days = 30): Promise<PharmacyAnalytics> {
+  if (!USE_MOCK) {
+    return request<PharmacyAnalytics>('GET', '/pharmacy/analytics', { query: { days } })
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
 
@@ -620,7 +700,12 @@ export interface StaffWithStats extends PharmacyStaff {
  * ochilmadi — u sotuvlar bilan darrov ziddiyatga tushardi va
  * qaysi biri to'g'ri ekanini aytib bo'lmasdi.
  */
+// GET /pharmacy/staff?days=
 export async function listPharmacyStaff(days = 30): Promise<StaffWithStats[]> {
+  if (!USE_MOCK) {
+    return request<StaffWithStats[]>('GET', '/pharmacy/staff', { query: { days } })
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
 
@@ -675,17 +760,34 @@ export async function listPharmacyStaff(days = 30): Promise<StaffWithStats[]> {
 
 export type PharmacyStaffInput = Omit<PharmacyStaff, 'id' | 'clinicId'>
 
-export async function createPharmacyStaff(input: PharmacyStaffInput) {
+/** Yangi xodim — vaqtinchalik paroli BIR MARTA qaytadi */
+export interface PharmacyStaffCreated {
+  staff: PharmacyStaff
+  password: string
+}
+
+// POST /pharmacy/staff
+export async function createPharmacyStaff(
+  input: PharmacyStaffInput,
+): Promise<PharmacyStaffCreated> {
+  if (!USE_MOCK) {
+    return request<PharmacyStaffCreated>('POST', '/pharmacy/staff', { body: input })
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
 
-  return delay(
-    db.pharmacyStaff.insert({ id: db.pharmacyStaff.nextId('pst'), clinicId, ...input }),
-    220,
-  )
+  const staff = db.pharmacyStaff.insert({ id: db.pharmacyStaff.nextId('pst'), clinicId, ...input })
+  /* Demo rejimda parol tekshirilmaydi — har qanday parol qabul qilinadi */
+  return delay({ staff, password: 'demo1234' }, 220)
 }
 
+// PATCH /pharmacy/staff/:id
 export async function updatePharmacyStaff(id: ID, patch: Partial<PharmacyStaffInput>) {
+  if (!USE_MOCK) {
+    return request<PharmacyStaff>('PATCH', `/pharmacy/staff/${id}`, { body: patch })
+  }
+
   const { clinicId } = apiContext()
   return delay(getDb().pharmacyStaff.update(id, patch, clinicId), 220)
 }
@@ -697,16 +799,49 @@ export async function updatePharmacyStaff(id: ID, patch: Partial<PharmacyStaffIn
  * smenalari joyida qolishi kerak. O'chirilsa, o'tgan oyning
  * hisoboti qayta hisoblanganda savdo egasiz qolardi.
  */
+// POST /pharmacy/staff/:id/fire
 export async function firePharmacyStaff(id: ID) {
+  if (!USE_MOCK) {
+    return request<PharmacyStaff>('POST', `/pharmacy/staff/${id}/fire`)
+  }
+
   const { clinicId } = apiContext()
   return delay(getDb().pharmacyStaff.update(id, { status: 'fired' }, clinicId), 220)
+}
+
+/**
+ * Sotuvchining parolini tiklash — yangi vaqtinchalik parol BIR MARTA
+ * qaytadi. Pochta xizmati yo'q: parolni unutgan sotuvchining boshqa
+ * yo'li shu.
+ */
+/** Tiklangan parol — FAQAT shu javobda */
+export interface PharmacyStaffPassword {
+  staffId: ID
+  login: string
+  password: string
+}
+
+// POST /pharmacy/staff/:id/password
+export async function resetPharmacyStaffPassword(id: ID): Promise<PharmacyStaffPassword> {
+  if (!USE_MOCK) {
+    return request<PharmacyStaffPassword>('POST', `/pharmacy/staff/${id}/password`)
+  }
+
+  const { clinicId } = apiContext()
+  const staff = getDb().pharmacyStaff.find(id, clinicId)
+  return delay({ staffId: id, login: staff?.login ?? '', password: 'demo1234' }, 220)
 }
 
 /* ------------------------------------------------------------------ */
 /* Kirim — tovar bazaga shu yerdan tushadi                             */
 /* ------------------------------------------------------------------ */
 
+// GET /pharmacy/suppliers
 export async function listSuppliers(): Promise<Supplier[]> {
+  if (!USE_MOCK) {
+    return request<Supplier[]>('GET', '/pharmacy/suppliers')
+  }
+
   const { clinicId } = apiContext()
   return delay(getDb().suppliers.all(clinicId), 120)
 }
@@ -718,7 +853,12 @@ export async function listSuppliers(): Promise<Supplier[]> {
  * birinchi kirim bir vaqtda keladi va odamni alohida ekranga
  * yuborish shu yerda ishni to'xtatib qo'yardi.
  */
+// POST /pharmacy/suppliers
 export async function createSupplier(input: SupplierInput): Promise<Supplier> {
+  if (!USE_MOCK) {
+    return request<Supplier>('POST', '/pharmacy/suppliers', { body: input })
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
   return delay(
@@ -745,7 +885,12 @@ export interface SupplierDebt {
   oldestDue: ISODate | null
 }
 
+// GET /pharmacy/supplier-debts
 export async function supplierDebts(): Promise<SupplierDebt[]> {
+  if (!USE_MOCK) {
+    return request<SupplierDebt[]>('GET', '/pharmacy/supplier-debts')
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
 
@@ -777,7 +922,12 @@ export async function supplierDebts(): Promise<SupplierDebt[]> {
   )
 }
 
+// GET /pharmacy/purchases?days=
 export async function listPurchases(days = 90): Promise<Purchase[]> {
+  if (!USE_MOCK) {
+    return request<Purchase[]>('GET', '/pharmacy/purchases', { query: { days } })
+  }
+
   const { clinicId } = apiContext()
   const from = new Date()
   from.setDate(from.getDate() - days)
@@ -836,7 +986,12 @@ export interface PurchaseInput {
  * o'zgarmaydi, ya'ni allaqachon sotilgan tovarning foydasi
  * qanday hisoblangan bo'lsa, shundayligicha qoladi.
  */
+// POST /pharmacy/purchases
 export async function createPurchase(input: PurchaseInput): Promise<Purchase> {
+  if (!USE_MOCK) {
+    return request<Purchase>('POST', '/pharmacy/purchases', { body: input })
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
 
@@ -927,7 +1082,12 @@ export async function createPurchase(input: PurchaseInput): Promise<Purchase> {
 }
 
 /** Katalogdagi dorini tahrirlash — narx, nom, shakl */
+// PATCH /pharmacy/medicines/:id
 export async function updateMedicine(id: ID, patch: Partial<MedicineInput>) {
+  if (!USE_MOCK) {
+    return request<Medicine>('PATCH', `/pharmacy/medicines/${id}`, { body: patch })
+  }
+
   const { clinicId } = apiContext()
   return delay(getDb().medicines.update(id, patch, clinicId), 200)
 }
@@ -938,7 +1098,12 @@ export async function updateMedicine(id: ID, patch: Partial<MedicineInput>) {
  * O'CHIRILMAYDI: sotuv tarixi unga bog'langan. O'chirilsa,
  * o'tgan oyning hisoboti "nomsiz dori" bilan to'lib ketardi.
  */
+// POST /pharmacy/medicines/:id/archive
 export async function archiveMedicine(id: ID) {
+  if (!USE_MOCK) {
+    return request<Medicine>('POST', `/pharmacy/medicines/${id}/archive`)
+  }
+
   const { clinicId } = apiContext()
   return delay(getDb().medicines.update(id, { status: 'archived' }, clinicId), 200)
 }
@@ -983,7 +1148,12 @@ function minutesOf(time: string): number {
  * ochsa, o'sha ishlaydi. Bu ataylab yumshoq — aks holda
  * jadvalda xatolik bo'lgan kuni butun apteka ishlay olmasdi.
  */
+// GET /pharmacy/on-duty
 export async function onDutyNow(): Promise<OnDuty> {
+  if (!USE_MOCK) {
+    return request<OnDuty>('GET', '/pharmacy/on-duty')
+  }
+
   const { clinicId } = apiContext()
   const db = getDb()
   const me = currentSeller()

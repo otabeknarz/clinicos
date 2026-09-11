@@ -16,7 +16,7 @@
 import { delay, upload, USE_MOCK } from './client'
 
 /** Qaysi papkaga tushadi. Serverdagi ro'yxat bilan bir xil. */
-export type UploadKind = 'avatars' | 'logos' | 'visits'
+export type UploadKind = 'avatars' | 'logos' | 'visits' | 'pharmacy'
 
 export interface UploadedFile {
   /** Bazaga yoziladigan kalit */

@@ -1069,8 +1069,7 @@ async function main() {
     Sinov `Salomat` klinikasida: `Shifo Med` qolgan sinovlarda
     ishlatiladi. Oxirida obuna o'z holiga qaytariladi.
   */
-  console.log('
-Klinikaga alohida chegirma (platforma)')
+  console.log('\nKlinikaga alohida chegirma (platforma)')
   {
     const rows = items(
       (await call('GET', '/platform/tenants?page=1&pageSize=100', tokens.admin)).data,

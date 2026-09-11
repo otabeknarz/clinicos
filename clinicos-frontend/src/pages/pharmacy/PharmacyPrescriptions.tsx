@@ -114,7 +114,7 @@ function RxCard({
   async function submit() {
     const done = await dispense.run()
     if (done === null) {
-      toast.error(t('toast.error'))
+      toast.error(dispense.lastError()?.message ?? t('toast.error'))
       return
     }
     toast.success(toastText)

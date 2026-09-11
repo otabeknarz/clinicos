@@ -57,7 +57,7 @@ export function PharmacyShiftPage() {
   async function finish(flagged: boolean) {
     const done = await close.run(flagged)
     if (done === null) {
-      toast.error(t('toast.error'))
+      toast.error(close.lastError()?.message ?? t('toast.error'))
       return
     }
     setConfirming(false)

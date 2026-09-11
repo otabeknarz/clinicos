@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**159 ta endpoint.**
+**190 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -2890,6 +2890,12 @@ getMonthlyStats(): Promise<MonthlyStat[]>
 listNotifications(): Promise<AppNotification[]>
 ```
 
+### `GET /notifications/badges`
+
+```ts
+getNavBadges(): Promise<NavBadges>
+```
+
 ## Qidiruv
 
 `src/api/search.ts`
@@ -3452,7 +3458,7 @@ Demo rejimda "kim kirgani" `patient-context` da saqlanadi va shu
 yerga uzatiladi — bu FAQAT demo uchun, shuning uchun parametr
 `demoPatientId` deb ataldi va haqiqiy so'rovga umuman qo'shilmaydi.
 
-import { delay, request, USE_MOCK } from './client'
+import { delay, request, upload, USE_MOCK } from './client'
 import { getDb } from '@/mock/db'
 import { MAIN_CLINIC_ID } from '@/mock/seed'
 import type {
@@ -3460,6 +3466,7 @@ CabinetDebt,
 CabinetProfile,
 CabinetVisit,
 ID,
+ISODateTime,
 } from '@/types/models'
 
 ------------------------------------------------------------------
@@ -3493,6 +3500,32 @@ tekshirish uchun bot tokeni kerak, u esa mijozda bo'lmasligi shart.
 cabinetSignIn(initData: string, clinicId?: ID): Promise<CabinetAuthResult>
 ```
 
+### `GET /patient/feedback`
+
+```ts
+listCabinetFeedback(demoPatientId?: ID): Promise<CabinetFeedbackItem[]>
+```
+
+### `POST /patient/feedback`
+
+Fikr qoldirish.
+
+Shifokor id yuborilmaydi — server uni QABULDAN oladi. Aks holda
+bemor uni almashtirib, fikrni boshqa odamning reytingiga yozib
+qo'yishi mumkin bo'lardi.
+
+```ts
+leaveCabinetFeedback(input: { appointmentId: ID rating: number text: string imageKeys: string[] }): Promise<{ id: ID }>
+```
+
+### `POST /patient/uploads`
+
+Fikrga biriktiriladigan rasm — javobda KALIT qaytadi, havola emas
+
+```ts
+uploadCabinetImage(file: Blob): Promise<{ key: string }>
+```
+
 ## debts
 
 `src/api/debts.ts`
@@ -3523,4 +3556,596 @@ bo'lib qo'shiladi.
 
 ```ts
 waiveDebt(input: WaiveDebtInput): Promise<DebtWaiver>
+```
+
+## pharmacy
+
+`src/api/pharmacy.ts`
+
+> APTEKA.
+> 
+> Har bir funksiya `USE_MOCK` bo'yicha ikkiga bo'linadi — qolgan
+> modullardagi kabi: haqiqiy `request()` yoki demo baza.
+> 
+> Kim sotgani, kim qabul qilgani, kutilgan kassa summasi va sotuv
+> narxi — bularni SERVER tokendan va o'z hisobidan aniqlaydi.
+> Demo shoxidagi `currentSeller()` faqat server yo'qligi uchun bor.
+
+### `GET /pharmacy/medicines?search=&stock=&prescriptionOnly=`
+
+Dorilar katalogi — zaxira bilan birga.
+
+Zaxira PARTIYALARDAN yig'iladi: dorining o'zida "qancha bor"
+degan ustun yo'q va bo'lmasligi ham kerak — u partiyalar bilan
+darrov ziddiyatga tushardi.
+
+```ts
+listMedicines(query: MedicineQuery = {}): Promise<MedicineStock[]>
+```
+
+### `GET /pharmacy/sale-search?term=`
+
+Sotuvga tayyor qatorlar — bitta dorining har bir partiyasi alohida.
+
+FIFO EMAS, TANLAB OLINADI: farmatsevt qutini qo'lida ushlab
+turibdi va aynan qaysi partiya ekanini u biladi. Tizim o'zi
+tanlab qo'ysa, kassadagi yozuv javondagi haqiqatdan uzilib
+qolardi.
+
+```ts
+searchForSale(term: string): Promise<CartLine[]>
+```
+
+### `POST /pharmacy/sales`
+
+Sotuvni yakunlash.
+
+Zaxira SHU YERDA kamayadi. Demo bo'lsa ham haqiqiy kamayadi —
+aks holda ekranlarni sinab ko'rib bo'lmasdi: sotgandan keyin
+ham qoldiq o'zgarmasa, hech narsa ishlayotgani bilinmasdi.
+
+```ts
+createSale(input: SaleInput): Promise<Sale>
+```
+
+### `GET /pharmacy/sales?days=`
+
+Sotuvni yakunlash.
+
+Zaxira SHU YERDA kamayadi. Demo bo'lsa ham haqiqiy kamayadi —
+aks holda ekranlarni sinab ko'rib bo'lmasdi: sotgandan keyin
+ham qoldiq o'zgarmasa, hech narsa ishlayotgani bilinmasdi.
+
+// POST /pharmacy/sales
+export async function createSale(input: SaleInput): Promise<Sale> {
+if (!USE_MOCK) {
+return request<Sale>('POST', '/pharmacy/sales', {
+Narxni server katalogdan oladi — faqat partiya va miqdor ketadi
+body: {
+lines: input.lines.map((line) => ({ batchId: line.batchId, quantity: line.quantity })),
+discount: input.discount,
+method: input.method,
+patientId: input.patientId,
+},
+})
+}
+
+const { clinicId } = apiContext()
+const db = getDb()
+
+const total = input.lines.reduce((sum, line) => sum + line.price * line.quantity, 0)
+
+const buyPriceByBatch = new Map<string, number>()
+
+for (const line of input.lines) {
+const batch = db.batches.find(line.batchId, clinicId)
+if (!batch) continue
+buyPriceByBatch.set(line.batchId, batch.buyPrice)
+db.batches.update(
+line.batchId,
+{ quantity: Math.max(0, batch.quantity - line.quantity) },
+clinicId,
+)
+}
+
+const sale = db.sales.insert({
+id: db.sales.nextId('sale'),
+clinicId,
+number: `A-${Date.now().toString().slice(-6)}`,
+soldAt: new Date().toISOString(),
+items: input.lines.map((line) => ({
+medicineId: line.medicineId,
+medicineName: line.name,
+batchId: line.batchId,
+quantity: line.quantity,
+price: line.price,
+buyPrice: buyPriceByBatch.get(line.batchId) ?? 0,
+})),
+total,
+discount: input.discount,
+method: input.method,
+patientId: input.patientId,
+prescriptionId: null,
+soldById: currentSeller()?.id ?? '',
+soldByName: currentSeller()?.fullName ?? '',
+})
+
+return delay(sale, 220)
+}
+
+------------------------------------------------------------------
+Savdo tarixi va hisobot
+------------------------------------------------------------------
+
+```ts
+listSales(days = 7): Promise<Sale[]>
+```
+
+### `GET /pharmacy/summary`
+
+```ts
+pharmacySummary(): Promise<PharmacySummary>
+```
+
+### `GET /pharmacy/prescriptions?status=`
+
+Javondagi tovarning tannarxdagi qiymati
+stockValue: UZS
+}
+
+// GET /pharmacy/summary
+export async function pharmacySummary(): Promise<PharmacySummary> {
+if (!USE_MOCK) {
+return request<PharmacySummary>('GET', '/pharmacy/summary')
+}
+
+const { clinicId } = apiContext()
+const db = getDb()
+
+const start = new Date()
+start.setHours(0, 0, 0, 0)
+
+const todaySales = db.sales
+.all(clinicId)
+.filter((s) => new Date(s.soldAt).getTime() >= start.getTime())
+
+const batches = db.batches.all(clinicId).filter((b) => b.quantity > 0)
+const medicines = db.medicines.all(clinicId).filter((m) => m.status === 'active')
+
+const stockByMedicine = new Map<string, number>()
+for (const batch of batches) {
+stockByMedicine.set(
+batch.medicineId,
+(stockByMedicine.get(batch.medicineId) ?? 0) + batch.quantity,
+)
+}
+
+return delay(
+{
+todayRevenue: todaySales.reduce((sum, s) => sum + s.total - s.discount, 0),
+todaySales: todaySales.length,
+todayProfit: todaySales.reduce(
+(sum, s) =>
+sum +
+s.items.reduce((n, it) => n + (it.price - it.buyPrice) * it.quantity, 0) -
+s.discount,
+0,
+),
+expiringBatches: batches.filter(
+(b) => daysUntil(b.expiresAt) >= 0 && daysUntil(b.expiresAt) <= EXPIRY_WARN_DAYS,
+).length,
+lowStock: medicines.filter((m) => {
+const qty = stockByMedicine.get(m.id) ?? 0
+return qty > 0 && qty <= LOW_STOCK
+}).length,
+outOfStock: medicines.filter((m) => (stockByMedicine.get(m.id) ?? 0) === 0).length,
+stockValue: batches.reduce((sum, b) => sum + b.buyPrice * b.quantity, 0),
+},
+200,
+)
+}
+
+------------------------------------------------------------------
+Retseptlar
+------------------------------------------------------------------
+
+```ts
+listPrescriptions(status: 'all' | Prescription['status'] = 'all'): Promise<Prescription[]>
+```
+
+### `POST /pharmacy/prescriptions/:id/dispense`
+
+Retseptni berilgan deb belgilash
+
+```ts
+dispensePrescription(id: ID): Promise<Prescription | null>
+```
+
+### `GET /pharmacy/shift/today`
+
+```ts
+todayShift(): Promise<TodayShift>
+```
+
+### `GET /pharmacy/shift/handover-candidates`
+
+Kassani kimga topshirish mumkin.
+
+O'zidan boshqa faol xodimlar. O'zini tanlash mumkin bo'lsa,
+"topshirish" so'zining ma'nosi qolmasdi.
+
+```ts
+handoverCandidates(): Promise<PharmacyStaff[]>
+```
+
+### `GET /pharmacy/shifts?days=`
+
+```ts
+listPharmacyShifts(days = 30): Promise<PharmacyShift[]>
+```
+
+### `GET /pharmacy/analytics?days=`
+
+Davr bo'yicha hisobot.
+
+Foyda HAR BIR QATORDAN hisoblanadi: sotuv narxi minus o'sha
+partiyaning tannarxi. Umumiy ustama foizini qo'llash oson
+bo'lardi-yu, noto'g'ri chiqardi — bir dorida ustama 20%, boshqasida
+45% va sotuv tarkibi har kuni o'zgaradi.
+
+```ts
+pharmacyAnalytics(days = 30): Promise<PharmacyAnalytics>
+```
+
+### `GET /pharmacy/staff?days=`
+
+Xodimlar va ularning natijasi.
+
+Natija SMENALARDAN va SOTUVLARDAN yig'iladi: ikkalasi ham
+xodim id'siga bog'langan. Alohida "ko'rsatkich" jadvali
+ochilmadi — u sotuvlar bilan darrov ziddiyatga tushardi va
+qaysi biri to'g'ri ekanini aytib bo'lmasdi.
+
+```ts
+listPharmacyStaff(days = 30): Promise<StaffWithStats[]>
+```
+
+### `POST /pharmacy/staff`
+
+```ts
+createPharmacyStaff(input: PharmacyStaffInput): Promise<PharmacyStaffCreated>
+```
+
+### `POST /pharmacy/staff/:id/password`
+
+```ts
+resetPharmacyStaffPassword(id: ID): Promise<PharmacyStaffPassword>
+```
+
+### `GET /pharmacy/suppliers`
+
+Tiklangan parol — FAQAT shu javobda
+export interface PharmacyStaffPassword {
+staffId: ID
+login: string
+password: string
+}
+
+// POST /pharmacy/staff/:id/password
+export async function resetPharmacyStaffPassword(id: ID): Promise<PharmacyStaffPassword> {
+if (!USE_MOCK) {
+return request<PharmacyStaffPassword>('POST', `/pharmacy/staff/${id}/password`)
+}
+
+const { clinicId } = apiContext()
+const staff = getDb().pharmacyStaff.find(id, clinicId)
+return delay({ staffId: id, login: staff?.login ?? '', password: 'demo1234' }, 220)
+}
+
+------------------------------------------------------------------
+Kirim — tovar bazaga shu yerdan tushadi
+------------------------------------------------------------------
+
+```ts
+listSuppliers(): Promise<Supplier[]>
+```
+
+### `POST /pharmacy/suppliers`
+
+Yangi ta'minotchi.
+
+Kirim oynasining ICHIDAN ochiladi: yangi ta'minotchi bilan
+birinchi kirim bir vaqtda keladi va odamni alohida ekranga
+yuborish shu yerda ishni to'xtatib qo'yardi.
+
+```ts
+createSupplier(input: SupplierInput): Promise<Supplier>
+```
+
+### `GET /pharmacy/supplier-debts`
+
+```ts
+supplierDebts(): Promise<SupplierDebt[]>
+```
+
+### `GET /pharmacy/purchases?days=`
+
+```ts
+listPurchases(days = 90): Promise<Purchase[]>
+```
+
+### `POST /pharmacy/purchases`
+
+KIRIMNI QABUL QILISH.
+
+Bir amalda uch narsa bo'ladi:
+
+  1. katalogda yo'q dorilar OCHILADI
+  2. har bir qator uchun PARTIYA yaratiladi
+  3. sotuv narxi o'zgargan bo'lsa, katalogda yangilanadi
+
+NEGA BITTA AMALDA: farmatsevt qutini qo'lida ushlab turibdi.
+Uni "avval katalogga dori qo'sh, keyin partiya och, keyin
+narxni yangila" deb uchta ekranga yugurtirsak, u tizimni
+chetlab o'tib, daftarga yozishni afzal ko'radi.
+
+NARX TARIXI BUZILMAYDI: eski partiyalarning tannarxi
+o'zgarmaydi, ya'ni allaqachon sotilgan tovarning foydasi
+qanday hisoblangan bo'lsa, shundayligicha qoladi.
+
+```ts
+createPurchase(input: PurchaseInput): Promise<Purchase>
+```
+
+### `GET /pharmacy/on-duty`
+
+HOZIR KIM SMENADA.
+
+Ikki manba, shu tartibda:
+
+  1. TOPSHIRISH ZANJIRI — oxirgi yopilgan smena kimga
+     topshirilgan bo'lsa, kassa o'shanda. Bu jadvaldan
+     kuchliroq: haqiqatda kim turgani muhim, rejada kim
+     yozilgani emas.
+  2. JADVAL — topshirish yozilmagan bo'lsa, bugungi ish
+     kuni va soatiga qarab topiladi.
+
+Hech biri chiqmasa `null`: kassa bo'sh turibdi va uni kim
+ochsa, o'sha ishlaydi. Bu ataylab yumshoq — aks holda
+jadvalda xatolik bo'lgan kuni butun apteka ishlay olmasdi.
+
+```ts
+onDutyNow(): Promise<OnDuty>
+```
+
+## platformPharmacy
+
+`src/api/platformPharmacy.ts`
+
+> PLATFORMA: APTEKALAR.
+> 
+> Apteka — platformaning ALOHIDA mijozi. Klinikaga biriktirilmaydi
+> va klinikalar bilan bir ro'yxatga qo'shilmaydi: o'z egasi, o'z
+> xodimlari, o'z holati bor. Ma'lumotlari aptekaning `id` si
+> ostida saqlanadi (`types/pharmacy.ts` dagi `Pharmacy` izohi).
+> 
+> Har bir funksiya `USE_MOCK` bo'yicha ikkiga bo'linadi — haqiqiy
+> `request()` yoki demo baza.
+> 
+> PLATFORMA EGASI APTEKANING ICHIGA KIRMAYDI. Dori nomlari, kimga
+> nima sotilgani, retseptdagi bemor — hech biri bu yerda yo'q.
+> Faqat sonlar: tushum, cheklar, kassa farqi, zaxira holati.
+> Klinika kartasidagi "bemor ma'lumoti yo'q" qoidasi bilan bir xil.
+
+### `GET /platform/pharmacies`
+
+Oxirgi 30 kundagi smenalar, yangisi birinchi
+shifts: PharmacyShiftRow[]
+}
+
+------------------------------------------------------------------
+Hisoblash
+------------------------------------------------------------------
+
+function overviewOf(pharmacy: Pharmacy): PharmacyOverview {
+const db = getDb()
+Aptekaning ma'lumot kaliti — o'z id si
+const key = pharmacy.id
+
+const since = addDays(new Date(), -WATCH_DAYS).getTime()
+const todayStart = new Date()
+todayStart.setHours(0, 0, 0, 0)
+
+const allSales = db.sales.all(key)
+const sales = allSales.filter((s) => new Date(s.soldAt).getTime() >= since)
+const shifts = db.pharmacyShifts
+.all(key)
+.filter((s) => new Date(s.date).getTime() >= since)
+const batches = db.batches.all(key).filter((b) => b.quantity > 0)
+const medicines = db.medicines.all(key).filter((m) => m.status === 'active')
+
+const stock = new Map<string, number>()
+for (const batch of batches) {
+stock.set(batch.medicineId, (stock.get(batch.medicineId) ?? 0) + batch.quantity)
+}
+
+const owner = db.users.allAcrossTenants().find((u) => u.id === pharmacy.ownerUserId)
+
+return {
+...pharmacy,
+ownerName: owner?.fullName ?? '',
+ownerEmail: owner?.email ?? '',
+ownerPhone: owner?.phone ?? '',
+staffCount: db.pharmacyStaff.all(key).filter((s) => s.status === 'active').length,
+revenue: sales.reduce((sum, s) => sum + s.total - s.discount, 0),
+receipts: sales.length,
+todayRevenue: sales
+.filter((s) => new Date(s.soldAt).getTime() >= todayStart.getTime())
+.reduce((sum, s) => sum + s.total - s.discount, 0),
+flaggedShifts: shifts.filter((s) => s.flagged).length,
+cashShort: shifts
+.filter((s) => s.difference < 0)
+.reduce((sum, s) => sum - s.difference, 0),
+expiringBatches: batches.filter((b) => {
+const left = daysUntil(b.expiresAt)
+return left >= 0 && left <= EXPIRY_WARN_DAYS
+}).length,
+expiredBatches: batches.filter((b) => daysUntil(b.expiresAt) < 0).length,
+lowStock: medicines.filter((m) => {
+const qty = stock.get(m.id) ?? 0
+return qty > 0 && qty <= LOW_STOCK
+}).length,
+lastSaleAt:
+allSales
+.map((s) => s.soldAt)
+.sort()
+.at(-1) ?? null,
+}
+}
+
+function detailOf(pharmacy: Pharmacy): PharmacyDetail {
+const db = getDb()
+const key = pharmacy.id
+const base = overviewOf(pharmacy)
+
+const since = addDays(new Date(), -WATCH_DAYS).getTime()
+const sales = db.sales.all(key).filter((s) => new Date(s.soldAt).getTime() >= since)
+
+Har bir kun bo'sh bo'lsa ham qator bo'ladi — grafikda teshik qolmasin
+const byDay = new Map<string, number>()
+for (let i = WATCH_DAYS - 1; i >= 0; i--) {
+byDay.set(toISODate(addDays(new Date(), -i)), 0)
+}
+for (const sale of sales) {
+const day = toISODate(new Date(sale.soldAt))
+if (byDay.has(day)) byDay.set(day, (byDay.get(day) ?? 0) + sale.total - sale.discount)
+}
+
+const batches = db.batches.all(key).filter((b) => b.quantity > 0)
+const medicines = db.medicines.all(key).filter((m) => m.status === 'active')
+const inStock = new Set(batches.map((b) => b.medicineId))
+const users = db.users.allAcrossTenants().filter((u) => u.clinicId === key)
+
+return {
+...base,
+profit: sales.reduce(
+(sum, s) =>
+sum +
+s.items.reduce((n, it) => n + (it.price - it.buyPrice) * it.quantity, 0) -
+s.discount,
+0,
+),
+avgReceipt: sales.length ? Math.round(base.revenue / sales.length) : 0,
+daily: [...byDay].map(([date, revenue]) => ({ date, revenue })),
+medicines: medicines.length,
+outOfStock: medicines.filter((m) => !inStock.has(m.id)).length,
+stockValue: batches.reduce((sum, b) => sum + b.buyPrice * b.quantity, 0),
+pendingPrescriptions: db.prescriptions.all(key).filter((p) => p.status === 'pending')
+.length,
+staff: db.pharmacyStaff
+.all(key)
+.map((s) => ({
+id: s.id,
+fullName: s.fullName,
+role: s.role,
+login: s.login,
+status: s.status,
+shiftStart: s.shiftStart,
+shiftEnd: s.shiftEnd,
+lastLoginAt: users.find((u) => u.email === s.login)?.lastLoginAt ?? null,
+}))
+Ishlayotganlar tepada, rahbar birinchi
+.sort(
+(a, b) =>
+Number(a.status === 'fired') - Number(b.status === 'fired') ||
+Number(b.role === 'pharmacy_owner') - Number(a.role === 'pharmacy_owner'),
+),
+shifts: db.pharmacyShifts
+.all(key)
+.filter((s) => new Date(s.date).getTime() >= since)
+.sort((a, b) => b.date.localeCompare(a.date))
+.map((s) => ({
+id: s.id,
+date: s.date,
+sellerName: s.sellerName,
+handedToName: s.handedToName,
+difference: s.difference,
+flagged: s.flagged,
+})),
+}
+}
+
+function findPharmacy(id: ID): Pharmacy {
+const row = getDb().pharmacies.allAcrossTenants().find((p) => p.id === id)
+if (!row) throw new Error('Apteka topilmadi')
+return row
+}
+
+------------------------------------------------------------------
+O'qish
+------------------------------------------------------------------
+
+```ts
+listPharmacies(): Promise<PharmacyOverview[]>
+```
+
+### `GET /platform/pharmacies/:id`
+
+```ts
+getPharmacy(id: ID): Promise<PharmacyDetail | null>
+```
+
+### `POST /platform/pharmacies`
+
+Apteka ochish.
+
+Uch narsa birga yaratiladi — serverda bitta tranzaksiyada bo'lishi
+shart: apteka yozuvi, rahbarning kirish hisobi va uning xodim
+yozuvi. Xodim yozuvisiz rahbar "Xodimlar" ro'yxatida ko'rinmasdi
+va smena, kirim uni tanimasdi.
+
+Login butun platformada band bo'lmasligi kerak: kirishda odam
+qaysi biznesda ishlashi hali noma'lum, ya'ni bir xil login ikki
+joyda bo'lsa, parol noto'g'ri hisobga tekshirilardi.
+
+```ts
+createPharmacy(input: PharmacyCreateInput): Promise<PharmacyCreated>
+```
+
+### `PATCH /platform/pharmacies/:id`
+
+```ts
+updatePharmacy(id: ID, patch: PharmacyUpdateInput): Promise<Pharmacy>
+```
+
+### `POST /platform/pharmacies/:id/suspend`
+
+Aptekani to'xtatish.
+
+MA'LUMOT O'CHIRILMAYDI: dorilar, sotuvlar, smenalar joyida qoladi.
+Faqat apteka xodimlari kira olmaydi — to'lov tiklanganda ish shu
+joydan davom etadi.
+
+Sabab MAJBURIY: rahbar kirishga urinib uni o'qiydi.
+
+```ts
+suspendPharmacy(id: ID, reason: string): Promise<Pharmacy>
+```
+
+### `POST /platform/pharmacies/:id/activate`
+
+```ts
+activatePharmacy(id: ID): Promise<Pharmacy>
+```
+
+### `POST /platform/pharmacies/:id/reset-owner-password`
+
+Apteka rahbarining parolini tiklash.
+
+Klinika egasi uchun qilingani bilan bir xil sababdan: pochta
+xizmati yo'q, rahbar parolini unutsa boshqa yo'l qolmaydi.
+Sotuvchilarning parolini esa rahbar o'zi tiklaydi.
+
+```ts
+resetPharmacyOwnerPassword(id: ID): Promise<OwnerPasswordReset>
 ```

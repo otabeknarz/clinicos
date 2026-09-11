@@ -66,6 +66,8 @@ export class AuthService {
             name: true,
             isActive: true,
             deletedAt: true,
+            kind: true,
+            suspendReason: true,
             subscription: { select: { status: true } },
           },
         },
@@ -95,6 +97,8 @@ export class AuthService {
             clinicIsActive: candidate.clinic.isActive,
             subscriptionStatus: candidate.clinic.subscription?.status ?? null,
             clinicDeletedAt: candidate.clinic.deletedAt,
+            clinicKind: candidate.clinic.kind,
+            suspendReason: candidate.clinic.suspendReason,
           }).ok,
       ) ??
       matched[0] ??
@@ -121,6 +125,8 @@ export class AuthService {
       clinicIsActive: user.clinic.isActive,
       subscriptionStatus: user.clinic.subscription?.status ?? null,
       clinicDeletedAt: user.clinic.deletedAt,
+      clinicKind: user.clinic.kind,
+      suspendReason: user.clinic.suspendReason,
     })
     if (!access.ok) throw new UnauthorizedException(access.reason)
 

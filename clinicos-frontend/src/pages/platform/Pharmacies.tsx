@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { KeyRound, Pause, Pencil, Pill, Play, Plus, TriangleAlert } from 'lucide-react'
 
-import { USE_MOCK } from '@/api/client'
 import { activatePharmacy, listPharmacies } from '@/api/platformPharmacy'
 import type { PharmacyOverview } from '@/api/platformPharmacy'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -22,7 +21,6 @@ import { useAuth } from '@/store/auth-context'
 import {
   EditPharmacyModal,
   NewPharmacyModal,
-  PharmacyNotConnected,
   ResetPharmacyOwnerModal,
   SuspendPharmacyModal,
 } from './PharmacyModals'
@@ -45,12 +43,6 @@ const IDLE_DAYS = 3
  * noto'g'ri?" — javob ro'yxatdan oldin, o'z so'zlari bilan turadi.
  */
 export function PlatformPharmaciesPage() {
-  /* Server qismi yozilguncha — demo raqamlar haqiqiydek ko'rinmasin */
-  if (!USE_MOCK) return <PharmacyNotConnected />
-  return <PharmaciesScreen />
-}
-
-function PharmaciesScreen() {
   const { t } = useI18n()
   const navigate = useNavigate()
   const { can } = useAuth()

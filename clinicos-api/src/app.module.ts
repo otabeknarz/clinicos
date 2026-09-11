@@ -31,6 +31,7 @@ import { StaffModule } from './staff/staff.module'
 import { UsersModule } from './users/users.module'
 import { VisitsModule } from './visits/visits.module'
 import { WardModule } from './ward/ward.module'
+import { PharmacyModule } from './pharmacy/pharmacy.module'
 import { ServicesModule } from './services/services.module'
 import { SignedUrlInterceptor } from './storage/signed-url.interceptor'
 import { StorageModule } from './storage/storage.module'
@@ -58,6 +59,7 @@ import { TelegramModule } from './telegram/telegram.module'
     ClinicModule,
     CashControlModule,
     WardModule,
+    PharmacyModule,
     StaffModule,
     AttendanceModule,
     BonusesModule,

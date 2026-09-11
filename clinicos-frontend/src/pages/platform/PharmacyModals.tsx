@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pause, Pill } from 'lucide-react'
+import { Pause } from 'lucide-react'
 
 import {
   createPharmacy,
@@ -8,13 +8,10 @@ import {
   updatePharmacy,
 } from '@/api/platformPharmacy'
 import type { PharmacyCreated } from '@/api/platformPharmacy'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
 import { EmailLocalInput, buildPlatformEmail } from '@/components/ui/EmailLocalInput'
 import { PhoneInput, TextArea, TextInput } from '@/components/ui/Form'
 import { Modal } from '@/components/ui/Modal'
-import { EmptyState } from '@/components/ui/States'
 import { phoneToE164 } from '@/lib/format'
 import { useI18n } from '@/i18n'
 import { useToast } from '@/store/toast-context'
@@ -28,35 +25,6 @@ import type { Pharmacy } from '@/types/pharmacy'
  * Shakli klinikalarnikiga ataylab o'xshash — platforma egasi bir
  * joyda o'rgangan narsani ikkinchi joyda qaytadan o'rganmasin.
  */
-
-/* ------------------------------------------------------------------ */
-/* Server ulanmagan                                                    */
-/* ------------------------------------------------------------------ */
-
-/**
- * SERVERDA DEMO MA'LUMOT KO'RSATILMAYDI.
- *
- * Aptekalar API si hozircha faqat demo qatlamida ishlaydi. Haqiqiy
- * serverda u o'sha demo bazadan "Sog'lom dorixonasi, 42 mln tushum"
- * kabi raqamlarni chiqarib, ularni haqiqiy mijozdek ko'rsatardi —
- * platforma egasi esa bunga ishonib qaror qabul qilardi. Server qismi
- * yozilguncha bo'lim ochiq aytadi: hali ulanmagan.
- */
-export function PharmacyNotConnected() {
-  const { t } = useI18n()
-  return (
-    <>
-      <PageHeader title={t('pharmacies.title')} />
-      <Card>
-        <EmptyState
-          icon={<Pill size={24} strokeWidth={1.75} />}
-          title={t('pharmacies.notConnected')}
-          description={t('pharmacies.notConnectedHint')}
-        />
-      </Card>
-    </>
-  )
-}
 
 /* ------------------------------------------------------------------ */
 /* Yangi apteka                                                        */

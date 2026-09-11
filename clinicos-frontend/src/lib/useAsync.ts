@@ -71,15 +71,24 @@ export function useAsync<T>(
 export function useAction<A extends unknown[], R>(action: (...args: A) => Promise<R>) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  /*
+    Oxirgi xato — HOLATDAN tashqari. `run()` null qaytargan zahoti
+    chaqiruvchi sababni o'qishi kerak ("zaxirada 3 ta qolgan"), holat
+    esa keyingi chizishda yangilanadi va o'sha paytda hali eskisi.
+  */
+  const lastErrorRef = useRef<Error | null>(null)
 
   const run = useCallback(
     async (...args: A): Promise<R | null> => {
       setPending(true)
       setError(null)
+      lastErrorRef.current = null
       try {
         return await action(...args)
       } catch (e) {
-        setError(e instanceof Error ? e : new Error(String(e)))
+        const err = e instanceof Error ? e : new Error(String(e))
+        lastErrorRef.current = err
+        setError(err)
         return null
       } finally {
         setPending(false)
@@ -88,7 +97,9 @@ export function useAction<A extends unknown[], R>(action: (...args: A) => Promis
     [action],
   )
 
-  return { run, pending, error }
+  const lastError = useCallback(() => lastErrorRef.current, [])
+
+  return { run, pending, error, lastError }
 }
 
 /** Qidiruv maydonlari uchun kechiktirilgan qiymat */

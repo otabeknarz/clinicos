@@ -25,7 +25,14 @@ export interface RequestUser {
    * ishlamaydi — kabinet uchun filtrsiz mijoz ochish esa butun
    * ijara ajratish qoidasini buzardi.
    */
-  role: 'SUPERADMIN' | 'OWNER' | 'RECEPTIONIST' | 'DOCTOR' | 'PATIENT'
+  role:
+    | 'SUPERADMIN'
+    | 'OWNER'
+    | 'RECEPTIONIST'
+    | 'DOCTOR'
+    | 'PHARMACIST'
+    | 'PHARMACY_OWNER'
+    | 'PATIENT'
   /** Rol DOCTOR bo'lsa — shifokor profili id'si, aks holda null */
   doctorId: string | null
   /** Rol PATIENT bo'lsa — bemor id'si. Faqat kabinetda ishlatiladi. */

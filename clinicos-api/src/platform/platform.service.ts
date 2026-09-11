@@ -73,7 +73,12 @@ const PAYROLL_SHARE = 0.5
  * Arxivlangan (`CANCELLED`) klinika bu yerga KIRADI: u "ketgan
  * mijoz", statistikada ketganlar ulushi bo'lib hisoblanadi.
  */
-const LIVE_CLINIC = { clinic: { deletedAt: null } } as const
+/*
+ * `kind: CLINIC` — apteka klinikalar statistikasiga ARALASHMAYDI.
+ * Obunasi yo'qligi uchun u baribir tushmasdi, lekin shart bu yerda
+ * aniq turadi: kelajakda aptekaga obuna qo'shilsa ham ajralib qoladi.
+ */
+const LIVE_CLINIC = { clinic: { deletedAt: null, kind: 'CLINIC' } } as const
 
 @Injectable()
 export class PlatformService {
@@ -1196,7 +1201,8 @@ export class PlatformService {
    */
   async data() {
     const [clinics, patients, doctors, appointments, first] = await Promise.all([
-      this.db.clinic.count(),
+      /* Faqat klinikalar — aptekalar alohida bo'limda sanaladi */
+      this.db.clinic.count({ where: { kind: 'CLINIC' } }),
       this.db.patient.count(),
       this.db.doctor.count(),
       this.db.appointment.count(),

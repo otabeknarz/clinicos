@@ -356,7 +356,7 @@ function PurchaseModal({
     if (lines.length === 0) return
     const done = await save.run()
     if (done === null) {
-      toast.error(t('toast.error'))
+      toast.error(save.lastError()?.message ?? t('toast.error'))
       return
     }
     toast.success(t('pharmacy.purchaseSaved', { count: lines.length }))
@@ -389,7 +389,7 @@ function PurchaseModal({
         toast.error(t('visit.imageBad'))
         return
       }
-      const uploaded = await uploadImage('visits', prepared.blob, prepared.dataUrl)
+      const uploaded = await uploadImage('pharmacy', prepared.blob, prepared.dataUrl)
       setDocuments((current) => [
         ...current,
         { preview: prepared.dataUrl, key: uploaded.key },

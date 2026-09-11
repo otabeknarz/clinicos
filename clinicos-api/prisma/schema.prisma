@@ -43,6 +43,16 @@ model Clinic {
   /// Aks holda har yangi modul barcha klinikada o'chiq bo'lib qolardi.
   disabledModules String[] @map("disabled_modules")
 
+  /// Klinika yoki apteka. Izohi `ClinicKind` da.
+  kind ClinicKind @default(CLINIC)
+
+  /// Shahar — apteka uchun. Klinikaniki obunada (`Subscription.city`).
+  city String @default("")
+
+  /// Apteka to'xtatilgan bo'lsa — sababi, rahbar kirishda o'qiydi.
+  /// Klinikaniki obunada (`Subscription.suspendReason`).
+  suspendReason String @default("") @map("suspend_reason")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -73,6 +83,19 @@ model Clinic {
   subscription      Subscription?
   impersonationLogs ImpersonationLog[]
 
+  /* --- Apteka --- */
+  medicines       Medicine[]
+  medicineBatches MedicineBatch[]
+  suppliers       Supplier[]
+  purchases       Purchase[]
+  purchaseItems   PurchaseItem[]
+  sales           Sale[]
+  saleItems       SaleItem[]
+  prescriptions   Prescription[]
+  pharmacyShifts  PharmacyShift[]
+  pharmacyStaff   PharmacyStaff[]
+
+  @@index([kind])
   @@map("clinics")
 }
 
@@ -100,6 +123,22 @@ enum Role {
   OWNER
   RECEPTIONIST
   DOCTOR
+  /// Apteka sotuvchisi — kassa, smena. Klinika ma'lumotiga kirishi yo'q.
+  PHARMACIST
+  /// Apteka rahbari — katalog, kirim, hisobot, kassa nazorati. SOTMAYDI.
+  PHARMACY_OWNER
+}
+
+/// Ma'lumot ajratish birligi qanday biznes.
+///
+/// APTEKA ALOHIDA MIJOZ, lekin ajratish uchun klinika kabi `Clinic`
+/// qatori oladi: `clinicId` filtri, kirish, to'xtatish — hammasi
+/// qo'shimcha kodsiz ishlaydi. Platforma panelida ular HECH QACHON
+/// aralashmaydi: klinikalar ro'yxati va statistikasi obunaga
+/// tayanadi, aptekaning esa obunasi yo'q.
+enum ClinicKind {
+  CLINIC
+  PHARMACY
 }
 
 model User {
@@ -156,6 +195,7 @@ model User {
   payments     Payment[]     @relation("PaymentCreatedBy")
 
   staff             Staff?
+  pharmacyStaff     PharmacyStaff?
   platformMember    PlatformMember?
   attendanceMarked  Attendance[]       @relation("AttendanceMarkedBy")
   bonusesCreated    Bonus[]            @relation("BonusCreatedBy")
@@ -1549,4 +1589,308 @@ model AuditLog {
   @@index([clinicId, createdAt])
   @@index([clinicId, entityType, entityId])
   @@map("audit_logs")
+}
+
+
+/* ================================================================== */
+/*  APTEKA                                                            */
+/*                                                                    */
+/*  Har bir jadvalda `clinicId` — aptekaning ma'lumot kaliti. Filtr   */
+/*  `tenant.extension.ts` da, klinika jadvallari bilan bir xil.       */
+/*  PUL BUTUN SONDA, so'mda.                                          */
+/* ================================================================== */
+
+enum MedicineForm {
+  TABLET
+  CAPSULE
+  SYRUP
+  AMPOULE
+  OINTMENT
+  DROPS
+  SPRAY
+  OTHER
+}
+
+enum MedicineStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum SaleMethod {
+  CASH
+  CARD
+  TRANSFER
+}
+
+enum PrescriptionStatus {
+  PENDING
+  DISPENSED
+  EXPIRED
+}
+
+enum PurchasePayment {
+  PAID
+  PARTIAL
+  CREDIT
+}
+
+enum PharmacyStaffStatus {
+  ACTIVE
+  FIRED
+}
+
+/// Dorilar katalogi. ZAXIRA BU YERDA YO'Q — u partiyalardan yig'iladi:
+/// alohida "qancha bor" ustuni partiyalar bilan darrov ziddiyatga tushardi.
+model Medicine {
+  id               String         @id @default(uuid())
+  clinicId         String         @map("clinic_id")
+  name             String
+  form             MedicineForm   @default(TABLET)
+  manufacturer     String         @default("")
+  country          String         @default("")
+  barcode          String         @default("")
+  unit             String         @default("dona")
+  /// Retseptsiz berilmaydi — kassa ajratib ko'rsatadi
+  prescriptionOnly Boolean        @default(false) @map("prescription_only")
+  sellPrice        Int            @map("sell_price")
+  /// O'CHIRILMAYDI, arxivlanadi: sotuv tarixi unga bog'langan
+  status           MedicineStatus @default(ACTIVE)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  clinic  Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  batches MedicineBatch[]
+
+  @@index([clinicId, status])
+  @@index([clinicId, barcode])
+  @@map("medicines")
+}
+
+/// PARTIYA — zaxiraning asosi: har birining o'z muddati va o'z tannarxi.
+/// Tannarx keyin tahrirlanmaydi — sotilgan tovarning foydasi o'zgarib ketardi.
+model MedicineBatch {
+  id         String   @id @default(uuid())
+  clinicId   String   @map("clinic_id")
+  medicineId String   @map("medicine_id")
+  code       String
+  expiresAt  DateTime @map("expires_at") @db.Date
+  /// Qolgan miqdor — sotuvda ATOMIK kamayadi
+  quantity   Int
+  buyPrice   Int      @map("buy_price")
+  supplierId String?  @map("supplier_id")
+  purchaseId String?  @map("purchase_id")
+  receivedAt DateTime @map("received_at") @db.Date
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  clinic    Clinic     @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  medicine  Medicine   @relation(fields: [medicineId], references: [id], onDelete: Restrict)
+  supplier  Supplier?  @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  purchase  Purchase?  @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  saleItems SaleItem[]
+
+  @@index([clinicId, medicineId])
+  @@index([clinicId, expiresAt])
+  @@map("medicine_batches")
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  clinicId  String   @map("clinic_id")
+  name      String
+  phone     String   @default("")
+  /// Soliq to'lovchi raqami
+  inn       String   @default("")
+  note      String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  clinic    Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  batches   MedicineBatch[]
+  purchases Purchase[]
+
+  @@index([clinicId])
+  @@map("suppliers")
+}
+
+/// KIRIM — tovar bazaga faqat shu yerdan tushadi.
+model Purchase {
+  id             String          @id @default(uuid())
+  clinicId       String          @map("clinic_id")
+  supplierId     String?         @map("supplier_id")
+  supplierName   String          @default("") @map("supplier_name")
+  invoiceNumber  String          @default("") @map("invoice_number")
+  receivedAt     DateTime        @map("received_at") @db.Date
+  /// Jami tannarx
+  total          Int
+  payment        PurchasePayment
+  paidAmount     Int             @map("paid_amount")
+  dueDate        DateTime?       @map("due_date") @db.Date
+  /// Hujjat rasmlarining KALITLARI (URL emas) — javobda imzolanadi
+  documents      String[]        @default([])
+  /// Qabul qilgan apteka xodimi (`PharmacyStaff.id`)
+  receivedById   String          @map("received_by_id")
+  receivedByName String          @map("received_by_name")
+  note           String          @default("")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  clinic   Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  supplier Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  items    PurchaseItem[]
+  batches  MedicineBatch[]
+
+  @@index([clinicId, receivedAt])
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id           String   @id @default(uuid())
+  clinicId     String   @map("clinic_id")
+  purchaseId   String   @map("purchase_id")
+  medicineId   String   @map("medicine_id")
+  medicineName String   @map("medicine_name")
+  batchCode    String   @map("batch_code")
+  expiresAt    DateTime @map("expires_at") @db.Date
+  quantity     Int
+  buyPrice     Int      @map("buy_price")
+  /// Kirim paytida belgilangan sotuv narxi
+  sellPrice    Int      @map("sell_price")
+
+  clinic   Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, purchaseId])
+  @@map("purchase_items")
+}
+
+/// SOTUV — pul yozuvi, O'ZGARMAYDI va o'chirilmaydi (klinika to'lovi kabi).
+model Sale {
+  id             String     @id @default(uuid())
+  clinicId       String     @map("clinic_id")
+  /// Chek raqami. Baza hisoblagichi — ikki kassa bir vaqtda sotsa ham
+  /// takrorlanmaydi (hisoblab qo'yilgan raqam poygada ikkilanardi).
+  number         Int        @unique @default(autoincrement())
+  soldAt         DateTime   @default(now()) @map("sold_at")
+  /// Chegirmagacha jami — narx KATALOGDAN olinadi, mijozdan emas
+  total          Int
+  discount       Int        @default(0)
+  method         SaleMethod
+  patientId      String?    @map("patient_id")
+  prescriptionId String?    @map("prescription_id")
+  /// Sotgan apteka xodimi (`PharmacyStaff.id`) — TOKENDAN aniqlanadi
+  soldById       String     @map("sold_by_id")
+  soldByName     String     @map("sold_by_name")
+
+  clinic Clinic     @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  items  SaleItem[]
+
+  @@index([clinicId, soldAt])
+  @@index([clinicId, soldById])
+  @@map("sales")
+}
+
+model SaleItem {
+  id           String @id @default(uuid())
+  clinicId     String @map("clinic_id")
+  saleId       String @map("sale_id")
+  medicineId   String @map("medicine_id")
+  medicineName String @map("medicine_name")
+  batchId      String @map("batch_id")
+  quantity     Int
+  /// Sotuv paytidagi narx — katalog keyin o'zgarsa ham bu qoladi
+  price        Int
+  /// O'sha partiyaning tannarxi — foyda shundan
+  buyPrice     Int    @map("buy_price")
+
+  clinic Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  sale   Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  batch  MedicineBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+
+  @@index([clinicId, saleId])
+  @@index([clinicId, medicineId])
+  @@map("sale_items")
+}
+
+/// Retsept. Qatorlari JSON: `[{ medicineName, dosage, quantity }]` —
+/// ular faqat ko'rsatiladi, alohida so'ralmaydi.
+model Prescription {
+  id            String             @id @default(uuid())
+  clinicId      String             @map("clinic_id")
+  patientId     String?            @map("patient_id")
+  patientName   String             @map("patient_name")
+  doctorName    String             @default("") @map("doctor_name")
+  items         Json
+  status        PrescriptionStatus @default(PENDING)
+  note          String             @default("")
+  dispensedAt   DateTime?          @map("dispensed_at")
+  /// Bergan apteka xodimi (`PharmacyStaff.id`)
+  dispensedById String?            @map("dispensed_by_id")
+  createdAt     DateTime           @default(now()) @map("created_at")
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, status])
+  @@map("prescriptions")
+}
+
+/// SMENA YOPILISHI — o'zgarmaydi. Kutilgan summa SERVERDA hisoblanadi:
+/// sotuvchi uni o'zi yozsa, farqni nolga tenglashtirib qo'yardi.
+model PharmacyShift {
+  id           String   @id @default(uuid())
+  clinicId     String   @map("clinic_id")
+  /// Smenani yopgan apteka xodimi (`PharmacyStaff.id`)
+  sellerId     String   @map("seller_id")
+  sellerName   String   @map("seller_name")
+  date         DateTime @db.Date
+  /// Smena qamragan davr boshi — kunning shu paytdagi oxirgi
+  /// yopilishidan yoki kun boshidan. Kassa kun ichida qo'ldan qo'lga o'tadi.
+  periodStart  DateTime @map("period_start")
+  expectedCash Int      @map("expected_cash")
+  countedCash  Int      @map("counted_cash")
+  /// counted − expected. Manfiy = kamomad.
+  difference   Int
+  cardTotal    Int      @map("card_total")
+  receipts     Int
+  note         String   @default("")
+  /// Kassa kimga topshirildi (`PharmacyStaff.id`). `null` — kun oxiri.
+  handedToId   String?  @map("handed_to_id")
+  handedToName String   @default("") @map("handed_to_name")
+  /// Kamomad ruxsat etilgan chegaradan katta — rahbarga yuborilgan
+  flagged      Boolean  @default(false)
+  closedAt     DateTime @default(now()) @map("closed_at")
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, date])
+  @@map("pharmacy_shifts")
+}
+
+/// APTEKA XODIMI — klinikaning `Staff` idan ALOHIDA: boshqa biznes.
+/// Tizimga kirishi `User` orqali; ishdan chiqsa yozuv O'CHIRILMAYDI.
+model PharmacyStaff {
+  id         String              @id @default(uuid())
+  clinicId   String              @map("clinic_id")
+  fullName   String              @map("full_name")
+  phone      String              @default("")
+  /// Kirish logini — `User.email` bilan bir xil
+  login      String
+  /// PHARMACIST yoki PHARMACY_OWNER
+  role       Role                @default(PHARMACIST)
+  salary     Int                 @default(0)
+  /// 0 — yakshanba, 6 — shanba
+  workdays   Int[]
+  shiftStart String              @default("09:00") @map("shift_start")
+  shiftEnd   String              @default("18:00") @map("shift_end")
+  status     PharmacyStaffStatus @default(ACTIVE)
+  hiredAt    DateTime            @map("hired_at") @db.Date
+  /// Kirim qabul qila oladimi — `User.extraPermissions` ga `pharmacy.receive`
+  canReceive Boolean             @default(false) @map("can_receive")
+  userId     String?             @unique @map("user_id")
+  createdAt  DateTime            @default(now()) @map("created_at")
+  updatedAt  DateTime            @updatedAt @map("updated_at")
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([clinicId, login])
+  @@index([clinicId, status])
+  @@map("pharmacy_staff")
 }

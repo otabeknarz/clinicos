@@ -22,6 +22,9 @@ const ACCOUNTS = [
   { label: 'egasi', email: 'owner@shifomed.uz' },
   { label: 'registrator', email: 'reception@shifomed.uz' },
   { label: 'shifokor', email: 'aziz.karimov@shifomed.uz' },
+  /* Apteka — alohida mijoz, o'z rollari bilan */
+  { label: 'farmatsevt', email: 'apteka@clinic-os.uz' },
+  { label: 'apteka rahbari', email: 'apteka.rahbar@clinic-os.uz' },
 ]
 
 const TODAY = new Date().toISOString().slice(0, 10)

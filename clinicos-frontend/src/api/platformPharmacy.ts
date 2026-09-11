@@ -6,18 +6,15 @@
  * xodimlari, o'z holati bor. Ma'lumotlari aptekaning `id` si
  * ostida saqlanadi (`types/pharmacy.ts` dagi `Pharmacy` izohi).
  *
- * HOZIRCHA FAQAT DEMO QATLAMI — `pharmacy.ts` dagi sababdan. Backend
- * yozilmagan, `// GET /path` izohlari esa backenddagi
- * `check:endpoints` uchun manba: marshrut bo'lmasa tekshiruv
- * yiqilardi. Kelajakdagi yo'l har bir funksiya ustida oddiy matn
- * bilan yozilgan; backend yozilganda izohga aylanadi.
+ * Har bir funksiya `USE_MOCK` bo'yicha ikkiga bo'linadi — haqiqiy
+ * `request()` yoki demo baza.
  *
  * PLATFORMA EGASI APTEKANING ICHIGA KIRMAYDI. Dori nomlari, kimga
  * nima sotilgani, retseptdagi bemor — hech biri bu yerda yo'q.
  * Faqat sonlar: tushum, cheklar, kassa farqi, zaxira holati.
  * Klinika kartasidagi "bemor ma'lumoti yo'q" qoidasi bilan bir xil.
  */
-import { delay } from './client'
+import { delay, request, USE_MOCK } from './client'
 import { EXPIRY_WARN_DAYS, LOW_STOCK, daysUntil } from './pharmacy'
 import { getDb } from '@/mock/db'
 import { addDays, toISODate } from '@/lib/dates'
@@ -223,8 +220,12 @@ function findPharmacy(id: ID): Pharmacy {
 /* O'qish                                                              */
 /* ------------------------------------------------------------------ */
 
-/** Kelajakdagi yo'l: GET /platform/pharmacies */
+// GET /platform/pharmacies
 export async function listPharmacies(): Promise<PharmacyOverview[]> {
+  if (!USE_MOCK) {
+    return request<PharmacyOverview[]>('GET', '/platform/pharmacies')
+  }
+
   const rows = getDb()
     .pharmacies.allAcrossTenants()
     .map(overviewOf)
@@ -232,8 +233,12 @@ export async function listPharmacies(): Promise<PharmacyOverview[]> {
   return delay(rows, 180)
 }
 
-/** Kelajakdagi yo'l: GET /platform/pharmacies/:id */
+// GET /platform/pharmacies/:id
 export async function getPharmacy(id: ID): Promise<PharmacyDetail | null> {
+  if (!USE_MOCK) {
+    return request<PharmacyDetail | null>('GET', `/platform/pharmacies/${id}`)
+  }
+
   const row = getDb().pharmacies.allAcrossTenants().find((p) => p.id === id)
   return delay(row ? detailOf(row) : null, 200)
 }
@@ -271,10 +276,13 @@ export interface PharmacyCreated {
  * Login butun platformada band bo'lmasligi kerak: kirishda odam
  * qaysi biznesda ishlashi hali noma'lum, ya'ni bir xil login ikki
  * joyda bo'lsa, parol noto'g'ri hisobga tekshirilardi.
- *
- * Kelajakdagi yo'l: POST /platform/pharmacies
  */
+// POST /platform/pharmacies
 export async function createPharmacy(input: PharmacyCreateInput): Promise<PharmacyCreated> {
+  if (!USE_MOCK) {
+    return request<PharmacyCreated>('POST', '/platform/pharmacies', { body: input })
+  }
+
   const db = getDb()
 
   const email = input.ownerEmail.trim().toLowerCase()
@@ -335,8 +343,12 @@ export async function createPharmacy(input: PharmacyCreateInput): Promise<Pharma
 
 export type PharmacyUpdateInput = Partial<Pick<Pharmacy, 'name' | 'city' | 'address' | 'phone'>>
 
-/** Kelajakdagi yo'l: PATCH /platform/pharmacies/:id */
+// PATCH /platform/pharmacies/:id
 export async function updatePharmacy(id: ID, patch: PharmacyUpdateInput): Promise<Pharmacy> {
+  if (!USE_MOCK) {
+    return request<Pharmacy>('PATCH', `/platform/pharmacies/${id}`, { body: patch })
+  }
+
   findPharmacy(id)
   const updated = getDb().pharmacies.updateAcrossTenants(id, patch)
   if (!updated) throw new Error('Apteka topilmadi')
@@ -351,10 +363,13 @@ export async function updatePharmacy(id: ID, patch: PharmacyUpdateInput): Promis
  * joydan davom etadi.
  *
  * Sabab MAJBURIY: rahbar kirishga urinib uni o'qiydi.
- *
- * Kelajakdagi yo'l: POST /platform/pharmacies/:id/suspend
  */
+// POST /platform/pharmacies/:id/suspend
 export async function suspendPharmacy(id: ID, reason: string): Promise<Pharmacy> {
+  if (!USE_MOCK) {
+    return request<Pharmacy>('POST', `/platform/pharmacies/${id}/suspend`, { body: { reason } })
+  }
+
   findPharmacy(id)
   const updated = getDb().pharmacies.updateAcrossTenants(id, {
     status: 'suspended',
@@ -364,8 +379,12 @@ export async function suspendPharmacy(id: ID, reason: string): Promise<Pharmacy>
   return delay(updated, 260)
 }
 
-/** Kelajakdagi yo'l: POST /platform/pharmacies/:id/activate */
+// POST /platform/pharmacies/:id/activate
 export async function activatePharmacy(id: ID): Promise<Pharmacy> {
+  if (!USE_MOCK) {
+    return request<Pharmacy>('POST', `/platform/pharmacies/${id}/activate`)
+  }
+
   findPharmacy(id)
   const updated = getDb().pharmacies.updateAcrossTenants(id, {
     status: 'active',
@@ -381,10 +400,13 @@ export async function activatePharmacy(id: ID): Promise<Pharmacy> {
  * Klinika egasi uchun qilingani bilan bir xil sababdan: pochta
  * xizmati yo'q, rahbar parolini unutsa boshqa yo'l qolmaydi.
  * Sotuvchilarning parolini esa rahbar o'zi tiklaydi.
- *
- * Kelajakdagi yo'l: POST /platform/pharmacies/:id/reset-owner-password
  */
+// POST /platform/pharmacies/:id/reset-owner-password
 export async function resetPharmacyOwnerPassword(id: ID): Promise<OwnerPasswordReset> {
+  if (!USE_MOCK) {
+    return request<OwnerPasswordReset>('POST', `/platform/pharmacies/${id}/reset-owner-password`)
+  }
+
   const pharmacy = findPharmacy(id)
   const db = getDb()
   const owner = db.users.allAcrossTenants().find((u) => u.id === pharmacy.ownerUserId)

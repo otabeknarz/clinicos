@@ -46,6 +46,15 @@ export function checkClinicAccess(input: {
   subscriptionStatus: TenantStatus | null
   /** Klinika o'chirilgan payt. `null` — o'chirilmagan. */
   clinicDeletedAt?: Date | null
+  /**
+   * Klinika yoki apteka — faqat xabar matni uchun.
+   *
+   * Aptekaning obunasi yo'q, uni platforma egasi `isActive` bilan
+   * to'xtatadi va sababini shu yerga yozadi: rahbar kirishga urinib
+   * "nega" degan savolga javobni darhol o'qishi kerak.
+   */
+  clinicKind?: 'CLINIC' | 'PHARMACY'
+  suspendReason?: string
 }): ClinicAccess {
   /*
     Platforma egasi klinika xodimi emas. Uning "klinikasi" —
@@ -62,11 +71,21 @@ export function checkClinicAccess(input: {
     belgi qo'yadi: klinika arxivlanmagan holatda ham o'chirilgan
     bo'lishi mumkin. Shuning uchun tekshiruv obunadan oldin turadi.
   */
+  const pharmacy = input.clinicKind === 'PHARMACY'
+
   if (input.clinicDeletedAt) {
-    return { ok: false, reason: 'Klinika o‘chirilgan' }
+    return { ok: false, reason: pharmacy ? 'Apteka o‘chirilgan' : 'Klinika o‘chirilgan' }
   }
 
   if (!input.clinicIsActive) {
+    if (pharmacy) {
+      return {
+        ok: false,
+        reason: input.suspendReason?.trim()
+          ? `Apteka to‘xtatilgan: ${input.suspendReason.trim()}`
+          : 'Apteka to‘xtatilgan',
+      }
+    }
     return { ok: false, reason: 'Klinika hisobi to‘xtatilgan' }
   }
 

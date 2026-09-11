@@ -121,7 +121,7 @@ function PosScreen() {
     if (cart.length === 0) return
     const done = await sell.run()
     if (done === null) {
-      toast.error(t('toast.error'))
+      toast.error(sell.lastError()?.message ?? t('toast.error'))
       return
     }
     toast.success(t('pharmacy.sold', { sum: money(toPay) }))

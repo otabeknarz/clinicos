@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Pencil, UserMinus, UserPlus, Users } from 'lucide-react'
+import { KeyRound, Pencil, UserMinus, UserPlus, Users } from 'lucide-react'
 
 import {
   createPharmacyStaff,
   firePharmacyStaff,
+  resetPharmacyStaffPassword,
   listPharmacyStaff,
   updatePharmacyStaff,
 } from '@/api/pharmacy'
@@ -22,7 +23,7 @@ import { Segmented } from '@/components/ui/Tabs'
 import { CardSkeleton, EmptyState } from '@/components/ui/States'
 import { cn } from '@/lib/cn'
 import { dateShort, money, phoneToE164, weekdaysShort } from '@/lib/format'
-import { useAction, useAsync } from '@/lib/useAsync'
+import { useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useToast } from '@/store/toast-context'
 
@@ -45,6 +46,7 @@ export function PharmacyStaffPage() {
   const [days, setDays] = useState<'30' | '90'>('30')
   const [editing, setEditing] = useState<StaffWithStats | null>(null)
   const [adding, setAdding] = useState(false)
+  const [credentials, setCredentials] = useState<Credentials | null>(null)
 
   const { data, loading, reload } = useAsync(
     () => listPharmacyStaff(Number(days)),
@@ -52,18 +54,28 @@ export function PharmacyStaffPage() {
   )
   const rows = data ?? []
 
-  const fire = useAction(async (id: string) => {
-    await firePharmacyStaff(id)
-  })
-
+  /*
+    Server aytgan sabab ko'rsatiladi: "oxirgi rahbar qolishi kerak",
+    "o'zingizni chiqara olmaysiz" — umumiy "xatolik" bu yerda hech
+    narsani tushuntirmasdi.
+  */
   async function onFire(person: StaffWithStats) {
-    const done = await fire.run(person.id)
-    if (done === null) {
-      toast.error(t('toast.error'))
-      return
+    try {
+      await firePharmacyStaff(person.id)
+      toast.success(t('pharmacy.staffFired'))
+      reload()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('toast.error'))
     }
-    toast.success(t('pharmacy.staffFired'))
-    reload()
+  }
+
+  async function onResetPassword(person: StaffWithStats) {
+    try {
+      const done = await resetPharmacyStaffPassword(person.id)
+      setCredentials({ name: person.fullName, login: done.login, password: done.password })
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('toast.error'))
+    }
   }
 
   return (
@@ -105,6 +117,7 @@ export function PharmacyStaffPage() {
               person={person}
               onEdit={() => setEditing(person)}
               onFire={() => void onFire(person)}
+              onResetPassword={() => void onResetPassword(person)}
             />
           ))}
         </div>
@@ -117,12 +130,15 @@ export function PharmacyStaffPage() {
           setAdding(false)
           setEditing(null)
         }}
-        onSaved={() => {
+        onSaved={(created) => {
           setAdding(false)
           setEditing(null)
           reload()
+          if (created) setCredentials(created)
         }}
       />
+
+      <CredentialsModal value={credentials} onClose={() => setCredentials(null)} />
     </div>
   )
 }
@@ -131,10 +147,12 @@ function StaffCard({
   person,
   onEdit,
   onFire,
+  onResetPassword,
 }: {
   person: StaffWithStats
   onEdit: () => void
   onFire: () => void
+  onResetPassword: () => void
 }) {
   const { t } = useI18n()
   const { stats } = person
@@ -166,6 +184,15 @@ function StaffCard({
           <IconButton label={t('action.edit')} className="h-8 w-8" onClick={onEdit}>
             <Pencil size={15} />
           </IconButton>
+          {person.status === 'active' ? (
+            <IconButton
+              label={t('pharmacy.resetPassword')}
+              className="h-8 w-8"
+              onClick={onResetPassword}
+            >
+              <KeyRound size={15} />
+            </IconButton>
+          ) : null}
           {person.status === 'active' ? (
             <IconButton label={t('pharmacy.fire')} className="h-8 w-8" onClick={onFire}>
               <UserMinus size={15} />
@@ -270,7 +297,7 @@ function StaffModal({
   open: boolean
   person: StaffWithStats | null
   onClose: () => void
-  onSaved: () => void
+  onSaved: (created: Credentials | null) => void
 }) {
   const { t } = useI18n()
   const toast = useToast()
@@ -303,8 +330,10 @@ function StaffModal({
   }
   if (!open && ready) setReady(false)
 
-  const save = useAction(async () => {
-    const input: PharmacyStaffInput = {
+  const [saving, setSaving] = useState(false)
+
+  function buildInput(): PharmacyStaffInput {
+    return {
       fullName: fullName.trim(),
       phone: phoneToE164(phone),
       login: buildPlatformEmail(login),
@@ -318,19 +347,32 @@ function StaffModal({
       /* Rahbarda kirim huquqi doim bor — alohida belgilanmaydi */
       canReceive: role === 'pharmacy_owner' ? true : canReceive,
     }
-    if (person) await updatePharmacyStaff(person.id, input)
-    else await createPharmacyStaff(input)
-  })
+  }
 
   async function submit() {
     if (!fullName.trim() || !login.trim()) return
-    const done = await save.run()
-    if (done === null) {
-      toast.error(t('toast.error'))
-      return
+    setSaving(true)
+    try {
+      if (person) {
+        await updatePharmacyStaff(person.id, buildInput())
+        toast.success(t('toast.updated'))
+        onSaved(null)
+      } else {
+        const created = await createPharmacyStaff(buildInput())
+        toast.success(t('toast.created'))
+        /* Vaqtinchalik parol — faqat shu yerda, bir marta */
+        onSaved({
+          name: created.staff.fullName,
+          login: created.staff.login,
+          password: created.password,
+        })
+      }
+    } catch (e) {
+      /* "login band" kabi sabab aynan ko'rsatiladi */
+      toast.error(e instanceof Error ? e.message : t('toast.error'))
+    } finally {
+      setSaving(false)
     }
-    toast.success(person ? t('toast.updated') : t('toast.created'))
-    onSaved()
   }
 
   return (
@@ -343,7 +385,7 @@ function StaffModal({
           <Button variant="gray" onClick={onClose}>
             {t('action.cancel')}
           </Button>
-          <Button loading={save.pending} onClick={() => void submit()}>
+          <Button loading={saving} onClick={() => void submit()}>
             {t('action.save')}
           </Button>
         </>
@@ -475,6 +517,63 @@ function StaffModal({
           </div>
         </Field>
       </div>
+    </Modal>
+  )
+}
+
+interface Credentials {
+  name: string
+  login: string
+  password: string
+}
+
+/**
+ * Kirish ma'lumotlari — BIR MARTA ko'rsatiladi.
+ *
+ * Bazada faqat parol xeshi saqlanadi, ya'ni oyna yopilgach parolni
+ * hech kim ko'ra olmaydi. Yo'qolsa — "Parolni tiklash" bilan yangisi.
+ */
+function CredentialsModal({
+  value,
+  onClose,
+}: {
+  value: Credentials | null
+  onClose: () => void
+}) {
+  const { t } = useI18n()
+  const toast = useToast()
+
+  return (
+    <Modal
+      open={value !== null}
+      onClose={onClose}
+      title={t('pharmacy.credentialsTitle')}
+      footer={<Button onClick={onClose}>{t('action.close')}</Button>}
+    >
+      {value ? (
+        <div className="space-y-4">
+          <p className="text-subhead text-label">{value.name}</p>
+          <div className="rounded-[12px] bg-fill-4 p-4">
+            <p className="text-caption text-label-tertiary">{t('pharmacy.login')}</p>
+            <p className="mt-0.5 text-callout font-medium text-label">{value.login}</p>
+            <p className="mt-3 text-caption text-label-tertiary">{t('platform.passwordOnce')}</p>
+            <div className="mt-0.5 flex items-center gap-2">
+              <code className="text-callout font-semibold tnum text-label">{value.password}</code>
+              <Button
+                size="sm"
+                variant="gray"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(value.password)
+                  toast.success(t('platform.copied'))
+                }}
+              >
+                {t('action.copy')}
+              </Button>
+            </div>
+          </div>
+          <p className="text-caption text-bad">{t('pharmacy.credentialsHint')}</p>
+        </div>
+      ) : null}
     </Modal>
   )
 }

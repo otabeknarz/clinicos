@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import {
   BarChart3,
   Boxes,
   FileText,
+  KeyRound,
   Lock,
   LogOut,
   Pill,
@@ -15,12 +17,16 @@ import type { LucideIcon } from 'lucide-react'
 
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Avatar } from '@/components/ui/Avatar'
-import { IconButton } from '@/components/ui/Button'
+import { changePassword } from '@/api/auth'
+import { Button, IconButton } from '@/components/ui/Button'
+import { TextInput } from '@/components/ui/Form'
+import { Modal } from '@/components/ui/Modal'
 import { ErrorState } from '@/components/ui/States'
 import { cn } from '@/lib/cn'
 import { useI18n } from '@/i18n'
 import type { Permission } from '@/types/models'
 import { useAuth } from '@/store/auth-context'
+import { useToast } from '@/store/toast-context'
 
 /**
  * APTEKA KARKASI.
@@ -115,6 +121,7 @@ const NAV: PharmacyNavItem[] = [
 export function PharmacyLayout() {
   const { t } = useI18n()
   const { session, logout, can } = useAuth()
+  const [changingPassword, setChangingPassword] = useState(false)
 
   const items = NAV.filter((item) => can(item.permission))
 
@@ -172,6 +179,13 @@ export function PharmacyLayout() {
                 {t(`role.${session?.user.role ?? 'pharmacist'}`)}
               </p>
             </div>
+            <IconButton
+              label={t('password.change')}
+              onClick={() => setChangingPassword(true)}
+              className="h-8 w-8"
+            >
+              <KeyRound size={16} />
+            </IconButton>
             <IconButton label={t('action.logout')} onClick={logout} className="h-8 w-8">
               <LogOut size={16} />
             </IconButton>
@@ -185,19 +199,40 @@ export function PharmacyLayout() {
         <header className="material sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 px-4 md:hidden">
           <Brand compact />
           <IconButton
-            label={t('action.logout')}
-            onClick={logout}
+            label={t('password.change')}
+            onClick={() => setChangingPassword(true)}
             className="ml-auto h-9 w-9"
           >
+            <KeyRound size={17} />
+          </IconButton>
+          <IconButton label={t('action.logout')} onClick={logout} className="h-9 w-9">
             <LogOut size={17} />
           </IconButton>
         </header>
 
         <main className="min-w-0 flex-1 p-4 pb-24 sm:p-6 md:pb-6">
+          {/*
+            VAQTINCHALIK PAROL. Rahbar yoki platforma bergan parol bilan
+            kirilgan — u boshqa odamga ma'lum. Almashtirilmasa, o'sha odam
+            sotuvchi nomidan sota olardi va kassa farqi unga yozilardi.
+          */}
+          {session?.user.mustChangePassword ? (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[12px] bg-warn-soft px-4 py-3">
+              <p className="text-footnote text-warn">{t('pharmacy.tempPassword')}</p>
+              <Button size="sm" onClick={() => setChangingPassword(true)}>
+                {t('password.change')}
+              </Button>
+            </div>
+          ) : null}
           <ErrorBoundary fallback={(retry) => <ErrorState onRetry={retry} />}>
             <Outlet />
           </ErrorBoundary>
         </main>
+
+        <ChangePasswordModal
+          open={changingPassword}
+          onClose={() => setChangingPassword(false)}
+        />
 
         {/* --- Pastki panel (telefon) --- */}
         <nav className="fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 md:hidden">
@@ -260,5 +295,92 @@ function Brand({ compact }: { compact?: boolean }) {
         {t('pharmacy.title')}
       </span>
     </div>
+  )
+}
+
+/**
+ * Parolni almashtirish — apteka xodimida "Sozlamalar" sahifasi yo'q,
+ * shuning uchun shu yerda. Joriy parol so'raladi: ochiq qolgan sessiya
+ * yonidan o'tgan odam parolni almashtirib hisobni egallab ololmasin.
+ */
+function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useI18n()
+  const toast = useToast()
+  const { applySession } = useAuth()
+
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [repeat, setRepeat] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const valid = current.length > 0 && next.length >= 8 && repeat === next && next !== current
+
+  function close() {
+    setCurrent('')
+    setNext('')
+    setRepeat('')
+    onClose()
+  }
+
+  async function submit() {
+    if (!valid) {
+      if (next === current && next.length >= 8) toast.error(t('password.same'))
+      return
+    }
+    setSaving(true)
+    try {
+      /* Server yangi sessiya qaytaradi — eski token endi yaroqsiz */
+      applySession(await changePassword(current, next))
+      toast.success(t('password.changed'))
+      close()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('toast.error'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={close}
+      size="sm"
+      title={t('password.change')}
+      footer={
+        <>
+          <Button variant="gray" onClick={close}>
+            {t('action.cancel')}
+          </Button>
+          <Button loading={saving} disabled={!valid} onClick={() => void submit()}>
+            {t('password.change')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4 pb-2">
+        <TextInput
+          label={t('password.current')}
+          type="password"
+          autoComplete="current-password"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+        />
+        <TextInput
+          label={t('password.new')}
+          hint={t('password.hint')}
+          type="password"
+          autoComplete="new-password"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+        />
+        <TextInput
+          label={t('password.repeat')}
+          type="password"
+          autoComplete="new-password"
+          value={repeat}
+          onChange={(e) => setRepeat(e.target.value)}
+        />
+      </div>
+    </Modal>
   )
 }
