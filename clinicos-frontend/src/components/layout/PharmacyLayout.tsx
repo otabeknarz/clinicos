@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { useRef, useState } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   BarChart3,
   Boxes,
@@ -15,14 +15,19 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
+import { BrandMark, BrandWordmark } from './BrandLogo'
+import { SideNav } from './SideNav'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { Avatar } from '@/components/ui/Avatar'
 import { changePassword } from '@/api/auth'
 import { Button, IconButton } from '@/components/ui/Button'
 import { TextInput } from '@/components/ui/Form'
 import { Modal } from '@/components/ui/Modal'
 import { ErrorState } from '@/components/ui/States'
 import { cn } from '@/lib/cn'
+import { useSidebarCollapsed } from '@/lib/useSidebarCollapsed'
+import { useCardSpotlight } from '@/lib/useCardSpotlight'
+import { useEntranceMotion } from '@/lib/useEntranceMotion'
+import { useSoftUi } from '@/lib/useSoftUi'
 import { useI18n } from '@/i18n'
 import type { Permission } from '@/types/models'
 import { useAuth } from '@/store/auth-context'
@@ -118,78 +123,82 @@ const NAV: PharmacyNavItem[] = [
   },
 ]
 
+/*
+  Menyu ikki guruhda: kundalik savdo va boshqaruv. Rahbarda to'qqizta
+  band bor — guruhsiz ular bitta ustunda qorishib ketardi. Sotuvchida
+  boshqaruv guruhi odatda bo'sh bo'ladi va sarlavhasi ham chiqmaydi.
+*/
+const MANAGE_PATHS = new Set([
+  '/pharmacy/purchases',
+  '/pharmacy/staff',
+  '/pharmacy/analytics',
+  '/pharmacy/cash-control',
+])
+
 export function PharmacyLayout() {
   const { t } = useI18n()
   const { session, logout, can } = useAuth()
   const [changingPassword, setChangingPassword] = useState(false)
+  const { collapsed, toggle } = useSidebarCollapsed()
+
+  // Klinika karkasi bilan bir xil ko'rinish va harakat (`AppLayout`)
+  const location = useLocation()
+  const entering = useEntranceMotion(location.pathname, 1900)
+  useSoftUi()
+  const rootRef = useRef<HTMLDivElement>(null)
+  useCardSpotlight(rootRef, true)
 
   const items = NAV.filter((item) => can(item.permission))
 
+  const groups = [
+    { key: 'sales', label: t('pharmacy.navGroup.sales'), manage: false },
+    { key: 'manage', label: t('pharmacy.navGroup.manage'), manage: true },
+  ]
+    .map((group) => ({
+      key: group.key,
+      label: group.label,
+      items: items
+        .filter((item) => MANAGE_PATHS.has(item.to) === group.manage)
+        .map((item) => ({
+          to: item.to,
+          end: item.end,
+          label: t(item.labelKey),
+          icon: item.icon,
+        })),
+    }))
+    .filter((group) => group.items.length > 0)
+
   return (
-    <div className="flex min-h-dvh bg-canvas">
+    <div ref={rootRef} className="flex min-h-dvh">
       {/* --- Yon menyu (kompyuter) --- */}
-      <aside className="hidden w-60 shrink-0 flex-col bg-raised md:flex">
-        <Brand />
-
-        <nav className="min-h-0 flex-1 px-3">
-          <ul className="space-y-0.5">
-            {items.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-3 rounded-[10px] px-3 py-2',
-                      'text-subhead font-medium transition-colors duration-150',
-                      isActive
-                        ? 'bg-accent-soft text-accent'
-                        : 'text-label-secondary hover:bg-fill-4 hover:text-label',
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <item.icon
-                        size={18}
-                        strokeWidth={isActive ? 2.25 : 1.9}
-                        className="shrink-0"
-                      />
-                      <span className="truncate">{t(item.labelKey)}</span>
-                    </>
-                  )}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className="hairline-t shrink-0 p-3">
-          <div className="flex items-center gap-2.5 rounded-[12px] px-2 py-2">
-            <Avatar
-              name={session?.user.fullName ?? ''}
-              src={session?.user.avatarUrl}
-              size="sm"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-footnote font-medium text-label">
-                {session?.user.fullName}
-              </p>
-              <p className="truncate text-caption text-label-tertiary">
-                {t(`role.${session?.user.role ?? 'pharmacist'}`)}
-              </p>
-            </div>
-            <IconButton
-              label={t('password.change')}
-              onClick={() => setChangingPassword(true)}
-              className="h-8 w-8"
-            >
-              <KeyRound size={16} />
-            </IconButton>
-            <IconButton label={t('action.logout')} onClick={logout} className="h-8 w-8">
-              <LogOut size={16} />
-            </IconButton>
-          </div>
+      <aside
+        className={cn(
+          'hidden shrink-0 border-r border-separator/40 md:block',
+          'transition-[width] duration-300 ease-apple motion-reduce:transition-none',
+          collapsed ? 'w-[76px]' : 'w-60',
+        )}
+      >
+        <div className="sticky top-0 z-40 h-dvh">
+          <SideNav
+            brand={{ mark: <BrandMark />, name: <BrandWordmark /> }}
+            groups={groups}
+            user={{
+              name: session?.user.fullName ?? '',
+              role: t(`role.${session?.user.role ?? 'pharmacist'}`),
+              avatarUrl: session?.user.avatarUrl,
+            }}
+            actions={[
+              {
+                label: t('password.change'),
+                icon: KeyRound,
+                onClick: () => setChangingPassword(true),
+              },
+              { label: t('action.logout'), icon: LogOut, onClick: logout },
+            ]}
+            collapsed={collapsed}
+            motion
+            onToggle={toggle}
+          />
         </div>
       </aside>
 
@@ -197,7 +206,7 @@ export function PharmacyLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Telefonda yuqori panel — yon menyu o'rniga */}
         <header className="material sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 px-4 md:hidden">
-          <Brand compact />
+          <Brand />
           <IconButton
             label={t('password.change')}
             onClick={() => setChangingPassword(true)}
@@ -210,7 +219,14 @@ export function PharmacyLayout() {
           </IconButton>
         </header>
 
-        <main className="min-w-0 flex-1 p-4 pb-24 sm:p-6 md:pb-6">
+        {/* Yuqori panel yo'q — katta panel tepadan ham chekinadi (`admin-panel--top`) */}
+        <main
+          className={cn(
+            'min-w-0 flex-1 p-4 pb-24 sm:p-6 md:pb-6',
+            'platform-surface admin-panel admin-panel--top',
+            entering && 'platform-motion',
+          )}
+        >
           {/*
             VAQTINCHALIK PAROL. Rahbar yoki platforma bergan parol bilan
             kirilgan — u boshqa odamga ma'lum. Almashtirilmasa, o'sha odam
@@ -283,16 +299,13 @@ export function PharmacyLayout() {
   )
 }
 
-function Brand({ compact }: { compact?: boolean }) {
-  const { t } = useI18n()
-
+/** Telefondagi yuqori panel logotipi — asl ClinicOS belgisi */
+function Brand() {
   return (
-    <div className={cn('flex shrink-0 items-center gap-2.5', !compact && 'h-16 px-5')}>
-      <span className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-good text-white">
-        <Store size={17} strokeWidth={2.4} />
-      </span>
-      <span className="text-headline font-semibold tracking-tight text-label">
-        {t('pharmacy.title')}
+    <div className="flex shrink-0 items-center gap-2.5">
+      <BrandMark />
+      <span className="text-headline font-bold text-label">
+        <BrandWordmark />
       </span>
     </div>
   )

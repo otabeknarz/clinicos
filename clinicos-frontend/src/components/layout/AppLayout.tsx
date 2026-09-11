@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -15,6 +15,9 @@ import { ErrorState } from '@/components/ui/States'
 import { cn } from '@/lib/cn'
 import { useAsync } from '@/lib/useAsync'
 import { useEntranceMotion } from '@/lib/useEntranceMotion'
+import { useSidebarCollapsed } from '@/lib/useSidebarCollapsed'
+import { useCardSpotlight } from '@/lib/useCardSpotlight'
+import { useSoftUi } from '@/lib/useSoftUi'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
 
@@ -27,6 +30,7 @@ import { useAuth } from '@/store/auth-context'
  */
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { collapsed, toggle: toggleCollapsed } = useSidebarCollapsed()
   /*
     "Barcha bo'limlar" varag'i. Holat SHU YERDA, chunki uni ochadigan
     tugma yuqori panelda, varaqning o'zi esa pastki panel yonida
@@ -39,8 +43,20 @@ export function AppLayout() {
     Kirish animatsiyasi faqat sahifa ochilganda ishlaydi. Yo'l
     o'zgarsa — qaytadan, filtr o'zgarsa — yo'q.
   */
-  const isPlatform = location.pathname.startsWith('/platform')
-  const entering = useEntranceMotion(location.pathname)
+  /*
+    1.9 soniya: eng oxirgi karta ~0.55 s kechikib chiqadi, ichidagi
+    halqa esa undan keyin yana ~1.3 s to'ladi. Oyna qisqa bo'lsa,
+    sinf olib tashlanganda halqa yarim yo'lda "sakrab" to'lardi.
+  */
+  const entering = useEntranceMotion(location.pathname, 1900)
+
+  /*
+    Ko'rinish: rangli fon, shisha kartalar, karta ustidagi yorug'lik.
+    Fon `body` da (`useSoftUi`) — modal va menyular ham shuni olsin.
+  */
+  useSoftUi()
+  const rootRef = useRef<HTMLDivElement>(null)
+  useCardSpotlight(rootRef, true)
 
   /*
     YANGILIK SONLARI.
@@ -70,11 +86,23 @@ export function AppLayout() {
   }, [sidebarOpen])
 
   return (
-    <div className="flex min-h-dvh bg-canvas">
-      {/* --- Doimiy yon menyu (desktop) --- */}
-      <aside className="hairline hidden w-64 shrink-0 border-r lg:block">
-        <div className="sticky top-0 h-dvh">
-          <Sidebar badges={badges} />
+    // Fon bu yerda emas — `body.soft-ui` da (`useSoftUi`)
+    <div ref={rootRef} className="flex min-h-dvh">
+      {/*
+        --- Doimiy yon menyu (desktop) ---
+
+        `z-40`: yig'ish tugmasi menyu chetidan yuqori panel ustiga
+        chiqib turadi, panel esa `z-30` da.
+      */}
+      <aside
+        className={cn(
+          'hidden shrink-0 border-r border-separator/40 lg:block',
+          'transition-[width] duration-300 ease-apple motion-reduce:transition-none',
+          collapsed ? 'w-[76px]' : 'w-64',
+        )}
+      >
+        <div className="sticky top-0 z-40 h-dvh">
+          <Sidebar badges={badges} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
         </div>
       </aside>
 
@@ -110,7 +138,8 @@ export function AppLayout() {
         <ImpersonationBar />
 
         {/*
-          Harakat faqat platforma bo'limlarida.
+          Harakat barcha bo'limlarda (sinf nomlari platformadan qolgan —
+          dastlab faqat u yerda sinalgan).
 
           Ikki sinf ajratilgan:
             `platform-surface` — doimiy: hover, o'tishlar
@@ -123,8 +152,8 @@ export function AppLayout() {
         <main
           className={cn(
             'wrap min-w-0 flex-1 py-6 pb-24 md:pb-10',
-            isPlatform && 'platform-surface',
-            isPlatform && entering && 'platform-motion',
+            'platform-surface admin-panel',
+            entering && 'platform-motion',
           )}
         >
           {/*

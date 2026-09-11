@@ -105,6 +105,12 @@
   --elev-md: 0 2px 6px rgb(0 0 0 / 0.05), 0 8px 20px -6px rgb(0 0 0 / 0.06);
   --elev-lg: 0 8px 24px -4px rgb(0 0 0 / 0.08), 0 24px 56px -12px rgb(0 0 0 / 0.12);
   --elev-popover: 0 0 0 0.5px rgb(0 0 0 / 0.06), 0 12px 32px -8px rgb(0 0 0 / 0.16);
+
+  /* --- Yon menyu: chapdan o'ngga oqdan kulrangga, faol band — soyali oq tabletka --- */
+  --sidenav-from: #ffffff;
+  --sidenav-to: #eceef2;
+  --sidenav-pill: #ffffff;
+  --sidenav-pill-shadow: 0 1px 2px rgb(16 24 40 / 0.06), 0 6px 16px -6px rgb(16 24 40 / 0.18);
 }
 
 .dark {
@@ -156,6 +162,12 @@
   --fill-secondary: rgb(120 120 128 / 0.32);
   --fill-tertiary: rgb(118 118 128 / 0.24);
   --fill-quaternary: rgb(118 118 128 / 0.18);
+
+  /* --- Yon menyu --- */
+  --sidenav-from: #1c1c1e;
+  --sidenav-to: #121214;
+  --sidenav-pill: #2c2c2e;
+  --sidenav-pill-shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 6px 16px -6px rgb(0 0 0 / 0.6);
 
   /* --- Yumshoq fonlar --- */
   --tint-blue-soft: rgb(10 132 255 / 0.2);
@@ -444,6 +456,71 @@
   }
 }
 
+/*
+  ISH PANELLARI HARAKATI — qo'llanishi fayl oxirida ("ISH PANELLARI — HARAKAT")
+  va `.platform-motion` qoidalarida.
+*/
+
+/* Kirish: pastdan ko'tariladi, xiralikdan tiniqlashadi */
+@keyframes admin-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.97);
+    filter: blur(5px);
+  }
+  60% {
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Ikonka "sakrab" joyiga tushadi */
+@keyframes admin-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-14deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Halqa noldan to'ladi — oxirgi qiymat inline `stroke-dashoffset` dan olinadi */
+@keyframes ring-draw {
+  from {
+    stroke-dashoffset: var(--ring-full);
+  }
+}
+
+/* Fondagi rang dog'lari juda sekin suzadi */
+@keyframes admin-aurora {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-1.5%, 1%, 0) scale(1.03) rotate(1deg);
+  }
+  100% {
+    transform: translate3d(1.2%, -1%, 0) scale(1.015) rotate(-0.8deg);
+  }
+}
+
+/*
+  Karta ustidagi yorug'lik kuchi. Ro'yxatdan o'tkazilgan xossa —
+  aks holda brauzer uni silliq o'zgartira olmaydi, yorug'lik
+  keskin yonib-o'chardi.
+*/
+@property --spot {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
 /* ------------------------------------------------------------------ */
 /* 3. Bazaviy qatlam                                                  */
 /* ------------------------------------------------------------------ */
@@ -684,37 +761,42 @@
 */
 
 .platform-motion .page-head {
-  animation: var(--animate-slide-up);
-  animation-duration: 0.45s;
+  animation: admin-enter 0.6s var(--ease-out-soft) both;
 }
 
+/*
+  Har bir karta kechikishini `--d` da oladi. Ichidagi ikonka va halqa
+  ham shundan hisoblaydi: avval karta chiqadi, keyin ikonka sakraydi,
+  keyin halqa to'ladi — bitta karta ichida ham navbat bor.
+*/
 .platform-motion .card {
-  animation: var(--animate-slide-up);
+  animation: admin-enter 0.75s var(--ease-out-soft) both;
+  animation-delay: var(--d, 60ms);
 }
 
 .platform-motion .card:nth-child(1) {
-  animation-delay: 60ms;
+  --d: 60ms;
 }
 .platform-motion .card:nth-child(2) {
-  animation-delay: 130ms;
+  --d: 130ms;
 }
 .platform-motion .card:nth-child(3) {
-  animation-delay: 200ms;
+  --d: 200ms;
 }
 .platform-motion .card:nth-child(4) {
-  animation-delay: 270ms;
+  --d: 270ms;
 }
 .platform-motion .card:nth-child(5) {
-  animation-delay: 340ms;
+  --d: 340ms;
 }
 .platform-motion .card:nth-child(6) {
-  animation-delay: 410ms;
+  --d: 410ms;
 }
 .platform-motion .card:nth-child(7) {
-  animation-delay: 480ms;
+  --d: 480ms;
 }
 .platform-motion .card:nth-child(8) {
-  animation-delay: 550ms;
+  --d: 550ms;
 }
 
 /*
@@ -726,6 +808,18 @@
 .platform-motion [data-motion='bar'] {
   transform-origin: bottom;
   animation: var(--animate-grow-bar);
+}
+
+/* KPI ikonkasi karta chiqqandan keyin "sakrab" tushadi */
+.platform-motion .kpi-icon {
+  animation: admin-pop 0.7s var(--ease-spring) both;
+  animation-delay: calc(var(--d, 60ms) + 220ms);
+}
+
+/* Halqa noldan to'ladi */
+.platform-motion [data-motion='ring'] {
+  animation: ring-draw 1s var(--ease-out-soft) both;
+  animation-delay: calc(var(--d, 60ms) + 300ms);
 }
 
 /* Progress chiziqlari chapdan to'ladi */
@@ -831,4 +925,396 @@
     #000 calc(100% - 28px),
     transparent 100%
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* ISH PANELLARI — YUMSHOQ KO'RINISH                                   */
+/* ------------------------------------------------------------------ */
+/*
+  Klinika, platforma va apteka panellari (`body.soft-ui`, `useSoftUi`).
+  Klass `body` da — modal va menyular `body` ga chiziladi va ular ham
+  shu ko'rinishni olishi kerak. Kirish sahifasi va bemor kabineti bu
+  klassni olmaydi.
+
+  Dastlab admin panelda sinaldi, keyin hammaga o'tkazildi. Sahifalar
+  qayta yozilmadi: umumiy bloklar (karta, KPI, jadval, maydon, modal)
+  shu yerda ko'rinish oladi.
+
+  Qatlamsiz (`@layer` tashqarisida) — ataylab: komponent va utilita
+  qatlamlaridagi fon/radius/soyadan ustun kelishi kerak.
+
+  Tuzilish: ko'kimtir-kulrang fon ustida katta yumaloq panel, uning
+  ichida oq, soyasi yumshoq kartalar. Harakat rangi — to'q ko'k.
+*/
+.soft-ui {
+  --ios-blue: #3a5ba0;
+  --tint-blue-soft: rgb(58 91 160 / 0.12);
+
+  /*
+    FON — bir nechta yumshoq rang dog'i. Kartalar 80% oq va orqasini
+    xiralashtiradi (matoviy shisha): fon rangsiz bo'lsa, shaffoflik
+    umuman ko'rinmaydi. Shuning uchun rang shu yerda, kartalarda emas.
+  */
+  /*
+    RANG — SEZILAR-SEZILMAS. Beshta yorqin dog' sinab ko'rildi va
+    rad etildi: ko'z charchaydi, ish quroli reklama plakatiga
+    o'xshab qoladi. Uchta xira, bir oiladagi (ko'k—lavanda) dog'
+    shishaga "jon" berishga yetadi, e'tiborni tortmaydi.
+  */
+  --admin-blobs:
+    radial-gradient(56rem 38rem at 6% 0%, rgb(90 125 220 / 0.16), transparent 65%),
+    radial-gradient(48rem 34rem at 96% 6%, rgb(150 130 230 / 0.12), transparent 62%),
+    radial-gradient(50rem 36rem at 80% 100%, rgb(110 170 210 / 0.1), transparent 62%);
+  --admin-base: linear-gradient(160deg, #f1f4fa 0%, #eaeef6 100%);
+
+  --admin-panel: rgb(255 255 255 / 0.18);
+  --admin-panel-border: rgb(255 255 255 / 0.55);
+  --admin-card: rgb(255 255 255 / 0.8);
+  --admin-card-border: rgb(255 255 255 / 0.75);
+  --admin-card-highlight: inset 0 1px 0 rgb(255 255 255 / 0.7);
+  --admin-glass-blur: blur(22px) saturate(170%);
+  --admin-field: rgb(255 255 255 / 0.85);
+  --admin-topbar: rgb(255 255 255 / 0.3);
+  --admin-spot: rgb(90 130 230 / 0.12);
+  --admin-modal: rgb(255 255 255 / 0.9);
+  --admin-card-shadow: 0 14px 34px -16px rgb(38 58 102 / 0.26), 0 2px 6px -2px rgb(38 58 102 / 0.06);
+  --admin-card-shadow-hover: 0 22px 44px -18px rgb(38 58 102 / 0.34), 0 2px 6px -2px rgb(38 58 102 / 0.08);
+  --admin-panel-shadow: 0 30px 60px -34px rgb(38 58 102 / 0.28);
+
+  /* Yon menyu ham shisha — orqasidagi rang xira ko'rinib turadi */
+  --sidenav-from: rgb(255 255 255 / 0.5);
+  --sidenav-to: rgb(255 255 255 / 0.2);
+  --sidenav-pill: rgb(255 255 255 / 0.88);
+
+  background: var(--admin-base);
+  background-attachment: fixed;
+  /* Rang dog'lari `::before` da (pastda) — shu kontekst ichida, kontent ostida */
+  isolation: isolate;
+}
+
+.dark .soft-ui {
+  --ios-blue: #7b98dc;
+  --tint-blue-soft: rgb(123 152 220 / 0.16);
+
+  --admin-blobs:
+    radial-gradient(60rem 40rem at 6% -6%, rgb(64 96 200 / 0.2), transparent 62%),
+    radial-gradient(50rem 36rem at 100% 0%, rgb(128 84 204 / 0.14), transparent 60%),
+    radial-gradient(54rem 40rem at 80% 108%, rgb(32 136 168 / 0.12), transparent 62%);
+  --admin-base: linear-gradient(160deg, #0d1119 0%, #090b10 100%);
+
+  --admin-panel: rgb(255 255 255 / 0.03);
+  --admin-panel-border: rgb(255 255 255 / 0.06);
+  --admin-card: rgb(28 32 42 / 0.72);
+  --admin-card-border: rgb(255 255 255 / 0.08);
+  --admin-card-highlight: inset 0 1px 0 rgb(255 255 255 / 0.05);
+  --admin-field: rgb(40 46 60 / 0.8);
+  --admin-topbar: rgb(12 15 22 / 0.4);
+  --admin-spot: rgb(160 185 255 / 0.1);
+  --admin-modal: rgb(30 34 44 / 0.9);
+  --admin-card-shadow: 0 12px 30px -16px rgb(0 0 0 / 0.7);
+  --admin-card-shadow-hover: 0 18px 40px -16px rgb(0 0 0 / 0.8);
+  --admin-panel-shadow: none;
+
+  --sidenav-from: rgb(20 24 32 / 0.55);
+  --sidenav-to: rgb(20 24 32 / 0.25);
+  --sidenav-pill: rgb(48 55 72 / 0.85);
+}
+
+/* Menyu chegarasi kerak emas — fon bir xil */
+.soft-ui aside {
+  border-color: transparent;
+}
+
+/*
+  Yon menyu orqasini xiralashtiradi. Bu `div` ekranning (0, 0)
+  nuqtasiga yopishgan — shuning uchun `backdrop-filter` uni `fixed`
+  nom yorlig'i uchun koordinata boshiga aylantirsa ham, yorliq
+  joyidan siljimaydi.
+*/
+.soft-ui aside > div {
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+}
+
+/* Yuqori panel — shisha, chiziqsiz */
+.soft-ui header.material {
+  background: var(--admin-topbar);
+}
+
+/* To'q ko'k to'ldirilgan tugma va belgilarga yengil yuqori nur */
+.soft-ui .bg-accent {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0) 60%);
+}
+
+.soft-ui header.material > .hairline {
+  border-bottom-color: transparent;
+}
+
+/* Qidiruv — fon ustida oq "tabletka" */
+.soft-ui header.material input {
+  background: var(--admin-field);
+  box-shadow:
+    0 1px 2px rgb(38 58 102 / 0.06),
+    0 4px 12px -6px rgb(38 58 102 / 0.16);
+}
+
+/* Katta panel — kompyuterda. Telefonda joy tor, oddiy fon qoladi */
+@media (min-width: 768px) {
+  .soft-ui .admin-panel {
+    width: auto;
+    margin: 4px 16px 16px 8px;
+    padding-top: 28px;
+    border-radius: 32px;
+    /*
+      Panelning o'zi XIRALASHTIRMAYDI: `backdrop-filter` bor element
+      ichidagi kartalar faqat panelgacha bo'lgan narsani ko'radi va
+      rangli fonni xiralashtira olmay qolardi.
+    */
+    background: var(--admin-panel);
+    border: 1px solid var(--admin-panel-border);
+    box-shadow: var(--admin-panel-shadow);
+  }
+}
+
+.soft-ui .page-head h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* --- Kartalar --- */
+/* Matoviy shisha: 80% oq, orqasi xira ko'rinadi, tepada yorug'lik chizig'i */
+.soft-ui .card {
+  background-color: var(--admin-card);
+  /* Sichqoncha ortidan yuradigan yorug'lik (`useCardSpotlight` + `--spot`) */
+  background-image: radial-gradient(
+    360px circle at var(--mx, -500px) var(--my, -500px),
+    color-mix(in srgb, var(--admin-spot) calc(var(--spot) * 100%), transparent),
+    transparent 62%
+  );
+  -webkit-backdrop-filter: var(--admin-glass-blur);
+  backdrop-filter: var(--admin-glass-blur);
+  border: 1px solid var(--admin-card-border);
+  border-radius: 24px;
+  box-shadow: var(--admin-card-shadow), var(--admin-card-highlight);
+}
+
+.soft-ui .card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--admin-card-shadow-hover), var(--admin-card-highlight);
+}
+
+/* KPI ikonkasi — to'q ko'k kvadrat, oq belgi */
+.soft-ui .kpi-icon {
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--ios-blue) 70%, #fff) 0%,
+    var(--ios-blue) 55%,
+    color-mix(in srgb, var(--ios-blue) 82%, #000) 100%
+  );
+  color: #fff;
+  box-shadow:
+    0 8px 18px -8px var(--ios-blue),
+    inset 0 1px 0 rgb(255 255 255 / 0.28);
+}
+
+@media (min-width: 640px) {
+  .soft-ui .kpi-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+}
+
+.soft-ui .stat-icon {
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--ios-blue) 70%, #fff) 0%,
+    var(--ios-blue) 60%
+  );
+  color: #fff;
+  box-shadow: 0 4px 10px -5px var(--ios-blue);
+}
+
+/* --- Maydonlar: oq, chegarasiz, yumshoq soyali --- */
+.soft-ui .field-control {
+  background: var(--admin-field);
+  border-color: transparent;
+  border-radius: 12px;
+  box-shadow:
+    0 1px 2px rgb(38 58 102 / 0.06),
+    0 4px 12px -6px rgb(38 58 102 / 0.16);
+}
+
+.soft-ui .field-control:focus {
+  box-shadow: 0 0 0 3px rgb(58 91 160 / 0.2);
+}
+
+/* --- Jadval: oddiy yozuvli sarlavha, kengroq qatorlar --- */
+.soft-ui thead th {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  color: var(--label-secondary);
+}
+
+.soft-ui tbody td {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.soft-ui tbody tr:hover {
+  background: color-mix(in srgb, var(--ios-blue) 5%, transparent);
+}
+
+/* ------------------------------------------------------------------ */
+/* ISH PANELLARI — HARAKAT                                             */
+/* ------------------------------------------------------------------ */
+/*
+  Uch qatlam:
+    1. FON — rang dog'lari juda sekin suzadi (42 soniyalik to'lqin).
+       Faqat `transform` — GPU da, sahifa qayta chizilmaydi.
+    2. KIRISH — `.platform-motion` qoidalari (yuqorida): kartalar
+       navbat bilan xiralikdan chiqadi, ikonkalar sakraydi, halqa va
+       ustunlar to'ladi.
+    3. JAVOB — bosish va ustiga borish: tugma siqiladi, karta ustida
+       sichqoncha ortidan yorug'lik yuradi, ikonka jonlanadi,
+       diagrammada tanlangan ustun oldinga chiqadi.
+
+  "Harakatni kamaytirish" sozlamasi yoqilgan bo'lsa, umumiy
+  `prefers-reduced-motion` qoidasi hammasini to'xtatadi.
+*/
+.soft-ui::before {
+  content: '';
+  position: fixed;
+  inset: -14%;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--admin-blobs);
+  animation: admin-aurora 42s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+/* Tugma va havolalar: rang, soya va siqilish — hammasi silliq */
+.soft-ui button,
+.soft-ui a[href] {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform,
+    translate, scale;
+  transition-duration: 0.2s;
+  transition-timing-function: var(--ease-apple);
+}
+
+.soft-ui button:not(:disabled):active {
+  scale: 0.96;
+}
+
+/* Karta: yorug'lik silliq yonadi; ko'tarilish prujinali */
+.soft-ui .card {
+  transition:
+    --spot 0.4s var(--ease-apple),
+    transform 0.3s var(--ease-spring),
+    box-shadow 0.3s var(--ease-apple);
+}
+
+.soft-ui .card:hover {
+  --spot: 1;
+}
+
+/* KPI ikonkasi karta ustiga borilganda jonlanadi */
+.soft-ui .kpi-icon {
+  transition:
+    transform 0.5s var(--ease-spring),
+    box-shadow 0.3s var(--ease-apple);
+}
+
+.soft-ui .card-interactive:hover .kpi-icon {
+  transform: translateY(-2px) rotate(-6deg) scale(1.07);
+}
+
+.soft-ui tbody tr {
+  transition: background-color 0.2s var(--ease-apple);
+}
+
+/* Diagramma: bitta ustun ustiga borilganda qolganlari orqaga chekinadi */
+.soft-ui .chart-dim > * {
+  transition: opacity 0.3s var(--ease-apple);
+}
+
+.soft-ui .chart-dim:hover > * {
+  opacity: 0.45;
+}
+
+.soft-ui .chart-dim:hover > *:hover {
+  opacity: 1;
+}
+
+/* Yuqori paneli yo'q karkas (apteka) — katta panel tepadan ham chekinadi */
+@media (min-width: 768px) {
+  .soft-ui .admin-panel.admin-panel--top {
+    margin-top: 16px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Modal va ochiladigan menyular                                        */
+/* ------------------------------------------------------------------ */
+/*
+  Ikkalasi ham `body` ga chiziladi yoki yopishqoq panelda turadi —
+  shuning uchun ko'rinish klassi `body` da. Oyna — deyarli oq shisha,
+  katta radius, prujinali chiqish. Orqa fon qora emas, ko'kimtir va
+  yengil: sahifa "o'chib" qolmaydi, odam qayerda turganini ko'radi.
+*/
+.soft-ui .modal-scrim {
+  background: rgb(22 34 66 / 0.18);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
+  backdrop-filter: blur(6px) saturate(140%);
+}
+
+.soft-ui .modal-panel {
+  background: var(--admin-modal);
+  -webkit-backdrop-filter: var(--admin-glass-blur);
+  backdrop-filter: var(--admin-glass-blur);
+  border: 1px solid var(--admin-card-border);
+  box-shadow:
+    0 32px 80px -28px rgb(20 35 70 / 0.4),
+    var(--admin-card-highlight);
+  animation: modal-in 0.42s var(--ease-spring) both;
+}
+
+@media (min-width: 640px) {
+  .soft-ui .modal-panel {
+    border-radius: 26px;
+  }
+}
+
+.soft-ui .popover-panel {
+  background: var(--admin-modal);
+  -webkit-backdrop-filter: var(--admin-glass-blur);
+  backdrop-filter: var(--admin-glass-blur);
+  border: 1px solid var(--admin-card-border);
+  box-shadow:
+    0 18px 44px -18px rgb(20 35 70 / 0.34),
+    var(--admin-card-highlight);
+  animation: popover-in 0.24s var(--ease-out-soft) both;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }

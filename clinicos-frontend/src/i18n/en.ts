@@ -199,6 +199,8 @@ export const dict: Dict = {
   'pharmacy.handToNobody': 'Nobody — end of day',
   'pharmacy.handedTo': 'handed to {name}',
   'pharmacy.title': 'Pharmacy',
+  'pharmacy.navGroup.sales': 'Sales',
+  'pharmacy.navGroup.manage': 'Management',
   'pharmacy.searchHint': 'Name or barcode',
   'pharmacy.startTyping': 'Find a medicine',
   'pharmacy.startTypingHint': 'Type the name or scan the barcode',
@@ -829,6 +831,8 @@ export const dict: Dict = {
 
   'nav.staff': 'Staff',
   'nav.allSections': 'All sections',
+  'nav.collapse': 'Collapse menu',
+  'nav.expand': 'Expand menu',
   'staff.title': 'Staff',
   'staff.subtitle': '{count} employees',
   'staff.add': '+ Add employee',

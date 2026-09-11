@@ -101,7 +101,8 @@ export function KpiCard({
       <div className="flex items-start justify-between gap-2">
         <span
           className={cn(
-            'flex h-8 w-8 items-center justify-center rounded-[9px] sm:h-9 sm:w-9 sm:rounded-[10px]',
+            // `kpi-icon` — admin paneldagi yumshoq ko'rinish ilgagi (index.css)
+            'kpi-icon flex h-8 w-8 items-center justify-center rounded-[9px] sm:h-9 sm:w-9 sm:rounded-[10px]',
             TONE_ICON[tone],
           )}
         >
@@ -216,7 +217,7 @@ export function StatCard({
         {icon ? (
           <span
             className={cn(
-              'flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] sm:h-6 sm:w-6 sm:rounded-[7px]',
+              'stat-icon flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] sm:h-6 sm:w-6 sm:rounded-[7px]',
               TONE_ICON[tone],
             )}
           >

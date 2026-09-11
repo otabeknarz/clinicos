@@ -855,7 +855,7 @@ function LinePicker({
           </div>
 
           {scanned ? (
-            <p className="rounded-[10px] bg-good-soft px-3 py-2 text-caption text-good">
+            <p className="rounded-[10px] bg-ok-soft px-3 py-2 text-caption text-ok">
               {t('pharmacy.scannedInfo', {
                 batch: scanned.batch || '—',
                 expiry: scanned.expiry ? dateShort(scanned.expiry) : '—',

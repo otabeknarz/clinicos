@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 import { cn } from '@/lib/cn'
 import type { Tone } from '@/lib/status'
 
@@ -63,8 +65,20 @@ export function ProgressRing({
           stroke={STROKE[tone]}
           strokeWidth={thickness}
           strokeLinecap="round"
-          strokeDasharray={`${dash} ${circumference}`}
-          style={{ transition: 'stroke-dasharray 0.6s var(--ease-out-soft)' }}
+          /*
+            Chiziq `stroke-dashoffset` bilan chiziladi (ko'rinish avvalgidek):
+            platforma panelida halqa shu xossa orqali noldan to'lib chiqadi
+            (`ring-draw`, `--ring-full` — to'la aylana uzunligi).
+          */
+          strokeDasharray={circumference}
+          data-motion="ring"
+          style={
+            {
+              strokeDashoffset: circumference - dash,
+              transition: 'stroke-dashoffset 0.6s var(--ease-out-soft)',
+              '--ring-full': `${circumference}`,
+            } as CSSProperties
+          }
         />
       </svg>
       {label ? (

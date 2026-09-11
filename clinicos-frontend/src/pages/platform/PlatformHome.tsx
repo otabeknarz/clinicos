@@ -409,7 +409,7 @@ function GrowthCard({ data }: { data: PlatformStats }) {
         }
       />
 
-      <div className="mt-6 flex h-40 items-end gap-1.5">
+      <div className="chart-dim mt-6 flex h-40 items-end gap-1.5">
         {data.history.map((row, index) => {
           const monthIndex = Number(row.period.slice(5, 7)) - 1
           const isLast = index === data.history.length - 1
@@ -428,7 +428,8 @@ function GrowthCard({ data }: { data: PlatformStats }) {
                 <div
                   data-motion="bar"
                   className={cn(
-                    'w-full rounded-t-[4px] transition-all',
+                    // Ingichka, tepasi yumaloq — Analitikadagi diagramma bilan bir xil
+                    'mx-auto w-full max-w-[18px] rounded-t-full',
                     isLast ? 'bg-accent' : 'bg-accent/35',
                   )}
                   style={{

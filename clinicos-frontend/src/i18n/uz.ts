@@ -201,6 +201,8 @@ export const dict: Dict = {
   'pharmacy.handToNobody': 'Hech kimga — kun oxiri',
   'pharmacy.handedTo': '{name} ga topshirilgan',
   'pharmacy.title': 'Apteka',
+  'pharmacy.navGroup.sales': 'Savdo',
+  'pharmacy.navGroup.manage': 'Boshqaruv',
   'pharmacy.searchHint': 'Dori nomi yoki shtrix-kod',
   'pharmacy.startTyping': 'Dorini qidiring',
   'pharmacy.startTypingHint': 'Nomini yozing yoki shtrix-kodni skanerlang',
@@ -862,6 +864,8 @@ export const dict: Dict = {
   /* --- Xodimlar --- */
   'nav.staff': 'Xodimlar',
   'nav.allSections': 'Barcha bo’limlar',
+  'nav.collapse': 'Menyuni yig‘ish',
+  'nav.expand': 'Menyuni yoyish',
   'staff.title': 'Xodimlar',
   'staff.subtitle': '{count} ta xodim',
   'staff.add': '+ Xodim qo’shish',

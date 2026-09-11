@@ -8,6 +8,7 @@ import {
   PieChart,
   Stethoscope,
   TrendingUp,
+  Wallet,
 } from 'lucide-react'
 
 import { getPlatformAnalytics } from '@/api/platform'
@@ -154,92 +155,183 @@ export function PlatformAnalyticsPage() {
  * Nega birga: ular bir-biriga bog'liq. Aylanma o'sib, bizning
  * ulushimiz o'smasa — narx siyosati orqada qolgan degani.
  */
+/** Shkala tepasi — "yumaloq" son (1, 2, 2.5, 5 × 10ⁿ): o'q yozuvlari toza chiqsin */
+function niceCeil(value: number): number {
+  if (value <= 0) return 1
+  const exp = 10 ** Math.floor(Math.log10(value))
+  const f = value / exp
+  const step = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10
+  return step * exp
+}
+
+const TICKS = [0, 0.25, 0.5, 0.75, 1]
+
 function MoneyChart({ data }: { data: PlatformAnalytics }) {
   const { t } = useI18n()
   const labels = monthsShort()
 
-  const max = Math.max(...data.history.map((h) => h.turnover), 1)
+  /*
+    SHKALA NOLDAN va chapda qiymatlar o'qi bilan. Ilgari o'q yo'q edi
+    va o'n ikki ustun deyarli bir xil balandlikda turardi — odam
+    oylar orasidagi farqni ham, summaning o'zini ham o'qiy olmasdi.
+  */
+  const top = niceCeil(Math.max(...data.history.map((h) => h.turnover), 1))
+  const pct = (value: number) => (value / top) * 100
+  const last = data.history.length - 1
 
   return (
     <Card className="min-w-0">
-      <CardHeader title={t('analytics.moneyFlow')} subtitle={t('platform.growthHint')} />
+      <CardHeader
+        title={t('analytics.moneyFlow')}
+        subtitle={t('platform.growthHint')}
+        action={
+          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            {[
+              { key: 'turnover', color: 'bg-accent/35', label: t('analytics.turnover') },
+              { key: 'profit', color: 'bg-accent', label: t('analytics.profit') },
+            ].map((item) => (
+              <li key={item.key} className="flex items-center gap-1.5">
+                <span className={cn('size-2.5 rounded-full', item.color)} />
+                <span className="text-caption text-label-secondary">{item.label}</span>
+              </li>
+            ))}
+          </ul>
+        }
+      />
 
-      <div className="mt-6 flex h-52 items-end gap-2">
-        {data.history.map((row, index) => {
-          const isLast = index === data.history.length - 1
-
-          return (
-            <div
-              key={row.period}
-              className="flex h-full min-w-0 flex-1 flex-col items-center gap-2"
+      <div className="mt-6 flex gap-3">
+        {/* --- Qiymatlar o'qi --- */}
+        <div className="relative h-52 w-10 shrink-0">
+          {TICKS.map((f) => (
+            <span
+              key={f}
+              className="absolute right-0 translate-y-1/2 text-caption-2 tnum text-label-tertiary"
+              style={{ bottom: `${f * 100}%` }}
             >
-              <div className="relative flex w-full flex-1 items-end">
-                {/* Aylanma — orqa ustun */}
-                <div
-                  data-motion="bar"
-                  className={cn(
-                    'w-full rounded-t-[4px]',
-                    isLast ? 'bg-accent/30' : 'bg-accent/15',
-                  )}
-                  style={{
-                    height: `${Math.max(2, (row.turnover / max) * 100)}%`,
-                    animationDelay: `${180 + index * 55}ms`,
-                  }}
-                  title={`${t('analytics.turnover')}: ${money(row.turnover)}`}
-                />
+              {compactNumber(top * f)}
+            </span>
+          ))}
+        </div>
 
-                {/* Foyda — ustiga tushadigan ustun */}
-                <div
-                  data-motion="bar"
-                  className={cn(
-                    'absolute bottom-0 left-0 w-full rounded-t-[4px]',
-                    isLast ? 'bg-ok' : 'bg-ok/45',
-                  )}
-                  style={{
-                    height: `${Math.max(1, (row.profit / max) * 100)}%`,
-                    animationDelay: `${240 + index * 55}ms`,
-                  }}
-                  title={`${t('analytics.profit')}: ${money(row.profit)}`}
-                />
+        <div className="min-w-0 flex-1">
+          <div className="relative h-52">
+            {/* Yordamchi chiziqlar — pastki (nol) chiziq to'liq, qolganlari uzuq */}
+            {TICKS.map((f) => (
+              <span
+                key={f}
+                className={cn(
+                  'absolute inset-x-0 border-t',
+                  f === 0 ? 'border-separator' : 'border-dashed border-separator/60',
+                )}
+                style={{ bottom: `${f * 100}%` }}
+              />
+            ))}
 
-              </div>
+            <div className="chart-dim absolute inset-0 flex gap-1">
+              {data.history.map((row, index) => {
+                const isLast = index === last
+                const month = labels[Number(row.period.slice(5, 7)) - 1]
 
-              <span className="text-caption-2 text-label-tertiary">
+                return (
+                  /*
+                    Har oyda IKKITA ingichka ustun yonma-yon: aylanma va
+                    foyda. Ustma-ust turganda foyda aylanmaning ichida
+                    "yo'qolib" ketardi va enli bloklar devorga o'xshardi.
+                  */
+                  <div
+                    key={row.period}
+                    className="group relative flex h-full min-w-0 flex-1 items-end justify-center gap-[3px] rounded-t-[12px] transition-colors duration-200 hover:bg-accent/5"
+                  >
+                    <div
+                      data-motion="bar"
+                      className={cn(
+                        'w-full max-w-[14px] rounded-t-full',
+                        isLast ? 'bg-accent/35' : 'bg-accent/20',
+                      )}
+                      style={{
+                        height: `${Math.max(2, pct(row.turnover))}%`,
+                        animationDelay: `${180 + index * 55}ms`,
+                      }}
+                    />
+                    <div
+                      data-motion="bar"
+                      className={cn(
+                        'w-full max-w-[14px] rounded-t-full',
+                        isLast
+                          ? 'bg-accent shadow-[0_6px_16px_-6px_var(--color-accent)]'
+                          : 'bg-accent/70',
+                      )}
+                      style={{
+                        height: `${Math.max(1, pct(row.profit))}%`,
+                        animationDelay: `${240 + index * 55}ms`,
+                      }}
+                    />
+
+                    {/*
+                      Oyning ikkala summasi — sichqoncha olib borilganda.
+                      Chetdagi oylarda yorliq ichkariga suriladi, aks
+                      holda kartadan chiqib ketardi.
+                    */}
+                    <div
+                      className={cn(
+                        'pointer-events-none absolute z-10 mb-2 origin-bottom whitespace-nowrap',
+                        'rounded-[10px] bg-label px-3 py-2 text-raised shadow-[var(--elev-popover)]',
+                        // Keskin paydo bo'lmaydi — pastdan suzib, kattalashib chiqadi
+                        'translate-y-1.5 scale-95 opacity-0 transition-[opacity,translate,scale] duration-200 ease-out',
+                        'group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100',
+                        index === 0 ? 'left-0' : isLast ? 'right-0' : 'left-1/2 -translate-x-1/2',
+                      )}
+                      style={{ bottom: `${Math.max(2, pct(row.turnover))}%` }}
+                    >
+                      <p className="text-caption-2 font-semibold opacity-70">
+                        {month} {row.period.slice(0, 4)}
+                      </p>
+                      <p className="mt-0.5 text-caption tnum">
+                        {t('analytics.turnover')}: <b>{moneyShort(row.turnover)}</b>
+                      </p>
+                      <p className="text-caption tnum">
+                        {t('analytics.profit')}: <b>{moneyShort(row.profit)}</b>
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="mt-2 flex gap-1">
+            {data.history.map((row, index) => (
+              <span
+                key={row.period}
+                className={cn(
+                  'min-w-0 flex-1 truncate text-center text-caption-2',
+                  index === last ? 'font-semibold text-label' : 'text-label-tertiary',
+                )}
+              >
                 {labels[Number(row.period.slice(5, 7)) - 1]}
               </span>
-            </div>
-          )
-        })}
+            ))}
+          </div>
+        </div>
       </div>
 
       {/*
         Bizning daromadimiz bu grafikda YO'Q va bo'lmasligi ham kerak:
         u aylanmaning ikki foizi, bir shkalada ko'rinmaydigan chiziqqa
         aylanadi. Uni alohida shkalaga qo'yish esa grafikni aldamchi
-        qiladi. Shuning uchun u pastda alohida qator bo'lib turadi.
+        qiladi. Shuning uchun u pastda alohida kartacha bo'lib turadi.
       */}
-      <ul className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
-        {[
-          { key: 'turnover', color: 'bg-accent/30', label: t('analytics.turnover') },
-          { key: 'profit', color: 'bg-ok', label: t('analytics.profit') },
-        ].map((item) => (
-          <li key={item.key} className="flex items-center gap-2">
-            <span className={cn('size-3 rounded-[4px]', item.color)} />
-            <span className="text-caption text-label-secondary">{item.label}</span>
-          </li>
-        ))}
-      </ul>
-
-      {/* --- Bizning daromadimiz alohida --- */}
-      <div className="mt-5 flex flex-wrap items-center gap-3 rounded-[12px] bg-sunken px-4 py-3">
-        <span className="size-3 shrink-0 rounded-[4px] bg-brand" />
-        <span className="min-w-0 flex-1 text-footnote text-label-secondary">
-          {t('analytics.ourRevenue')}
+      <div className="mt-6 flex flex-wrap items-center gap-3 rounded-[16px] bg-accent-soft px-4 py-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-accent text-white">
+          <Wallet size={17} />
         </span>
-        <span className="text-subhead font-semibold tnum text-label">
-          {money(data.ourRevenue.value)}
-        </span>
-        <span className="text-caption tnum text-label-tertiary">
+        <div className="min-w-0 flex-1">
+          <p className="text-caption text-label-secondary">{t('analytics.ourRevenue')}</p>
+          <p className="text-headline font-bold tnum text-label">
+            {money(data.ourRevenue.value)}
+          </p>
+        </div>
+        <span className="rounded-full bg-raised px-2.5 py-1 text-caption font-semibold tnum text-accent">
           {percent(data.takeRate, 2)} {t('analytics.takeRateCaption')}
         </span>
       </div>

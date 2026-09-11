@@ -15,7 +15,8 @@ import { useI18n } from '@/i18n'
  */
 
 const CONTROL = cn(
-  'w-full rounded-[10px] bg-sunken px-3.5 text-subhead text-label',
+  // `field-control` — admin paneldagi yumshoq ko'rinish ilgagi (index.css)
+  'field-control w-full rounded-[10px] bg-sunken px-3.5 text-subhead text-label',
   'border border-transparent outline-none',
   'placeholder:text-label-tertiary',
   'transition-[border-color,background-color,box-shadow] duration-150',

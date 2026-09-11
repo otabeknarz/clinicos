@@ -73,7 +73,8 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       {/* Fon */}
       <div
-        className="absolute inset-0 animate-fade-in bg-black/25 backdrop-blur-[2px]"
+        // `modal-scrim`, `modal-panel` — yangi ko'rinish ilgaklari (index.css)
+        className="modal-scrim absolute inset-0 animate-fade-in bg-black/25 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden
       />
@@ -86,7 +87,7 @@ export function Modal({
         aria-label={title}
         className={cn(
           'relative flex max-h-[92dvh] w-full flex-col',
-          'animate-scale-in bg-overlay shadow-lg',
+          'modal-panel animate-scale-in bg-overlay shadow-lg',
           'rounded-t-[22px] sm:rounded-[20px]',
           widths[size],
           'sm:mx-4',

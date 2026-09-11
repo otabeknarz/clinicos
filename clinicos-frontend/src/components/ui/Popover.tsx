@@ -86,7 +86,8 @@ export function Popover({
         <div
           style={narrowTop === null ? undefined : { top: narrowTop }}
           className={cn(
-            'z-40 animate-scale-in rounded-[16px] p-1.5',
+            // `popover-panel` — yangi ko'rinish ilgagi (index.css)
+            'popover-panel z-40 animate-scale-in rounded-[16px] p-1.5',
             'material-thick shadow-popover',
             narrowTop === null
               ? cn(

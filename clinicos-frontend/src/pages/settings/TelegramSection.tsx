@@ -60,7 +60,7 @@ export function TelegramSection() {
         <span
           className={
             linked
-              ? 'rounded-[8px] bg-good-soft px-2.5 py-1 text-caption font-medium text-good'
+              ? 'rounded-[8px] bg-ok-soft px-2.5 py-1 text-caption font-medium text-ok'
               : 'rounded-[8px] bg-warn-soft px-2.5 py-1 text-caption font-medium text-warn'
           }
         >

@@ -56,7 +56,7 @@ export function CabinetFeedbackPage() {
 
   return (
     <div className="space-y-3">
-      <p className="flex items-start gap-2 rounded-[12px] bg-good-soft px-3 py-2.5 text-caption text-good">
+      <p className="flex items-start gap-2 rounded-[12px] bg-ok-soft px-3 py-2.5 text-caption text-ok">
         <ShieldCheck size={15} className="mt-px shrink-0" />
         {t('cabinet.feedbackAnonymous')}
       </p>

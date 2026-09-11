@@ -165,7 +165,7 @@ function GrowthCard({ data }: { data: PlatformDataStats }) {
         }
       />
 
-      <div className="mt-6 flex h-44 items-end gap-1.5">
+      <div className="chart-dim mt-6 flex h-44 items-end gap-1.5">
         {data.growth.map((row, index) => {
           const monthIndex = Number(row.period.slice(5, 7)) - 1
           const isLast = index === data.growth.length - 1
@@ -179,7 +179,8 @@ function GrowthCard({ data }: { data: PlatformDataStats }) {
                 <div
                   data-motion="bar"
                   className={cn(
-                    'w-full rounded-t-[4px] transition-all',
+                    // Ingichka, tepasi yumaloq — Analitikadagi diagramma bilan bir xil
+                    'mx-auto w-full max-w-[18px] rounded-t-full',
                     isLast ? 'bg-brand' : 'bg-brand/35',
                   )}
                   style={{
@@ -364,7 +365,7 @@ function SeasonalityCard({ data }: { data: PlatformDataStats }) {
     <Card className="min-w-0">
       <CardHeader title={t('data.seasonality')} subtitle={t('data.seasonalityHint')} />
 
-      <div className="mt-5 flex h-28 items-end gap-1">
+      <div className="chart-dim mt-5 flex h-28 items-end gap-1">
         {data.seasonality.map((row, index) => {
           const high = row.index >= 110
           const low = row.index <= 90
@@ -375,7 +376,7 @@ function SeasonalityCard({ data }: { data: PlatformDataStats }) {
                 <div
                   data-motion="bar"
                   className={cn(
-                    'w-full rounded-t-[3px]',
+                    'mx-auto w-full max-w-[14px] rounded-t-full',
                     high ? 'bg-warn' : low ? 'bg-accent/30' : 'bg-accent/60',
                   )}
                   style={{
