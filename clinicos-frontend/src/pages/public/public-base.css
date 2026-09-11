@@ -1,8 +1,9 @@
 /*
  * KIRISH VA TANISHTIRUV — umumiy uslublar
  *
- * AVTOMATIK YARATILGAN — prototipdagi `styles.css` dan. Qo'lda
- * tahrirlanmaydi: dizayn o'zgarsa, prototipdan qayta yaratiladi.
+ * AVTOMATIK YARATILGAN — prototipdagi `styles.css` dan,
+ * `scripts/scope-landing-css.py` bilan. Qo'lda tahrirlanmaydi: dizayn
+ * o'zgarsa, skript qayta ishga tushiriladi.
  *
  * Har bir selektor `:where(.auth-page,.story-page)` bilan o'ralgan. `:where()` selektor
  * kuchini oshirmaydi, ya'ni prototipdagi kaskad tartibi aynan

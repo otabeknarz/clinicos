@@ -1,8 +1,9 @@
 /*
  * TANISHTIRUV SAHIFASI (.story-page)
  *
- * AVTOMATIK YARATILGAN — prototipdagi `about-v3.css` dan. Qo'lda
- * tahrirlanmaydi: dizayn o'zgarsa, prototipdan qayta yaratiladi.
+ * AVTOMATIK YARATILGAN — prototipdagi `about-v3.css` dan,
+ * `scripts/scope-landing-css.py` bilan. Qo'lda tahrirlanmaydi: dizayn
+ * o'zgarsa, skript qayta ishga tushiriladi.
  *
  * Har bir selektor `:where(.story-page)` bilan o'ralgan. `:where()` selektor
  * kuchini oshirmaydi, ya'ni prototipdagi kaskad tartibi aynan
