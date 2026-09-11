@@ -25,6 +25,7 @@ import { generateShiftClosures, generateWard } from './seedWard'
 import { generateFeedback } from './seedFeedback'
 import { generatePharmacy } from './seedPharmacy'
 import type {
+  Pharmacy,
   Batch,
   Medicine,
   Prescription,
@@ -93,6 +94,11 @@ import {
 
 export const MAIN_CLINIC_ID = 'clinic_1'
 const OTHER_CLINIC_ID = 'clinic_2'
+/**
+ * Demo apteka — klinikalardan ALOHIDA mijoz. Uning dorilari, sotuvi
+ * va xodimlari shu kalit ostida turadi, asosiy klinika ostida emas.
+ */
+export const PHARMACY_ID = 'pharm_1'
 
 /** Nechta kun tarix va nechta kun oldinga rejalashtiriladi */
 const HISTORY_DAYS = 120
@@ -138,6 +144,8 @@ export interface SeedData {
   pharmacyShifts: PharmacyShift[]
   pharmacyStaff: PharmacyStaff[]
   purchases: Purchase[]
+  /** Klinikada apteka borligining o'zi — platforma egasi ochadi */
+  pharmacies: Pharmacy[]
   monthlyStats: MonthlyStat[]
   chatGroups: ChatGroup[]
   chatMessages: ChatMessage[]
@@ -469,7 +477,7 @@ export function generateSeed(seed = 20260901): SeedData {
         ekranlari ochiladi.
       */
       id: 'usr_pharmacist_1',
-      clinicId: MAIN_CLINIC_ID,
+      clinicId: PHARMACY_ID,
       fullName: 'Dilshod Raximov',
       email: 'apteka@clinic-os.uz',
       phone: makePhone(r),
@@ -491,7 +499,7 @@ export function generateSeed(seed = 20260901): SeedData {
         bitta odam bo'lardi.
       */
       id: 'usr_pharmacist_2',
-      clinicId: MAIN_CLINIC_ID,
+      clinicId: PHARMACY_ID,
       fullName: 'Ozoda Qodirova',
       email: 'apteka2@clinic-os.uz',
       phone: makePhone(r),
@@ -506,7 +514,7 @@ export function generateSeed(seed = 20260901): SeedData {
     {
       /* Apteka rahbari — sotmaydi, solishtiradi */
       id: 'usr_pharmacy_owner_1',
-      clinicId: MAIN_CLINIC_ID,
+      clinicId: PHARMACY_ID,
       fullName: 'Gulnora Yusupova',
       email: 'apteka.rahbar@clinic-os.uz',
       phone: makePhone(r),
@@ -937,7 +945,7 @@ export function generateSeed(seed = 20260901): SeedData {
 
   const pharmacy = generatePharmacy(
     r,
-    MAIN_CLINIC_ID,
+    PHARMACY_ID,
     mainPatients,
     doctors,
     seller.fullName,
@@ -999,6 +1007,23 @@ export function generateSeed(seed = 20260901): SeedData {
     pharmacyShifts: pharmacy.shifts,
     pharmacyStaff: pharmacy.staff,
     purchases: pharmacy.purchases,
+    /*
+      Bitta demo apteka — dorilar, sotuv va smenalar shunga
+      yaratilgan. Ikkinchisini platforma egasi o'zi ochib ko'radi.
+    */
+    pharmacies: [
+      {
+        id: PHARMACY_ID,
+        name: 'Sog‘lom dorixonasi',
+        city: 'Toshkent',
+        address: 'Chilonzor tumani, Bunyodkor ko‘chasi 12',
+        phone: makePhone(r),
+        status: 'active',
+        suspendReason: '',
+        ownerUserId: 'usr_pharmacy_owner_1',
+        createdAt: iso(addDays(today, -210)),
+      },
+    ],
     monthlyStats,
     chatGroups: chat.groups,
     chatMessages: chat.messages,

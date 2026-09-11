@@ -14,7 +14,7 @@ import { ApiError, delay, request, USE_MOCK } from './client'
 import { getDb } from '@/mock/db'
 import { MAIN_CLINIC_ID } from '@/mock/seed'
 import { resolvePermissions } from '@/lib/permissions'
-import type { ClinicModule, ID, Permission, Role, Session, User } from '@/types/models'
+import type { Clinic, ClinicModule, ID, Permission, Role, Session, User } from '@/types/models'
 
 export interface LoginInput {
   email: string
@@ -40,9 +40,14 @@ export async function login(input: LoginInput): Promise<Session> {
     return request<Session>('POST', '/auth/login', { body: input })
   }
 
-  const db = getDb()
-  const user = db.users
-    .all(MAIN_CLINIC_ID)
+  /*
+    BARCHA bizneslardan qidiriladi — server ham shunday qiladi:
+    kirishda kim qayerda ishlashi hali noma'lum. Faqat asosiy
+    klinikadan qidirilganda alohida apteka xodimi umuman
+    topilmasdi.
+  */
+  const user = getDb()
+    .users.allAcrossTenants()
     .find((u) => u.email.toLowerCase() === input.email.trim().toLowerCase())
 
   if (!user || !input.password) {
@@ -50,8 +55,7 @@ export async function login(input: LoginInput): Promise<Session> {
     throw Object.assign(new Error('auth.invalid'), { status: 401 })
   }
 
-  const clinic = db.clinics.find(user.clinicId, user.clinicId)
-  if (!clinic) throw new Error('Klinika topilmadi')
+  const clinic = sessionTenant(user)
 
   const session: Session = {
     user,
@@ -66,6 +70,52 @@ export async function login(input: LoginInput): Promise<Session> {
   }
 
   return delay(session, 380)
+}
+
+/**
+ * Sessiyadagi biznes — odam qayerda ishlaydi.
+ *
+ * Apteka klinika EMAS va klinikaga biriktirilmagan. Lekin sessiya
+ * bitta shaklni kutadi (`Session.clinic`), shuning uchun apteka
+ * xodimida uning o'rnida apteka turadi: `id` — ma'lumot kaliti,
+ * nomi — aptekaning nomi.
+ *
+ * TO'XTATILGAN APTEKA xodimi kira olmaydi va sababini ko'radi —
+ * klinika to'xtatilgandagi kabi. Serverda bu tekshiruv
+ * `jwt.strategy.ts` da ham bo'lishi shart, aks holda allaqachon
+ * berilgan token ishlayverardi.
+ */
+function sessionTenant(user: User): Clinic {
+  const db = getDb()
+
+  if (user.role === 'pharmacist' || user.role === 'pharmacy_owner') {
+    const pharmacy = db.pharmacies.allAcrossTenants().find((p) => p.id === user.clinicId)
+    if (!pharmacy) {
+      throw Object.assign(new Error('Apteka topilmadi'), { status: 403 })
+    }
+    if (pharmacy.status === 'suspended') {
+      throw Object.assign(
+        new Error(`Apteka to‘xtatilgan: ${pharmacy.suspendReason}`),
+        { status: 403 },
+      )
+    }
+    return {
+      id: pharmacy.id,
+      name: pharmacy.name,
+      logoUrl: null,
+      phone: pharmacy.phone,
+      address: pharmacy.address,
+      workingHours: [],
+      slotMinutes: 30,
+      currency: 'UZS',
+      timezone: 'Asia/Tashkent',
+      createdAt: pharmacy.createdAt,
+    }
+  }
+
+  const clinic = db.clinics.find(user.clinicId, user.clinicId)
+  if (!clinic) throw new Error('Klinika topilmadi')
+  return clinic
 }
 
 // POST /auth/logout
@@ -89,12 +139,18 @@ export async function me(userId?: string): Promise<Session | null> {
 
   if (!userId) return null
 
-  const db = getDb()
-  const user = db.users.all(MAIN_CLINIC_ID).find((u) => u.id === userId)
+  const user = getDb()
+    .users.allAcrossTenants()
+    .find((u) => u.id === userId)
   if (!user) return null
 
-  const clinic = db.clinics.find(user.clinicId, user.clinicId)
-  if (!clinic) return null
+  /* To'xtatilgan apteka — sessiya tiklanmaydi, odam kirish sahifasiga qaytadi */
+  let clinic: Clinic
+  try {
+    clinic = sessionTenant(user)
+  } catch {
+    return null
+  }
 
   return delay(
     {
@@ -253,9 +309,6 @@ const MODULE_BY_PERMISSION: Partial<Record<Permission, ClinicModule>> = {
   'debts.view': 'debts',
   'debts.waive': 'debts',
   'revenue.view': 'revenue',
-  'pharmacy.view': 'pharmacy',
-  'pharmacy.sell': 'pharmacy',
-  'pharmacy.manage': 'pharmacy',
 }
 
 /**

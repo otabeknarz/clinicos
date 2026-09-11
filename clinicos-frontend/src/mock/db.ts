@@ -242,6 +242,7 @@ export interface MockDb {
   pharmacyShifts: Collection<SeedData['pharmacyShifts'][number]>
   pharmacyStaff: Collection<SeedData['pharmacyStaff'][number]>
   purchases: Collection<SeedData['purchases'][number]>
+  pharmacies: Collection<SeedData['pharmacies'][number]>
 }
 
 let instance: MockDb | null = null
@@ -298,6 +299,7 @@ export function getDb(): MockDb {
     pharmacyShifts: new Collection('pharmacyShifts', seed.pharmacyShifts, store),
     pharmacyStaff: new Collection('pharmacyStaff', seed.pharmacyStaff, store),
     purchases: new Collection('purchases', seed.purchases, store),
+    pharmacies: new Collection('pharmacies', seed.pharmacies, store),
   }
 
   instance = db

@@ -340,8 +340,6 @@ export const CLINIC_MODULES = [
   'calendar',
   'debts',
   'revenue',
-  /* Apteka — klinika ichidagi alohida biznes, ko'pchilikda yo'q */
-  'pharmacy',
 ] as const
 
 export type ClinicModule = (typeof CLINIC_MODULES)[number]

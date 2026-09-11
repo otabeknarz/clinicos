@@ -86,6 +86,22 @@ const PlatformClinicDetailPage = lazy(() =>
     default: m.PlatformClinicDetailPage,
   })),
 )
+/*
+  Tanishtiruv sahifasi alohida bo'lak: katta rasm, shriftlar va
+  uslublar faqat u ochilganda yuklanadi — kirish sahifasini
+  sekinlashtirmaydi.
+*/
+const AboutPage = lazy(() =>
+  import('@/pages/public/About').then((m) => ({ default: m.AboutPage })),
+)
+const PlatformPharmaciesPage = lazy(() =>
+  import('@/pages/platform/Pharmacies').then((m) => ({ default: m.PlatformPharmaciesPage })),
+)
+const PlatformPharmacyDetailPage = lazy(() =>
+  import('@/pages/platform/PharmacyDetail').then((m) => ({
+    default: m.PlatformPharmacyDetailPage,
+  })),
+)
 const PlatformAnalyticsPage = lazy(() =>
   import('@/pages/platform/Analytics').then((m) => ({
     default: m.PlatformAnalyticsPage,
@@ -405,6 +421,15 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* Tanishtiruv — kirmagan odam uchun ochiq, kirish panelidan ochiladi */}
+        <Route
+          path="/about"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <AboutPage />
+            </Suspense>
+          }
+        />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     )
@@ -413,6 +438,15 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Navigate to="/" replace />} />
+      {/* Kirgan odam ham havola orqali tanishtiruvni ocha oladi */}
+      <Route
+        path="/about"
+        element={
+          <Suspense fallback={<PageLoader />}>
+            <AboutPage />
+          </Suspense>
+        }
+      />
 
       <Route element={<AppLayout />}>
         <Route index element={<HomePage />} />
@@ -490,6 +524,26 @@ function AppRoutes() {
           element={
             <Guard permission="platform.view">
               <PlatformClinicDetailPage />
+            </Guard>
+          }
+        />
+        {/*
+          Aptekalar — klinikalardan ALOHIDA marshrut. `platform/clinics`
+          ostiga qo'yilmagan: apteka klinika emas.
+        */}
+        <Route
+          path="platform/pharmacies"
+          element={
+            <Guard permission="platform.view">
+              <PlatformPharmaciesPage />
+            </Guard>
+          }
+        />
+        <Route
+          path="platform/pharmacies/:id"
+          element={
+            <Guard permission="platform.view">
+              <PlatformPharmacyDetailPage />
             </Guard>
           }
         />

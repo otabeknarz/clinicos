@@ -14,6 +14,7 @@ import {
   Settings,
   MessageCircle,
   MessageSquare,
+  Pill,
   Receipt,
   ShieldCheck,
   Stethoscope,
@@ -98,6 +99,17 @@ export const NAVIGATION: NavGroup[] = [
         to: '/platform/clinics',
         labelKey: 'platform.clinics',
         icon: Building2,
+        permission: 'platform.view',
+      },
+      /*
+        APTEKALAR — klinikalardan ALOHIDA band. Apteka klinikaga
+        biriktirilmaydi va bitta ro'yxatga qo'shilmaydi: boshqa
+        biznes, boshqa ko'rsatkichlar.
+      */
+      {
+        to: '/platform/pharmacies',
+        labelKey: 'pharmacies.title',
+        icon: Pill,
         permission: 'platform.view',
       },
       {

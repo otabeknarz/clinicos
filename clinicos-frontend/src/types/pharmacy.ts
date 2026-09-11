@@ -423,3 +423,38 @@ export interface MedicineInput {
   prescriptionOnly: boolean
   sellPrice: UZS
 }
+
+/**
+ * APTEKA — platformaning ALOHIDA mijozi.
+ *
+ * Klinikaga biriktirilmaydi va klinikalar bilan qo'shilmaydi: o'z
+ * egasi, o'z xodimlari, o'z holati bor. Platforma panelida ham
+ * alohida bo'limda turadi.
+ *
+ * KLINIKA MODULI EMAS. Avval u `CLINIC_MODULES` da edi va bu ikki
+ * xato berdi: `disabledModules` o'chirilganlarni saqlagani uchun
+ * apteka HAR BIR klinikada "yoqilgan" bo'lib qoldi, tarif esa uni
+ * klinikaga sotiladigan narsa qilib ko'rsatardi.
+ *
+ * `id` — shu aptekaning MA'LUMOT KALITI. Dorilar, sotuv, smenalar
+ * va xodimlarning `clinicId` maydoniga shu yoziladi: nomi tarixiy,
+ * ma'nosi "qaysi biznesga tegishli". Ajratish shu kalit bilan
+ * ishlaydi — xuddi ikki klinika bir-birini ko'rmagani kabi.
+ */
+export interface Pharmacy {
+  id: ID
+  name: string
+  city: string
+  address: string
+  phone: string
+  /**
+   * `suspended` — apteka xodimlari tizimga kira olmaydi. Ma'lumot
+   * joyida qoladi, xuddi klinikani to'xtatgandagi kabi.
+   */
+  status: 'active' | 'suspended'
+  /** To'xtatilgan bo'lsa — sababi. Apteka rahbari kirishda ko'radi. */
+  suspendReason: string
+  /** Apteka rahbarining hisobi */
+  ownerUserId: ID | null
+  createdAt: ISODateTime
+}

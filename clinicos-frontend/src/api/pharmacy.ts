@@ -38,7 +38,7 @@ export const EXPIRY_WARN_DAYS = 90
 /** Shundan kam qolgan dori "tugab qolgan" hisoblanadi */
 export const LOW_STOCK = 10
 
-function daysUntil(date: string): number {
+export function daysUntil(date: string): number {
   const ms = new Date(date).getTime() - Date.now()
   return Math.floor(ms / (24 * 60 * 60 * 1000))
 }
