@@ -233,6 +233,15 @@ export interface MockDb {
   monthlyStats: Collection<SeedData['monthlyStats'][number] & { id: string }>
   chatGroups: Collection<SeedData['chatGroups'][number]>
   chatMessages: Collection<SeedData['chatMessages'][number]>
+  /* --- Apteka --- */
+  medicines: Collection<SeedData['medicines'][number]>
+  batches: Collection<SeedData['batches'][number]>
+  suppliers: Collection<SeedData['suppliers'][number]>
+  sales: Collection<SeedData['sales'][number]>
+  prescriptions: Collection<SeedData['prescriptions'][number]>
+  pharmacyShifts: Collection<SeedData['pharmacyShifts'][number]>
+  pharmacyStaff: Collection<SeedData['pharmacyStaff'][number]>
+  purchases: Collection<SeedData['purchases'][number]>
 }
 
 let instance: MockDb | null = null
@@ -281,6 +290,14 @@ export function getDb(): MockDb {
     ),
     chatGroups: new Collection('chatGroups', seed.chatGroups, store),
     chatMessages: new Collection('chatMessages', seed.chatMessages, store),
+    medicines: new Collection('medicines', seed.medicines, store),
+    batches: new Collection('batches', seed.batches, store),
+    suppliers: new Collection('suppliers', seed.suppliers, store),
+    sales: new Collection('sales', seed.sales, store),
+    prescriptions: new Collection('prescriptions', seed.prescriptions, store),
+    pharmacyShifts: new Collection('pharmacyShifts', seed.pharmacyShifts, store),
+    pharmacyStaff: new Collection('pharmacyStaff', seed.pharmacyStaff, store),
+    purchases: new Collection('purchases', seed.purchases, store),
   }
 
   instance = db

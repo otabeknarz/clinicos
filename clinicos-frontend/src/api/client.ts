@@ -146,6 +146,16 @@ export interface ApiContext {
   clinicId: string
   /** Rol = doctor bo'lsa shifokor id'si, aks holda null */
   scopeDoctorId: string | null
+  /**
+   * Kirgan odamning emaili — FAQAT DEMO REJIM UCHUN.
+   *
+   * Haqiqiy ishlashda kim yozganini server TOKENDAN oladi va
+   * mijozdan kelgan qiymatga umuman qaramaydi. Demoda esa
+   * server yo'q: apteka smenasi va sotuvi kimga yozilishini
+   * boshqa yo'l bilan bilib bo'lmaydi va hamma yozuv egasiz
+   * qolardi.
+   */
+  userEmail?: string
 }
 
 let context: ApiContext = { clinicId: 'clinic_1', scopeDoctorId: null }

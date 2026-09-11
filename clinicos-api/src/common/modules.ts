@@ -27,6 +27,13 @@ export const CLINIC_MODULES = [
   'calendar',
   'debts',
   'revenue',
+  /*
+    Apteka — klinika ichidagi ALOHIDA biznes. Ko'p klinikada u
+    umuman yo'q, borida esa o'z tovari, kassasi va hisoboti bor.
+    Shuning uchun u modul: yoqilmagan klinikada butun bo'lim
+    ko'rinmaydi.
+  */
+  'pharmacy',
 ] as const
 
 /*
@@ -74,6 +81,9 @@ const MODULE_BY_PERMISSION: Record<string, ClinicModule> = {
   'debts.view': 'debts',
   'debts.waive': 'debts',
   'revenue.view': 'revenue',
+  'pharmacy.view': 'pharmacy',
+  'pharmacy.sell': 'pharmacy',
+  'pharmacy.manage': 'pharmacy',
 }
 
 /** Shu ruxsatga tegishli modul o'chirilganmi */

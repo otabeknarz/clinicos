@@ -35,7 +35,30 @@ export type ID = string
  * ICHIDAGI rol EMAS: alohida panelda ishlaydi va bemor ma'lumotlarini
  * ko'rmaydi. Shuning uchun uning ruxsatlari ham alohida ro'yxatda.
  */
-export type Role = 'superadmin' | 'owner' | 'receptionist' | 'doctor'
+export type Role =
+  | 'superadmin'
+  | 'owner'
+  | 'receptionist'
+  | 'doctor'
+  /**
+   * FARMATSEVT — apteka tizimida ishlaydi.
+   *
+   * Klinika ichidagi rol EMAS. Apteka alohida biznes: o'z tovari,
+   * o'z kassasi, o'z hisoboti. Farmatsevt bemorlar bazasini,
+   * qabullarni yoki tashxislarni umuman ko'rmaydi va uning
+   * marshrutlari ham boshqa daraxtda ro'yxatga olinadi —
+   * chegara ruxsat tekshiruvida emas, TUZILISHDA.
+   */
+  | 'pharmacist'
+  /**
+   * APTEKA RAHBARI — sotmaydi, solishtiradi.
+   *
+   * `pharmacy.sell` unda ATAYLAB yo'q, xuddi klinika egasida
+   * `payments.create` yo'qligi kabi. Pulni yig'adigan odam
+   * hisobotni ham o'zi yozadigan bo'lsa, u o'zini o'zi tekshirgan
+   * bo'lardi va kassa nazoratining ma'nosi qolmasdi.
+   */
+  | 'pharmacy_owner'
 
 /**
  * Alohida ruxsatlar. Rol → ruxsatlar xaritasi `src/lib/permissions.ts`da.
@@ -90,6 +113,22 @@ export type Permission =
   | 'cashcontrol.view'
   /* --- Smena yopish (administratsiya) --- */
   | 'shift.close'
+  /* --- Apteka: klinika ichidagi alohida biznes --- */
+  | 'pharmacy.view'
+  | 'pharmacy.sell'
+  | 'pharmacy.manage'
+  | 'pharmacy.shift'
+  /**
+   * Kirim qabul qilish.
+   *
+   * `pharmacy.manage` dan ALOHIDA: tovarni qabul qilish bilan
+   * narx belgilash bir xil ish emas. Kichik aptekada ertalab
+   * kim bo'lsa o'sha qabul qiladi, narxni esa baribir rahbar
+   * qo'yadi.
+   */
+  | 'pharmacy.receive'
+  | 'pharmacy.analytics'
+  | 'pharmacy.cashcontrol'
   /* --- Platforma (super admin) --- */
   /**
    * Bu ruxsatlar KLINIKA ichidagi rollarga hech qachon berilmaydi.
@@ -301,6 +340,8 @@ export const CLINIC_MODULES = [
   'calendar',
   'debts',
   'revenue',
+  /* Apteka — klinika ichidagi alohida biznes, ko'pchilikda yo'q */
+  'pharmacy',
 ] as const
 
 export type ClinicModule = (typeof CLINIC_MODULES)[number]

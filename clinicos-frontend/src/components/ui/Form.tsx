@@ -310,12 +310,21 @@ export function SearchInput({
   placeholder,
   className,
   icon,
+  inputRef,
 }: {
   value: string
   onChange: (value: string) => void
   placeholder?: string
   className?: string
   icon?: ReactNode
+  /**
+   * Maydonga fokusni dasturdan berish uchun.
+   *
+   * Apteka kassasida kerak: sotuv tugagach qo'l klaviaturada
+   * qoladi va farmatsevt keyingi dorini darrov tera boshlaydi —
+   * sichqonchaga qo'l uzatish kassada vaqt yo'qotish demak.
+   */
+  inputRef?: React.RefObject<HTMLInputElement | null>
 }) {
   return (
     <div className={cn('relative', className)}>
@@ -325,6 +334,7 @@ export function SearchInput({
         </span>
       ) : null}
       <input
+        ref={inputRef}
         type="search"
         value={value}
         placeholder={placeholder}

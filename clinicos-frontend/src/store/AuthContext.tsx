@@ -99,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setApiContext({
       clinicId: impersonating?.tenantId ?? session.clinic.id,
       scopeDoctorId: impersonating ? null : scopedDoctorId(session),
+      userEmail: session.user.email,
     })
   }, [session, impersonating])
 
@@ -156,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setApiContext({
             clinicId: restored.clinic.id,
             scopeDoctorId: scopedDoctorId(restored),
+            userEmail: restored.user.email,
           })
           setSession(restored)
         }
@@ -180,7 +182,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError(null)
       try {
         const next = await authApi.login({ email, password })
-        setApiContext({ clinicId: next.clinic.id, scopeDoctorId: scopedDoctorId(next) })
+        setApiContext({
+          clinicId: next.clinic.id,
+          scopeDoctorId: scopedDoctorId(next),
+          userEmail: next.user.email,
+        })
         setSession(next)
         setUserId(next.user.id)
       } catch (e) {

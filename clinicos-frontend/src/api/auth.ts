@@ -27,6 +27,8 @@ export const DEMO_ACCOUNTS: { email: string; role: Role }[] = [
   { email: 'owner@shifomed.uz', role: 'owner' },
   { email: 'reception@shifomed.uz', role: 'receptionist' },
   { email: 'aziz.karimov@shifomed.uz', role: 'doctor' },
+  { email: 'apteka@clinic-os.uz', role: 'pharmacist' },
+  { email: 'apteka.rahbar@clinic-os.uz', role: 'pharmacy_owner' },
 ]
 
 /** Demo rejimda har qanday parol qabul qilinadi, lekin bo'sh bo'lmasligi kerak */
@@ -54,7 +56,12 @@ export async function login(input: LoginInput): Promise<Session> {
   const session: Session = {
     user,
     clinic,
-    permissions: allowedPermissions(user.role, user.extraPermissions, user.clinicId),
+    permissions: allowedPermissions(
+      user.role,
+      user.extraPermissions,
+      user.clinicId,
+      user.email,
+    ),
     token: null,
   }
 
@@ -93,7 +100,12 @@ export async function me(userId?: string): Promise<Session | null> {
     {
       user,
       clinic,
-      permissions: allowedPermissions(user.role, user.extraPermissions, user.clinicId),
+      permissions: allowedPermissions(
+      user.role,
+      user.extraPermissions,
+      user.clinicId,
+      user.email,
+    ),
       token: null,
     },
     60,
@@ -190,12 +202,29 @@ function allowedPermissions(
   role: Role,
   extra: Permission[] | undefined,
   clinicId: ID,
+  /** Apteka xodimining logini — kirim huquqi shunga bog'liq */
+  login?: string,
 ): Permission[] {
   const disabled = getDb()
     .tenants.allAcrossTenants()
     .find((tenant) => tenant.id === clinicId)?.disabledModules
 
-  const base = resolvePermissions(role, extra)
+  /*
+    KIRIM HUQUQI XODIM YOZUVIDAN KELADI.
+
+    Rahbar uni "Xodimlar" bo'limida har bir sotuvchiga alohida
+    yoqadi. Haqiqiy ishlashda bu `User.extraPermissions` ga
+    yoziladi va server tokenda beradi; demoda esa apteka xodimi
+    yozuvi bilan login bo'yicha bog'lanadi.
+  */
+  const fromStaff: Permission[] = login
+    ? getDb()
+        .pharmacyStaff.all(clinicId)
+        .filter((one) => one.login === login && one.canReceive && one.status === 'active')
+        .map(() => 'pharmacy.receive' as Permission)
+    : []
+
+  const base = resolvePermissions(role, [...(extra ?? []), ...fromStaff])
   if (!disabled || disabled.length === 0) return base
 
   return base.filter((permission) => {
@@ -224,6 +253,9 @@ const MODULE_BY_PERMISSION: Partial<Record<Permission, ClinicModule>> = {
   'debts.view': 'debts',
   'debts.waive': 'debts',
   'revenue.view': 'revenue',
+  'pharmacy.view': 'pharmacy',
+  'pharmacy.sell': 'pharmacy',
+  'pharmacy.manage': 'pharmacy',
 }
 
 /**

@@ -70,6 +70,18 @@ export type Permission =
   | 'chat.use'
   | 'cashcontrol.view'
   | 'shift.close'
+  /* Apteka — klinika ichidagi alohida biznes: o'z tovari, o'z
+     kassasi, o'z hisoboti. `sell` kassada ishlash uchun, `manage`
+     esa katalog, kirim va narxlar uchun.
+     IZOHDA BO'SH QATOR BO'LMASIN: `check:permissions` ro'yxatni
+     birinchi bo'sh qatorgacha o'qiydi. */
+  | 'pharmacy.view'
+  | 'pharmacy.sell'
+  | 'pharmacy.manage'
+  | 'pharmacy.shift'
+  | 'pharmacy.receive'
+  | 'pharmacy.analytics'
+  | 'pharmacy.cashcontrol'
   | 'platform.view'
   | 'platform.manage'
   | 'platform.impersonate'
@@ -137,6 +149,13 @@ export const OWNER_PERMISSIONS: readonly Permission[] = [
   'settings.view',
   'settings.manage',
   'users.manage',
+  /*
+    APTEKA RUXSATLARI BU YERDA YO'Q va bu ataylab.
+
+    Apteka alohida tizim, unga alohida hisob bilan kiriladi
+    (`PHARMACIST_PERMISSIONS`). Klinika egasi aptekani ham
+    yuritsa, unga farmatsevt hisobi ochiladi.
+  */
 ] as const
 
 export const RECEPTIONIST_PERMISSIONS: readonly Permission[] = [
@@ -168,6 +187,44 @@ export const RECEPTIONIST_PERMISSIONS: readonly Permission[] = [
     tursa, farqni yopish yo'lini topib oladi.
   */
   'shift.close',
+  'settings.view',
+] as const
+
+/**
+ * FARMATSEVT — faqat apteka.
+ *
+ * Bemorlar, qabullar, tashxislar va klinika moliyasi UMUMAN yo'q:
+ * u boshqa biznesda ishlaydi. `settings.view` — o'z profili uchun.
+ */
+export const PHARMACIST_PERMISSIONS: readonly Permission[] = [
+  'pharmacy.view',
+  'pharmacy.sell',
+  /* Kun oxirida kassani sanab topshiradi */
+  'pharmacy.shift',
+  /*
+    `pharmacy.manage`, `pharmacy.analytics` va
+    `pharmacy.cashcontrol` ATAYLAB YO'Q. Narxni qo'yadigan odam
+    pulni ham yig'adigan bo'lsa, farqni o'ziga yozib olish yo'li
+    ochilardi; solishtiruv hisoboti esa uning O'Z ishining
+    tekshiruvi — uni ko'rib turgan odam farqni yopishni o'rganib
+    oladi. Klinikada registrator ham xuddi shu sababdan
+    `cashcontrol.view` ni ko'rmaydi.
+  */
+  'settings.view',
+] as const
+
+/**
+ * APTEKA RAHBARI — sotmaydi, solishtiradi.
+ *
+ * `pharmacy.sell` unda yo'q, xuddi klinika egasida
+ * `payments.create` yo'qligi kabi.
+ */
+export const PHARMACY_OWNER_PERMISSIONS: readonly Permission[] = [
+  'pharmacy.view',
+  'pharmacy.manage',
+  'pharmacy.receive',
+  'pharmacy.analytics',
+  'pharmacy.cashcontrol',
   'settings.view',
 ] as const
 

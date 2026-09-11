@@ -23,6 +23,17 @@ import {
 } from './names'
 import { generateShiftClosures, generateWard } from './seedWard'
 import { generateFeedback } from './seedFeedback'
+import { generatePharmacy } from './seedPharmacy'
+import type {
+  Batch,
+  Medicine,
+  Prescription,
+  PharmacyShift,
+  PharmacyStaff,
+  Purchase,
+  Sale,
+  Supplier,
+} from '@/types/pharmacy'
 import { generateChat } from './seedChat'
 import { generateMonthlyStats } from './seedMonthly'
 import {
@@ -118,6 +129,15 @@ export interface SeedData {
   /** Kechirilgan qarzlar — boshida bo'sh, egasi o'zi qo'shadi */
   debtWaivers: DebtWaiver[]
   feedback: Feedback[]
+  /* --- Apteka: alohida biznes, shakllar `types/pharmacy.ts` da --- */
+  medicines: Medicine[]
+  batches: Batch[]
+  suppliers: Supplier[]
+  sales: Sale[]
+  prescriptions: Prescription[]
+  pharmacyShifts: PharmacyShift[]
+  pharmacyStaff: PharmacyStaff[]
+  purchases: Purchase[]
   monthlyStats: MonthlyStat[]
   chatGroups: ChatGroup[]
   chatMessages: ChatMessage[]
@@ -438,6 +458,64 @@ export function generateSeed(seed = 20260901): SeedData {
       isActive: true,
       lastLoginAt: iso(addMinutes(now, -12)),
       createdAt: iso(addDays(today, -320)),
+      doctorId: null,
+    },
+    {
+      /*
+        FARMATSEVT — apteka tizimida ishlaydi.
+
+        Klinika xodimi bilan bir jadvalda turadi (`users`), lekin
+        boshqa daraxtga kiradi: kirgach unga faqat apteka
+        ekranlari ochiladi.
+      */
+      id: 'usr_pharmacist_1',
+      clinicId: MAIN_CLINIC_ID,
+      fullName: 'Dilshod Raximov',
+      email: 'apteka@clinic-os.uz',
+      phone: makePhone(r),
+      role: 'pharmacist',
+      avatarUrl: null,
+      extraPermissions: [],
+      isActive: true,
+      lastLoginAt: iso(addMinutes(now, -20)),
+      createdAt: iso(addDays(today, -200)),
+      doctorId: null,
+    },
+    {
+      /*
+        IKKINCHI FARMATSEVT — kechki smena.
+
+        Aptekada bitta sotuvchi bo'lmaydi: biri ertalab, biri
+        kechqurun. Demoda ham ikkitasi turadi, aks holda "smena
+        kimda" degan savolning ma'nosi qolmasdi — javob doim
+        bitta odam bo'lardi.
+      */
+      id: 'usr_pharmacist_2',
+      clinicId: MAIN_CLINIC_ID,
+      fullName: 'Ozoda Qodirova',
+      email: 'apteka2@clinic-os.uz',
+      phone: makePhone(r),
+      role: 'pharmacist',
+      avatarUrl: null,
+      extraPermissions: [],
+      isActive: true,
+      lastLoginAt: iso(addMinutes(now, -35)),
+      createdAt: iso(addDays(today, -120)),
+      doctorId: null,
+    },
+    {
+      /* Apteka rahbari — sotmaydi, solishtiradi */
+      id: 'usr_pharmacy_owner_1',
+      clinicId: MAIN_CLINIC_ID,
+      fullName: 'Gulnora Yusupova',
+      email: 'apteka.rahbar@clinic-os.uz',
+      phone: makePhone(r),
+      role: 'pharmacy_owner',
+      avatarUrl: null,
+      extraPermissions: [],
+      isActive: true,
+      lastLoginAt: iso(addMinutes(now, -60)),
+      createdAt: iso(addDays(today, -200)),
       doctorId: null,
     },
     {
@@ -847,6 +925,24 @@ export function generateSeed(seed = 20260901): SeedData {
 
   const feedback = generateFeedback(r, MAIN_CLINIC_ID, mainPatients, doctors, appointments)
 
+  /* --- Apteka --- */
+
+  /*
+    Sotuvchi — AYNAN farmatsevt. Ilgari bu yerda `users[1]`
+    turardi va kassa nazoratida klinika egasining ismi chiqib
+    qolardi: rahbar o'zi sotgandek ko'rinardi, ya'ni demo
+    hisobotning butun mag'zi buzilgan edi.
+  */
+  const seller = users.find((u) => u.role === 'pharmacist') ?? users[1]
+
+  const pharmacy = generatePharmacy(
+    r,
+    MAIN_CLINIC_ID,
+    mainPatients,
+    doctors,
+    seller.fullName,
+  )
+
   /* --- Oylik yig'ma tarix (prognoz uchun) --- */
 
   // Joriy oydagi haqiqiy tushum — yig'ma tarix shunga moslashtiriladi
@@ -895,6 +991,14 @@ export function generateSeed(seed = 20260901): SeedData {
     penaltyWaivers: [],
     debtWaivers: [],
     feedback,
+    medicines: pharmacy.medicines,
+    batches: pharmacy.batches,
+    suppliers: pharmacy.suppliers,
+    sales: pharmacy.sales,
+    prescriptions: pharmacy.prescriptions,
+    pharmacyShifts: pharmacy.shifts,
+    pharmacyStaff: pharmacy.staff,
+    purchases: pharmacy.purchases,
     monthlyStats,
     chatGroups: chat.groups,
     chatMessages: chat.messages,

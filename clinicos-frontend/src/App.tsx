@@ -16,6 +16,7 @@ import type { Permission } from '@/types/models'
 import { DashboardPage } from '@/pages/Dashboard'
 import { LoginPage } from '@/pages/Login'
 import { CabinetDebtPage } from '@/pages/cabinet/CabinetDebt'
+import { PharmacyLayout } from '@/components/layout/PharmacyLayout'
 import { CabinetFeedbackPage } from '@/pages/cabinet/CabinetFeedback'
 import { CabinetGatePage } from '@/pages/cabinet/CabinetGate'
 import { CabinetHomePage } from '@/pages/cabinet/CabinetHome'
@@ -110,6 +111,44 @@ const MyProfilePage = lazy(() =>
 )
 const SchedulePage = lazy(() =>
   import('@/pages/Schedule').then((m) => ({ default: m.SchedulePage })),
+)
+
+const PharmacyPosPage = lazy(() =>
+  import('@/pages/pharmacy/PharmacyPos').then((m) => ({ default: m.PharmacyPosPage })),
+)
+const PharmacyMedicinesPage = lazy(() =>
+  import('@/pages/pharmacy/PharmacyMedicines').then((m) => ({
+    default: m.PharmacyMedicinesPage,
+  })),
+)
+const PharmacyStockPage = lazy(() =>
+  import('@/pages/pharmacy/PharmacyStock').then((m) => ({ default: m.PharmacyStockPage })),
+)
+const PharmacyPrescriptionsPage = lazy(() =>
+  import('@/pages/pharmacy/PharmacyPrescriptions').then((m) => ({
+    default: m.PharmacyPrescriptionsPage,
+  })),
+)
+const PharmacyShiftPage = lazy(() =>
+  import('@/pages/pharmacy/PharmacyShift').then((m) => ({ default: m.PharmacyShiftPage })),
+)
+const PharmacyAnalyticsPage = lazy(() =>
+  import('@/pages/pharmacy/PharmacyAnalytics').then((m) => ({
+    default: m.PharmacyAnalyticsPage,
+  })),
+)
+const PharmacyPurchasesPage = lazy(() =>
+  import('@/pages/pharmacy/PharmacyPurchases').then((m) => ({
+    default: m.PharmacyPurchasesPage,
+  })),
+)
+const PharmacyStaffPage = lazy(() =>
+  import('@/pages/pharmacy/PharmacyStaff').then((m) => ({ default: m.PharmacyStaffPage })),
+)
+const PharmacyCashControlPage = lazy(() =>
+  import('@/pages/pharmacy/PharmacyCashControl').then((m) => ({
+    default: m.PharmacyCashControlPage,
+  })),
 )
 
 /* Telegram xabaridagi "Tashrif yozish" tugmasi shu manzilga keladi */
@@ -237,6 +276,104 @@ function AppRoutes() {
     chegara marshrut qo'riqchisida emas, TUZILISHDA — unutib
     qo'yiladigan tekshiruv qolmaydi.
   */
+  /*
+    APTEKA — XODIM MARSHRUTLARIDAN OLDIN VA ULARDAN TASHQARIDA.
+
+    Farmatsevt kirganda klinika sahifalari umuman ro'yxatga
+    olinmaydi: bemorlar, qabullar, tashxislar, moliya — hech
+    biri. Chegara ruxsat qo'riqchisida emas, TUZILISHDA, chunki
+    qo'riqchida bitta unutilgan joy butun bemorlar bazasini
+    ochib qo'yardi. Bemor kabineti ham xuddi shunday ajratilgan.
+  */
+  if (session?.user.role === 'pharmacist' || session?.user.role === 'pharmacy_owner') {
+    /*
+      Rahbar sotmaydi — uning bosh sahifasi kassa emas, ANALITIKA.
+      Sotuvchiniki esa kassa: u kun bo'yi shu ekranda turadi.
+    */
+    const home = session.user.role === 'pharmacy_owner' ? '/pharmacy/analytics' : '/pharmacy'
+
+    return (
+      <Routes>
+        <Route path="/login" element={<Navigate to={home} replace />} />
+        <Route element={<PharmacyLayout />}>
+          <Route
+            path="/pharmacy"
+            element={
+              <Guard permission="pharmacy.sell">
+                <PharmacyPosPage />
+              </Guard>
+            }
+          />
+          <Route
+            path="/pharmacy/medicines"
+            element={
+              <Guard permission="pharmacy.view">
+                <PharmacyMedicinesPage />
+              </Guard>
+            }
+          />
+          <Route
+            path="/pharmacy/stock"
+            element={
+              <Guard permission="pharmacy.view">
+                <PharmacyStockPage />
+              </Guard>
+            }
+          />
+          <Route
+            path="/pharmacy/prescriptions"
+            element={
+              <Guard permission="pharmacy.view">
+                <PharmacyPrescriptionsPage />
+              </Guard>
+            }
+          />
+          <Route
+            path="/pharmacy/shift"
+            element={
+              <Guard permission="pharmacy.shift">
+                <PharmacyShiftPage />
+              </Guard>
+            }
+          />
+          <Route
+            path="/pharmacy/analytics"
+            element={
+              <Guard permission="pharmacy.analytics">
+                <PharmacyAnalyticsPage />
+              </Guard>
+            }
+          />
+          <Route
+            path="/pharmacy/purchases"
+            element={
+              <Guard permission="pharmacy.receive">
+                <PharmacyPurchasesPage />
+              </Guard>
+            }
+          />
+          <Route
+            path="/pharmacy/staff"
+            element={
+              <Guard permission="pharmacy.manage">
+                <PharmacyStaffPage />
+              </Guard>
+            }
+          />
+          <Route
+            path="/pharmacy/cash-control"
+            element={
+              <Guard permission="pharmacy.cashcontrol">
+                <PharmacyCashControlPage />
+              </Guard>
+            }
+          />
+        </Route>
+        <Route path="*" element={<Navigate to={home} replace />} />
+      </Routes>
+    )
+  }
+
   if (patient.profile) {
     return (
       <Routes>

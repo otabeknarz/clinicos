@@ -82,6 +82,15 @@ const OWNER_PERMISSIONS: Permission[] = [
   'settings.view',
   'settings.manage',
   'users.manage',
+  /*
+    APTEKA RUXSATLARI BU YERDA YO'Q va bu ataylab.
+
+    Apteka alohida tizim, unga alohida hisob bilan kiriladi.
+    Klinika egasi aptekani ham yuritsa, unga farmatsevt hisobi
+    ochiladi — bitta hisobga ikkala tizimni tiqib qo'ysak,
+    kirgan odam qaysi biznesda ekanini bilmay qolardi va
+    ekranlar aralashib ketardi.
+  */
 ]
 
 /**
@@ -139,11 +148,55 @@ const DOCTOR_PERMISSIONS: Permission[] = [
   'settings.view',
 ]
 
+/**
+ * FARMATSEVT — faqat apteka.
+ *
+ * Bemorlar, qabullar, tashxislar va klinika moliyasi UMUMAN yo'q:
+ * u boshqa biznesda ishlaydi. `settings.view` — o'z profili uchun
+ * (ism, telefon, parol), boshqa hech narsa uchun emas.
+ */
+const PHARMACIST_PERMISSIONS: Permission[] = [
+  'pharmacy.view',
+  'pharmacy.sell',
+  // Kun oxirida kassani sanab topshiradi
+  'pharmacy.shift',
+  /*
+    `pharmacy.manage` ATAYLAB YO'Q: narxni qo'yadigan odam pulni
+    ham yig'adigan bo'lsa, farqni o'ziga yozib olish yo'li
+    ochilardi. Klinikada registrator ham narx qo'ya olmaydi.
+
+    `pharmacy.analytics` va `pharmacy.cashcontrol` ham yo'q:
+    solishtiruv hisoboti — bu uning O'Z ishining tekshiruvi.
+    Tekshiruv qanday chiqayotganini ko'rib turgan odam farqni
+    yopish yo'lini topib oladi.
+  */
+  'settings.view',
+]
+
+/**
+ * APTEKA RAHBARI — sotmaydi, solishtiradi.
+ *
+ * Katalog, narx, kirim va hisobot uning qo'lida. `pharmacy.sell`
+ * esa yo'q — klinika egasida `payments.create` yo'qligi bilan bir
+ * xil sabab: ikkala tomonni ham bitta odam yozadigan bo'lsa,
+ * solishtiruvning ma'nosi qolmaydi.
+ */
+const PHARMACY_OWNER_PERMISSIONS: Permission[] = [
+  'pharmacy.view',
+  'pharmacy.manage',
+  'pharmacy.receive',
+  'pharmacy.analytics',
+  'pharmacy.cashcontrol',
+  'settings.view',
+]
+
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   superadmin: SUPERADMIN_PERMISSIONS,
   owner: OWNER_PERMISSIONS,
   receptionist: RECEPTIONIST_PERMISSIONS,
   doctor: DOCTOR_PERMISSIONS,
+  pharmacist: PHARMACIST_PERMISSIONS,
+  pharmacy_owner: PHARMACY_OWNER_PERMISSIONS,
 }
 
 /** Rol standarti + qo'shimcha berilgan ruxsatlar */
