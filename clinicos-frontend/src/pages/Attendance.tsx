@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Clock,
   Moon,
+  ScanFace,
   ShieldAlert,
   ShieldQuestion,
   UserX,
@@ -17,8 +18,9 @@ import { LateArrivalModal } from '@/components/modals/LateArrivalModal'
 import { AttendanceFlagsBanner } from '@/components/staff/AttendanceFlagsBanner'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Avatar } from '@/components/ui/Avatar'
-import { Button, IconButton } from '@/components/ui/Button'
+import { Button, ButtonLink, IconButton } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Modal } from '@/components/ui/Modal'
 import { Tabs } from '@/components/ui/Tabs'
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/ui/States'
 import { AttendanceTab } from '@/pages/staff/AttendanceTab'
@@ -70,6 +72,8 @@ export function AttendancePage() {
   const [version, setVersion] = useState(0)
   const [lateFor, setLateFor] = useState<DailyAttendanceRow | null>(null)
   const [excusedFor, setExcusedFor] = useState<DailyAttendanceRow | null>(null)
+  /* Kamera belgilagan yozuvning surati — bosilganda kattalashadi */
+  const [photoFor, setPhotoFor] = useState<DailyAttendanceRow | null>(null)
 
   const dateKey = toISODate(day)
   const canManage = can('attendance.manage')
@@ -246,18 +250,36 @@ export function AttendancePage() {
 
               <span className="text-footnote font-medium text-label">{dateLong(day)}</span>
 
-              {canManage && !isFuture && (data?.counts.unmarked ?? 0) > 0 ? (
-                <Button
-                  variant="tinted"
-                  size="sm"
-                  className="ml-auto"
-                  icon={<CheckCheck size={15} />}
-                  loading={busy === 'all'}
-                  onClick={markAllPresent}
-                >
-                  {t('attendance.markAllPresent')}
-                </Button>
-              ) : null}
+              <div className="ml-auto flex items-center gap-2">
+                {canManage && !isFuture && (data?.counts.unmarked ?? 0) > 0 ? (
+                  <Button
+                    variant="tinted"
+                    size="sm"
+                    icon={<CheckCheck size={15} />}
+                    loading={busy === 'all'}
+                    onClick={markAllPresent}
+                  >
+                    {t('attendance.markAllPresent')}
+                  </Button>
+                ) : null}
+
+                {/*
+                  KAMERA REJIMI — registraturaning planshetida ochib
+                  qo'yiladi. Xodim kelib qaraydi, yozuv o'zi tushadi:
+                  kelish vaqtini hech kim qo'lda yozmaydi, ya'ni
+                  "keyinroq to'g'rilab qo'yish" yo'li yopiladi.
+                */}
+                {canManage ? (
+                  <ButtonLink
+                    to="/attendance/face"
+                    variant="gray"
+                    size="sm"
+                    icon={<ScanFace size={15} />}
+                  >
+                    {t('face.open')}
+                  </ButtonLink>
+                ) : null}
+              </div>
             </div>
 
             {error ? (
@@ -289,6 +311,26 @@ export function AttendancePage() {
                             {row.positionTitle} · {row.shiftStart}—{row.shiftEnd}
                           </span>
                         </span>
+
+                        {/*
+                          KELISH SURATI — kamera belgilaganda olinadi.
+                          Egasiga aynan shu kerak: yozuvning ostida
+                          odam turganini ko'rsatadigan yagona narsa.
+                        */}
+                        {row.photoUrl ? (
+                          <button
+                            type="button"
+                            className="shrink-0 overflow-hidden rounded-full ring-1 ring-separator transition-transform hover:scale-110"
+                            title={t('face.photoHint')}
+                            onClick={() => setPhotoFor(row)}
+                          >
+                            <img
+                              src={row.photoUrl}
+                              alt={row.fullName}
+                              className="h-7 w-7 object-cover"
+                            />
+                          </button>
+                        ) : null}
 
                         {row.flagged ? (
                           <span
@@ -342,6 +384,26 @@ export function AttendancePage() {
           </>
         )}
       </Card>
+
+      <Modal
+        open={photoFor !== null}
+        onClose={() => setPhotoFor(null)}
+        size="sm"
+        title={photoFor?.fullName ?? ''}
+        description={
+          photoFor?.arrivedAt
+            ? t('attendance.arrived', { time: photoFor.arrivedAt })
+            : t('face.photoHint')
+        }
+      >
+        {photoFor?.photoUrl ? (
+          <img
+            src={photoFor.photoUrl}
+            alt={photoFor.fullName}
+            className="mb-2 w-full rounded-[16px] object-cover"
+          />
+        ) : null}
+      </Modal>
 
       <LateArrivalModal
         open={lateFor !== null}

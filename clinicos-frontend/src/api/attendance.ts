@@ -260,6 +260,8 @@ export async function getDailyAttendance(date: string): Promise<DailyAttendance>
         lateMinutes: record?.lateMinutes ?? 0,
         note: record?.note ?? '',
         flagged: record?.flagged ?? false,
+        photoUrl: record?.photoUrl ?? null,
+        selfMarked: record?.selfMarked ?? false,
       }
     })
     // Belgilanmaganlar tepada — aynan ular ish talab qiladi
@@ -360,6 +362,8 @@ export async function markAttendance(input: AttendanceInput): Promise<Attendance
     checkInAt: null,
     checkOutAt: null,
     workedMinutes: 0,
+    photoUrl: null,
+    selfMarked: false,
     createdAt: now.toISOString(),
     ...patch,
   }

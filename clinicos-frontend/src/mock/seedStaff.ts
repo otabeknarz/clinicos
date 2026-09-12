@@ -434,6 +434,8 @@ export function generateAttendance(
         markedAt,
         flagged,
         flagReason: flagged ? 'backdated' : '',
+        photoUrl: null,
+        selfMarked: false,
         createdAt: day.toISOString(),
       })
     }

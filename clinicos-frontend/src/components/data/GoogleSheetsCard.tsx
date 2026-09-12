@@ -96,7 +96,16 @@ export function GoogleSheetsCard({
   return (
     <Card className="mt-5">
       <CardHeader
-        title={t('google.title')}
+        title={
+          <span className="flex flex-wrap items-center gap-2">
+            {t('google.title')}
+            {info && !info.configured ? (
+              <span className="rounded-full bg-warn-soft px-2.5 py-0.5 text-caption font-semibold text-warn">
+                {t('google.soon')}
+              </span>
+            ) : null}
+          </span>
+        }
         subtitle={t('google.hint')}
         action={
           info?.connected ? (
@@ -107,11 +116,18 @@ export function GoogleSheetsCard({
         }
       />
 
-      {/* --- Serverda sozlanmagan --- */}
+      {/*
+        KALITLAR HALI YO'Q.
+
+        Bo'lim ataylab ko'rinib turadi — nima tayyorlanayotgani
+        bilinsin. Tugma esa bosilmaydi: Google tomonda kalit
+        yaratilmaguncha u baribir xato qaytarardi.
+      */}
       {info && !info.configured ? (
-        <p className="mt-4 rounded-[14px] bg-sunken px-4 py-3 text-footnote text-label-secondary">
-          {t('google.notConfigured')}
-        </p>
+        <div className="mt-4">
+          <Button disabled>{t('google.connect')}</Button>
+          <p className="mt-2 text-caption text-label-tertiary">{t('google.soonHint')}</p>
+        </div>
       ) : null}
 
       {/* --- Ulanmagan --- */}

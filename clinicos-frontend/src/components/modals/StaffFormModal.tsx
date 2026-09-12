@@ -75,6 +75,16 @@ export function StaffFormModal({
   const [hiredAt, setHiredAt] = useState('')
   const [status, setStatus] = useState<StaffStatus>('active')
 
+  /*
+    KLINIKA EGASINING QATORI.
+
+    "Xodimlar" bo'limi boshqalarni boshqarish uchun: egani faqat
+    platforma admini cheklaydi. Shu sababli uning kirishi ham,
+    "ishdan bo'shadi" holati ham bu formada yopiq — aks holda ega
+    bir bosishda o'z klinikasidan chiqib qolardi.
+  */
+  const ownerRow = staff?.role === 'owner' || staff?.role === 'superadmin'
+
   const [hasAccess, setHasAccess] = useState(false)
   const [role, setRole] = useState<Role>('receptionist')
   /* Rolga kirmaydigan, egasi alohida beradigan ruxsatlar */
@@ -529,13 +539,25 @@ export function StaffFormModal({
               options={[
                 { value: 'active', label: t('staff.status.active') },
                 { value: 'on_leave', label: t('staff.status.on_leave') },
-                { value: 'fired', label: t('staff.status.fired') },
+                /*
+                  EGANI "ISHDAN BO'SHATIB" BO'LMAYDI. Bu holat
+                  kirishni ham yopadi — ega o'zini bo'shatsa, o'z
+                  klinikasidan chiqib qolardi. Server ham rad etadi.
+                */
+                ...(ownerRow
+                  ? []
+                  : [{ value: 'fired', label: t('staff.status.fired') }]),
               ]}
             />
           </div>
         </section>
 
         {/* ============ Tizimga kirish ============ */}
+        {ownerRow ? (
+          <p className="rounded-[14px] bg-sunken p-4 text-footnote text-label-secondary">
+            {t('staff.ownerLocked')}
+          </p>
+        ) : (
         <section
           className={cn(
             'rounded-[14px] p-4 transition-colors duration-200',
@@ -691,6 +713,7 @@ export function StaffFormModal({
             </div>
           ) : null}
         </section>
+        )}
 
         <TextArea
           label={t('common.notes')}

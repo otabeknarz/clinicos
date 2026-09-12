@@ -52,6 +52,7 @@ export const TENANT_MODELS = new Set<string>([
   'ServiceLoyaltyTier',
   'ShiftClosure',
   'Staff',
+  'StaffFace',
   'Subscription',
   'Supplier',
   'User',

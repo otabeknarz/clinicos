@@ -357,7 +357,7 @@ export class StaffService {
         shiftEnd: true,
         hiredAt: true,
         hasSystemAccess: true,
-        user: { select: { id: true, email: true } },
+        user: { select: { id: true, email: true, role: true } },
       },
     })
     if (!current) throw new NotFoundException('Xodim topilmadi')
@@ -394,6 +394,36 @@ export class StaffService {
     */
     const fired = (dto.status ?? toApi(current.status)) === 'fired'
     const wantsAccess = fired ? false : (dto.hasSystemAccess ?? current.hasSystemAccess)
+
+    /*
+      EGA O'ZINI TIZIMDAN CHIQARIB YUBORA OLMAYDI.
+
+      Tahrirlashda ma'lumotni o'zgartirish mumkin, lekin KIRISHGA
+      tegadigan uchta narsa — "ishdan bo'shadi", "tizimga kirish"
+      va rol — o'z yozuvida va boshqa ega yozuvida yopiq. Aks
+      holda o'chirish tugmasini berkitishning ma'nosi qolmasdi:
+      xuddi shu natijaga tahrirlash orqali yetib borilardi.
+    */
+    const { userId: actorId } = this.ctx.require()
+    const protectedRow =
+      (current.userId !== null && current.userId === actorId) ||
+      current.user?.role === 'OWNER' ||
+      current.user?.role === 'SUPERADMIN'
+
+    if (protectedRow) {
+      const touchesAccess =
+        fired ||
+        wantsAccess !== current.hasSystemAccess ||
+        (dto.role !== undefined && dto.role !== toApi(current.user?.role ?? 'OWNER'))
+
+      if (touchesAccess) {
+        throw new ForbiddenException(
+          current.userId === actorId
+            ? 'O‘z kirishingizni bu yerdan yopib bo‘lmaydi'
+            : 'Klinika egasining kirishini faqat platforma admini o‘zgartiradi',
+        )
+      }
+    }
     const login = dto.login?.trim().toLowerCase() || current.user?.email || ''
 
     if (wantsAccess && !current.user && (!login || !dto.password || !dto.role)) {
@@ -451,6 +481,7 @@ export class StaffService {
    */
   async remove(id: string) {
     await this.assertExists(id)
+    await this.assertNotProtected(id)
 
     const staff = await this.db.staff.findFirst({
       where: { id },
@@ -493,6 +524,41 @@ export class StaffService {
     }
 
     return { archived: false }
+  }
+
+  /**
+   * O'ZINI O'CHIRIB QO'YISHNING OLDINI OLISH.
+   *
+   * "Xodimlar" bo'limi BOSHQALARNI boshqarish uchun. Egasi o'z
+   * qatorini o'chirib yuborsa, kirishi ham yopilardi
+   * (`revokeAccess` har ikki yo'lda ham chaqiriladi) va u o'z
+   * klinikasiga umuman kira olmay qolardi — buni faqat platforma
+   * admini ortga qaytara olardi. Bir marta bosilgan tugma
+   * mijozni tizimdan chiqarib tashlashi mumkin bo'lmasligi kerak.
+   *
+   * Shuning uchun ikki yozuv himoyalangan: O'ZINIKI va boshqa
+   * EGANIKI. Egani faqat platforma paneli cheklaydi — u klinikaning
+   * o'z xodimi emas, mijozning o'zi.
+   */
+  private async assertNotProtected(id: string) {
+    const { userId } = this.ctx.require()
+
+    const staff = await this.db.staff.findFirst({
+      where: { id },
+      select: { userId: true, user: { select: { role: true } } },
+    })
+    if (!staff) throw new NotFoundException('Xodim topilmadi')
+
+    if (staff.userId && staff.userId === userId) {
+      throw new ForbiddenException(
+        'O‘z yozuvingizni bu yerdan o‘zgartirib bo‘lmaydi — profilingiz Sozlamalarda',
+      )
+    }
+    if (staff.user && (staff.user.role === 'OWNER' || staff.user.role === 'SUPERADMIN')) {
+      throw new ForbiddenException(
+        'Klinika egasining yozuvini faqat platforma admini o‘zgartiradi',
+      )
+    }
   }
 
   /**
@@ -549,6 +615,8 @@ export class StaffService {
    * va bo'lishi ham kerak emas.
    */
   async resetPassword(id: string, dto: ResetPasswordDto) {
+    await this.assertNotProtected(id)
+
     const staff = await this.db.staff.findFirst({
       where: { id },
       select: { id: true, userId: true },

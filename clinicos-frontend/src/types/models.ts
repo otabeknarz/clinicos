@@ -1711,6 +1711,17 @@ export interface Attendance {
   flagged: boolean
   flagReason: string
 
+  /* --- Yuz orqali belgilanganda --- */
+  /**
+   * Kamera oldida olingan surat (qisqa muddatli imzolangan havola).
+   *
+   * Xodim O'ZI belgilaganda egasi uchun yagona dalil shu: yuz izi
+   * orqaga qaytarilmaydi, surat esa kim kelganini ko'rsatadi.
+   */
+  photoUrl: string | null
+  /** Xodim o'zi belgiladimi — yo'qsa kimdir qo'lda yozgan */
+  selfMarked: boolean
+
   createdAt: ISODateTime
 }
 
@@ -1752,6 +1763,10 @@ export interface DailyAttendanceRow {
   note: string
   /** Kelish vaqti shubhali yozilgan */
   flagged: boolean
+  /** Kamera oldida olingan surat */
+  photoUrl: string | null
+  /** Xodim o'zi belgiladimi */
+  selfMarked: boolean
 }
 
 export interface DailyAttendance {

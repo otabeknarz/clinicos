@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**190 ta endpoint.**
+**212 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -3556,6 +3556,374 @@ bo'lib qo'shiladi.
 
 ```ts
 waiveDebt(input: WaiveDebtInput): Promise<DebtWaiver>
+```
+
+## exports
+
+`src/api/exports.ts`
+
+> EKSPORT — Excel va Google Sheets.
+> 
+> Fayl SERVERDA yig'iladi: ekranda 20 ta qator ko'rinadi, Excel'da
+> ishlaydigan odam esa hammasini kutadi. Demo rejimda esa fayl mock
+> bazadan yig'iladi (`mock/exports.ts`).
+> 
+> Google Sheets havolasi — `=IMPORTDATA("...")` uchun: jadval o'zi
+> yangilanib turadi. Token faqat yaratilganda ko'rinadi, keyin
+> serverda xesh bo'lib qoladi.
+
+### `GET /export/datasets`
+
+Server ruxsat bergan bo'limlar
+
+```ts
+listExportDatasets(): Promise<{ key: string; sheet: boolean }[]>
+```
+
+### `GET /export/:dataset`
+
+Faylni yuklab olish.
+
+Serverdan kelgan faylning NOMI ham serverniki: u bo'lim va sanadan
+yasaladi, brauzerda qayta o'ylab topilmaydi.
+
+```ts
+downloadExport(dataset: string, range: ExportRange = {}): Promise<void>
+```
+
+### `GET /export/links`
+
+Faylni yuklab olish.
+
+Serverdan kelgan faylning NOMI ham serverniki: u bo'lim va sanadan
+yasaladi, brauzerda qayta o'ylab topilmaydi.
+
+// GET /export/:dataset
+export async function downloadExport(dataset: string, range: ExportRange = {}): Promise<void> {
+if (!USE_MOCK) {
+const stamp = new Date().toISOString().slice(0, 10)
+const file = await requestFile(
+`/export/${dataset}`,
+{ from: range.from, to: range.to },
+`${dataset}-${stamp}.csv`,
+)
+downloadCsvText(file.filename, file.text)
+return
+}
+
+const { headers, rows } = mockExport(dataset)
+await delay(null, 220)
+downloadCsv(`${dataset}-demo.csv`, [headers, ...rows])
+}
+
+------------------------------------------------------------------
+Google Sheets havolalari
+------------------------------------------------------------------
+
+```ts
+listExportLinks(): Promise<ExportLinkInfo[]>
+```
+
+### `POST /export/links`
+
+```ts
+createExportLink(input: { dataset: string days?: number }): Promise<ExportLinkCreated>
+```
+
+### `DELETE /export/links/:id`
+
+```ts
+revokeExportLink(id: string): Promise<void>
+```
+
+## face
+
+`src/api/face.ts`
+
+> YUZ BO'YICHA DAVOMAT.
+> 
+> Brauzer yuzni 128 ta songa aylantiradi va faqat shu sonlarni
+> yuboradi — rasm hech qayerga ketmaydi. Solishtirish serverda:
+> butun jamoaning biometrik ma'lumoti har bir planshetga
+> tushmasligi kerak.
+> 
+> Demo rejimda solishtirish shu yerda bo'ladi (server yo'q), izlar
+> esa sahifa ochiq turganda xotirada yashaydi.
+
+### `GET /attendance/face`
+
+```ts
+listEnrolledFaces(): Promise<EnrolledFace[]>
+```
+
+### `POST /attendance/face`
+
+```ts
+enrollFace(input: { staffId: ID fullName: string descriptors: number[][] }): Promise<void>
+```
+
+### `DELETE /attendance/face/:staffId`
+
+```ts
+deleteFace(staffId: ID): Promise<void>
+```
+
+### `POST /attendance/face/check-in`
+
+```ts
+faceCheckIn(descriptor: number[], /** Kamera kadri — yozuvning dalili bo'lib saqlanadi */ photo?: string | null): Promise<FaceCheckInResult>
+```
+
+## google
+
+`src/api/google.ts`
+
+> GOOGLE SHEETS INTEGRATSIYASI.
+> 
+> Klinika o'z Google hisobini ulaydi, tizim esa uning Drive'ida
+> jadval yaratib, ma'lumotni to'ldiradi. Har safar yuborilganda
+> o'sha jadval yangilanadi — yangisi yaratilmaydi.
+> 
+> Demo rejimda ulanmaydi: Google haqiqiy hisob va server kalitlarini
+> talab qiladi. Interfeys buni ochiq aytadi.
+
+### `GET /integrations/google`
+
+```ts
+googleStatus(): Promise<GoogleStatus>
+```
+
+### `POST /integrations/google/connect`
+
+```ts
+googleConnectUrl(): Promise<{ url: string }>
+```
+
+### `DELETE /integrations/google`
+
+```ts
+googleDisconnect(): Promise<void>
+```
+
+### `GET /integrations/google/sheets`
+
+```ts
+listGoogleSheets(): Promise<GoogleSheetInfo[]>
+```
+
+### `POST /integrations/google/sheets/:dataset`
+
+```ts
+syncGoogleSheet(dataset: string, range: { from?: string; to?: string } = {}): Promise<GoogleSheetInfo>
+```
+
+## imports
+
+`src/api/imports.ts`
+
+> IMPORT — Excel'dan ko'chirish.
+> 
+> Ikki qadam: avval fayl TEKSHIRILADI (nechta qator tayyor, qayerda
+> xato), keyin yoziladi. Bir qadamda qilinsa, odam faylni ko'rmasdan
+> bazaga yozib yuborardi va uni orqaga qaytarib bo'lmasdi.
+
+### `GET /import/datasets`
+
+```ts
+listImportDatasets(): Promise<ImportDatasetInfo[]>
+```
+
+### `POST /import/:dataset/preview`
+
+```ts
+previewImport(dataset: string, file: File): Promise<ImportPreview>
+```
+
+### `POST /import/:dataset/apply`
+
+```ts
+applyImport(dataset: string, file: File): Promise<ImportResult>
+```
+
+## notices
+
+`src/api/notices.ts`
+
+> BEMORLARGA XABAR.
+> 
+> Xodim tomoni: qabulga yozilganlarga yoki tanlangan bemorlarga
+> bitta xabar. Bemor tomoni: kabinetdagi xabarlar ro'yxati.
+> 
+> Xabar bemorga IKKI YO'L bilan yetadi — Telegram boti va kabinet.
+> Bot ochilmagan bo'lsa, xabar baribir kabinetda turadi.
+
+### `GET /patient-notices/audience?scope=&from=&to=`
+
+BEMORLARGA XABAR.
+
+Xodim tomoni: qabulga yozilganlarga yoki tanlangan bemorlarga
+bitta xabar. Bemor tomoni: kabinetdagi xabarlar ro'yxati.
+
+Xabar bemorga IKKI YO'L bilan yetadi — Telegram boti va kabinet.
+Bot ochilmagan bo'lsa, xabar baribir kabinetda turadi.
+
+
+import { apiContext, delay, request, USE_MOCK } from './client'
+import { getDb } from '@/mock/db'
+import type { ID, ISODateTime } from '@/types/models'
+
+export interface BroadcastAudience {
+total: number
+telegram: number
+}
+
+export interface BroadcastInput {
+text: string
+scope: 'appointments' | 'patients'
+from?: string
+to?: string
+patientIds?: ID[]
+}
+
+export interface BroadcastRecord {
+text: string
+sentAt: ISODateTime
+sentBy: string
+total: number
+delivered: number
+}
+
+export interface CabinetNotice {
+id: ID
+text: string
+kind: 'broadcast' | 'reminder'
+read: boolean
+createdAt: ISODateTime
+}
+
+------------------------------------------------------------------
+Xodim
+------------------------------------------------------------------
+
+```ts
+broadcastAudience(scope: 'appointments' | 'patients', range: { from?: string; to?: string } = {}): Promise<BroadcastAudience>
+```
+
+### `POST /patient-notices`
+
+```ts
+sendBroadcast(input: BroadcastInput): Promise<BroadcastAudience>
+```
+
+### `GET /patient-notices`
+
+```ts
+listBroadcasts(): Promise<BroadcastRecord[]>
+```
+
+### `GET /patient/notices`
+
+BEMORLARGA XABAR.
+
+Xodim tomoni: qabulga yozilganlarga yoki tanlangan bemorlarga
+bitta xabar. Bemor tomoni: kabinetdagi xabarlar ro'yxati.
+
+Xabar bemorga IKKI YO'L bilan yetadi — Telegram boti va kabinet.
+Bot ochilmagan bo'lsa, xabar baribir kabinetda turadi.
+
+
+import { apiContext, delay, request, USE_MOCK } from './client'
+import { getDb } from '@/mock/db'
+import type { ID, ISODateTime } from '@/types/models'
+
+export interface BroadcastAudience {
+total: number
+telegram: number
+}
+
+export interface BroadcastInput {
+text: string
+scope: 'appointments' | 'patients'
+from?: string
+to?: string
+patientIds?: ID[]
+}
+
+export interface BroadcastRecord {
+text: string
+sentAt: ISODateTime
+sentBy: string
+total: number
+delivered: number
+}
+
+export interface CabinetNotice {
+id: ID
+text: string
+kind: 'broadcast' | 'reminder'
+read: boolean
+createdAt: ISODateTime
+}
+
+------------------------------------------------------------------
+Xodim
+------------------------------------------------------------------
+
+// GET /patient-notices/audience?scope=&from=&to=
+export async function broadcastAudience(
+scope: 'appointments' | 'patients',
+range: { from?: string; to?: string } = {},
+): Promise<BroadcastAudience> {
+if (!USE_MOCK) {
+return request<BroadcastAudience>('GET', '/patient-notices/audience', {
+query: { scope, from: range.from, to: range.to },
+})
+}
+
+const patients = mockTargets(range)
+return delay({
+total: patients.length,
+Demoda har uchinchi bemor botga ulangan deb hisoblanadi
+telegram: Math.round(patients.length / 3),
+})
+}
+
+// POST /patient-notices
+export async function sendBroadcast(input: BroadcastInput): Promise<BroadcastAudience> {
+if (!USE_MOCK) return request<BroadcastAudience>('POST', '/patient-notices', { body: input })
+
+const patients =
+input.scope === 'patients' ? (input.patientIds ?? []) : mockTargets(input).map((p) => p.id)
+
+const record: BroadcastRecord = {
+text: input.text,
+sentAt: new Date().toISOString(),
+sentBy: 'Demo',
+total: patients.length,
+delivered: Math.round(patients.length / 3),
+}
+mockHistory = [record, ...mockHistory]
+return delay({ total: record.total, telegram: record.delivered })
+}
+
+// GET /patient-notices
+export async function listBroadcasts(): Promise<BroadcastRecord[]> {
+if (!USE_MOCK) return request<BroadcastRecord[]>('GET', '/patient-notices')
+return delay(mockHistory)
+}
+
+------------------------------------------------------------------
+Bemor kabineti
+------------------------------------------------------------------
+
+```ts
+listCabinetNotices(): Promise<CabinetNotice[]>
+```
+
+### `POST /patient/notices/:id/read`
+
+```ts
+markNoticeRead(id: ID): Promise<void>
 ```
 
 ## pharmacy

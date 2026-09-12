@@ -117,6 +117,8 @@ export class AttendanceService {
         lateMinutes: mark?.lateMinutes ?? 0,
         note: mark?.note ?? '',
         flagged: mark?.flagged ?? false,
+        photoUrl: mark?.photoKey ?? null,
+        selfMarked: mark?.selfMarked ?? false,
       }
     })
 
@@ -151,7 +153,17 @@ export class AttendanceService {
    * Vaqt orqaga surib kiritilsa — yozuv belgilanadi va egasiga
    * ogohlantirish bo'lib chiqadi.
    */
-  async mark(dto: AttendanceInputDto) {
+  /**
+   * @param extra Kamera orqali belgilanganda qo'shiladigan dalil:
+   *   olingan surat kaliti va "xodim o'zi belgiladi" belgisi.
+   *   DTO ga qo'shilmadi — bu maydonlarni mijoz o'zi yozib
+   *   yubora olmasligi kerak, ular faqat yuz tekshiruvidan keyin
+   *   serverning ichidan keladi.
+   */
+  async mark(
+    dto: AttendanceInputDto,
+    extra: { photoKey?: string | null; selfMarked?: boolean } = {},
+  ) {
     const { clinicId, userId } = this.ctx.require()
 
     const staff = await this.db.staff.findFirst({ where: { id: dto.staffId } })
@@ -183,6 +195,8 @@ export class AttendanceService {
         lateMinutes,
         note: dto.note,
         markedById: userId,
+        photoKey: extra.photoKey ?? null,
+        selfMarked: extra.selfMarked ?? false,
         flagged,
         flagReason: reason,
       },
@@ -193,6 +207,16 @@ export class AttendanceService {
         note: dto.note,
         markedById: userId,
         markedAt: new Date(),
+        /*
+          ESKI SURAT O'CHMAYDI (`undefined` — tegilmaydi).
+
+          Kamera yozgan yozuvni keyin kimdir qo'lda o'zgartirsa,
+          surat dalil bo'lib qoladi — aynan o'sha payt egasiga
+          "kamera nimani ko'rgan edi" degan savol tug'iladi.
+          `selfMarked` esa false ga tushadi: yozuvga odam tegdi.
+        */
+        photoKey: extra.photoKey ?? undefined,
+        selfMarked: extra.selfMarked ?? false,
         flagged,
         flagReason: reason,
       },
@@ -213,6 +237,9 @@ export class AttendanceService {
       markedBy: row.markedById,
       markedByName: user?.fullName ?? '',
       markedAt: toApiDateTime(row.markedAt)!,
+      /* Nomi `*Url` — `SignedUrlInterceptor` chegarada imzolaydi */
+      photoUrl: row.photoKey,
+      selfMarked: row.selfMarked,
       flagged: row.flagged,
       flagReason: row.flagReason,
       createdAt: toApiDateTime(row.createdAt)!,

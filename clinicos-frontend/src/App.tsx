@@ -193,6 +193,13 @@ const DataExchangePage = lazy(() =>
 const MessagesPage = lazy(() =>
   import('@/pages/Messages').then((m) => ({ default: m.MessagesPage })),
 )
+/*
+  Yuz bilan davomat ALOHIDA yuklanadi: yuz kutubxonasi va model
+  fayllari og'ir (~9 MB). Ular faqat shu sahifa ochilganda keladi.
+*/
+const AttendanceFacePage = lazy(() =>
+  import('@/pages/AttendanceFace').then((m) => ({ default: m.AttendanceFacePage })),
+)
 
 export default function App() {
   return (
@@ -753,6 +760,15 @@ function AppRoutes() {
           Ma'lumot almashish — klinika va platforma uchun bitta sahifa:
           bo'limlar ro'yxatini server ruxsatga qarab beradi.
         */}
+        <Route
+          path="attendance/face"
+          element={
+            <Guard permission="attendance.manage">
+              <AttendanceFacePage />
+            </Guard>
+          }
+        />
+
         <Route
           path="messages"
           element={

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Gift, KeyRound, Send, Pencil, Search, Trash2, Users } from 'lucide-react'
+import { Gift, KeyRound, ScanFace, Send, Pencil, Search, Trash2, Users } from 'lucide-react'
 
 import { deleteStaff, listStaff, STAFF_POSITIONS } from '@/api/staff'
 import { BonusModal } from '@/components/modals/BonusModal'
@@ -8,6 +8,8 @@ import { StaffScheduleModal } from '@/components/modals/StaffScheduleModal'
 import { RatingBadge } from './RatingBadge'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
+import { listEnrolledFaces } from '@/api/face'
+import { FaceEnrollModal } from '@/components/modals/FaceEnrollModal'
 import { IconButton } from '@/components/ui/Button'
 import { SearchInput } from '@/components/ui/Form'
 import { ConfirmDialog } from '@/components/ui/Modal'
@@ -42,6 +44,8 @@ export function StaffListTab({
   const [editing, setEditing] = useState<StaffWithPerformance | null>(null)
   const [deleting, setDeleting] = useState<StaffWithPerformance | null>(null)
   const [bonusFor, setBonusFor] = useState<StaffWithPerformance | null>(null)
+  /* Yuz bilan davomat: kimning izi bor va kimga yangi olinmoqda */
+  const [faceFor, setFaceFor] = useState<StaffWithPerformance | null>(null)
   // Qator bosilganda xodimning ish jadvali ochiladi
   const [scheduleFor, setScheduleFor] = useState<StaffWithPerformance | null>(null)
 
@@ -50,6 +54,9 @@ export function StaffListTab({
     () => listStaff({ search: debounced, position }),
     [debounced, position],
   )
+
+  const faces = useAsync(listEnrolledFaces, [])
+  const enrolledIds = new Set((faces.data ?? []).map((face) => face.staffId))
 
   const remove = useAction(async (id: string) => deleteStaff(id))
   const manage = can('staff.manage')
@@ -229,6 +236,18 @@ export function StaffListTab({
                     <Gift size={15} />
                   </IconButton>
                 ) : null}
+                {manage && row.status !== 'fired' ? (
+                  <IconButton
+                    label={t('face.enrollTitle')}
+                    className={enrolledIds.has(row.id) ? 'text-accent' : undefined}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setFaceFor(row)
+                    }}
+                  >
+                    <ScanFace size={15} />
+                  </IconButton>
+                ) : null}
                 {manage ? (
                   <>
                     <IconButton
@@ -241,16 +260,28 @@ export function StaffListTab({
                     >
                       <Pencil size={15} />
                     </IconButton>
-                    <IconButton
-                      label={t('action.delete')}
-                      className="hover:text-bad"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setDeleting(row)
-                      }}
-                    >
-                      <Trash2 size={15} />
-                    </IconButton>
+                    {/*
+                      EGANING QATORIDA O'CHIRISH YO'Q.
+
+                      O'chirish kirishni ham yopadi — ega o'zini
+                      o'chirsa, o'z klinikasiga kira olmay qolardi va
+                      buni faqat platforma admini ortga qaytarardi.
+                      Server ham rad etadi, bu yerda esa tugmaning
+                      o'zi ko'rinmaydi: bosib bo'lmaydigan tugmani
+                      ko'rsatishning ma'nosi yo'q.
+                    */}
+                    {row.role === 'owner' || row.role === 'superadmin' ? null : (
+                      <IconButton
+                        label={t('action.delete')}
+                        className="hover:text-bad"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeleting(row)
+                        }}
+                      >
+                        <Trash2 size={15} />
+                      </IconButton>
+                    )}
                   </>
                 ) : null}
               </div>
@@ -334,6 +365,14 @@ export function StaffListTab({
         staff={bonusFor}
         onClose={() => setBonusFor(null)}
         onSaved={refresh}
+      />
+
+      <FaceEnrollModal
+        open={faceFor !== null}
+        staff={faceFor ? { id: faceFor.id, fullName: faceFor.fullName } : null}
+        enrolled={faceFor ? enrolledIds.has(faceFor.id) : false}
+        onClose={() => setFaceFor(null)}
+        onSaved={() => faces.reload()}
       />
 
       <ConfirmDialog

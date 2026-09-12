@@ -20,6 +20,7 @@ import { FeedbackModule } from './feedback/feedback.module'
 import { DebtsModule } from './debts/debts.module'
 import { ExportModule } from './export/export.module'
 import { ImportModule } from './import/import.module'
+import { FaceModule } from './face/face.module'
 import { GoogleModule } from './google/google.module'
 import { NoticesModule } from './notices/notices.module'
 import { NotificationsModule } from './notifications/notifications.module'
@@ -60,6 +61,7 @@ import { TelegramModule } from './telegram/telegram.module'
     ImportModule,
     NoticesModule,
     GoogleModule,
+    FaceModule,
     ReceptionModule,
     SearchModule,
     VisitsModule,

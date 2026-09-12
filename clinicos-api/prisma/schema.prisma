@@ -98,6 +98,7 @@ model Clinic {
   patientNotices  PatientNotice[]
   googleAccount   GoogleAccount?
   googleSheets    GoogleSheet[]
+  staffFaces      StaffFace[]
 
   @@index([kind])
   @@map("clinics")
@@ -790,6 +791,7 @@ model Staff {
 
   clinic     Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   attendance Attendance[]
+  faces      StaffFace[]
   bonuses    Bonus[]
   penalties  Penalty[]
 
@@ -823,6 +825,13 @@ model Attendance {
   checkOutAt DateTime? @map("check_out_at")
   /// "Kechikdi" belgilanganda qo'lda kiritilgan kelish vaqti, "09:20"
   arrivedAt  String?   @map("arrived_at")
+
+  /// Kamera oldida olingan surat (S3 kaliti). Xodim O'ZI belgilaganda
+  /// yagona dalil shu: yuz izi orqaga qaytarilmaydi, surat esa egasiga
+  /// "kim kelgani" ni ko'rsatadi.
+  photoKey String? @map("photo_key")
+  /// Xodim o'zi belgiladimi (kamera/bot) — yo'qsa kimdir qo'lda yozgan
+  selfMarked Boolean @default(false) @map("self_marked")
 
   lateMinutes   Int    @default(0) @map("late_minutes")
   workedMinutes Int    @default(0) @map("worked_minutes")
@@ -2031,4 +2040,35 @@ model GoogleSheet {
 
   @@unique([clinicId, dataset])
   @@map("google_sheets")
+}
+
+/// XODIMNING YUZ IZI.
+///
+/// RASM SAQLANMAYDI. Kamera ko'rgan yuz brauzerda 128 ta songa
+/// aylantiriladi ("iz") va faqat shu sonlar keladi. Izdan yuzni
+/// qayta tiklab bo'lmaydi, ya'ni baza o'g'irlansa ham undan
+/// odamlarning suratini yasab bo'lmaydi.
+///
+/// BITTA XODIMGA BIR NECHTA IZ: yuz turli yorug'likda va turli
+/// burchakda boshqacha ko'rinadi. Uch-to'rtta namuna olinsa,
+/// tanish ancha ishonchli bo'ladi.
+///
+/// Bu — BIOMETRIK ma'lumot. Xodim roziligi bilan olinadi va
+/// istalgan payt o'chiriladi (`DELETE /attendance/face/:staffId`).
+model StaffFace {
+  id       String @id @default(uuid())
+  clinicId String @map("clinic_id")
+  staffId  String @map("staff_id")
+
+  /// 128 o'lchovli iz
+  descriptor Float[]
+
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  staff  Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, staffId])
+  @@map("staff_faces")
 }
