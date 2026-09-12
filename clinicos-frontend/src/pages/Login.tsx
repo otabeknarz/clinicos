@@ -17,6 +17,7 @@ import { LANGS, useI18n } from '@/i18n'
 import { getDb } from '@/mock/db'
 import { useAuth } from '@/store/auth-context'
 import { usePatient } from '@/store/patient-context'
+import { AuthSelect } from '@/pages/public/AuthSelect'
 import { Icon, IconSprite } from '@/pages/public/PublicIcons'
 import careImage from '@/pages/public/assets/clinicos-care.png'
 import '@/pages/public/public-base.css'
@@ -562,25 +563,21 @@ export function LoginPage() {
                 />
               </div>
 
-              <div className="form-field">
-                <label htmlFor="registerDirection">{t('login.direction')}</label>
-                <select
-                  id="registerDirection"
-                  value={reg.direction}
-                  onChange={(e) =>
-                    setReg((v) => ({
-                      ...v,
-                      direction: e.target.value as (typeof CLINIC_DIRECTIONS)[number],
-                    }))
-                  }
-                >
-                  {CLINIC_DIRECTIONS.map((key) => (
-                    <option key={key} value={key}>
-                      {t(`direction.${key}`)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <AuthSelect
+                id="registerDirection"
+                label={t('login.direction')}
+                value={reg.direction}
+                options={CLINIC_DIRECTIONS.map((key) => ({
+                  value: key,
+                  label: t(`direction.${key}`),
+                }))}
+                onChange={(value) =>
+                  setReg((v) => ({
+                    ...v,
+                    direction: value as (typeof CLINIC_DIRECTIONS)[number],
+                  }))
+                }
+              />
 
               <div className="form-field">
                 <label htmlFor="registerName">{t('login.fullName')}</label>
@@ -595,25 +592,21 @@ export function LoginPage() {
                 />
               </div>
 
-              <div className="form-field">
-                <label htmlFor="registerPosition">{t('login.position')}</label>
-                <select
-                  id="registerPosition"
-                  value={reg.position}
-                  onChange={(e) =>
-                    setReg((v) => ({
-                      ...v,
-                      position: e.target.value as (typeof LEAD_POSITIONS)[number],
-                    }))
-                  }
-                >
-                  {LEAD_POSITIONS.map((key) => (
-                    <option key={key} value={key}>
-                      {t(`leadPosition.${key}`)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <AuthSelect
+                id="registerPosition"
+                label={t('login.position')}
+                value={reg.position}
+                options={LEAD_POSITIONS.map((key) => ({
+                  value: key,
+                  label: t(`leadPosition.${key}`),
+                }))}
+                onChange={(value) =>
+                  setReg((v) => ({
+                    ...v,
+                    position: value as (typeof LEAD_POSITIONS)[number],
+                  }))
+                }
+              />
 
               {/*
                 TELEFON — EMAIL O'RNIGA.
@@ -649,43 +642,31 @@ export function LoginPage() {
                 </div>
               </div>
 
-              <div className="form-field">
-                <label htmlFor="registerCity">{t('login.city')}</label>
-                <select
-                  id="registerCity"
-                  required
-                  value={reg.city}
-                  onChange={(e) => setReg((v) => ({ ...v, city: e.target.value }))}
-                >
-                  <option value="">{t('login.cityPlaceholder')}</option>
-                  {REGIONS.map((region) => (
-                    <option key={region} value={region}>
-                      {region}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <AuthSelect
+                id="registerCity"
+                label={t('login.city')}
+                value={reg.city}
+                placeholder={t('login.cityPlaceholder')}
+                options={REGIONS.map((region) => ({ value: region, label: region }))}
+                onChange={(value) => setReg((v) => ({ ...v, city: value }))}
+              />
 
-              <div className="form-field">
-                <label htmlFor="registerSize">{t('login.staffCount')}</label>
-                <select
-                  id="registerSize"
-                  value={reg.staffCount}
-                  onChange={(e) =>
-                    setReg((v) => ({
-                      ...v,
-                      staffCount: e.target.value as '' | (typeof STAFF_COUNTS)[number],
-                    }))
-                  }
-                >
-                  <option value="">{t('login.staffCountPlaceholder')}</option>
-                  {STAFF_COUNTS.map((key) => (
-                    <option key={key} value={key}>
-                      {t('login.staffCountValue', { range: key })}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <AuthSelect
+                id="registerSize"
+                label={t('login.staffCount')}
+                value={reg.staffCount}
+                placeholder={t('login.staffCountPlaceholder')}
+                options={STAFF_COUNTS.map((key) => ({
+                  value: key,
+                  label: t('login.staffCountValue', { range: key }),
+                }))}
+                onChange={(value) =>
+                  setReg((v) => ({
+                    ...v,
+                    staffCount: value as '' | (typeof STAFF_COUNTS)[number],
+                  }))
+                }
+              />
 
               <div className="form-field">
                 <label htmlFor="registerPassword">{t('login.password')}</label>

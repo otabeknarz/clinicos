@@ -26,6 +26,7 @@ export type PublicIconName =
   | 'bed'
   | 'menu'
   | 'eye'
+  | 'chevron'
 
 export function Icon({ name }: { name: PublicIconName }) {
   return (
@@ -80,6 +81,10 @@ export function IconSprite() {
           <path d="M4 7h16M4 17h16" />
           <circle cx="9" cy="7" r="3" />
           <circle cx="15" cy="17" r="3" />
+        </symbol>
+        {/* Ro'yxat tugmasining o'qi — ochilganda aylanadi */}
+        <symbol id="i-chevron" viewBox="0 0 24 24">
+          <path d="m6 9 6 6 6-6" />
         </symbol>
         <symbol id="i-check" viewBox="0 0 24 24">
           <path d="m5 12 4 4L19 6" />
