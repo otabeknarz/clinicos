@@ -18,6 +18,9 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
 import { PermissionsGuard } from './common/guards/permissions.guard'
 import { FeedbackModule } from './feedback/feedback.module'
 import { DebtsModule } from './debts/debts.module'
+import { ExportModule } from './export/export.module'
+import { ImportModule } from './import/import.module'
+import { NoticesModule } from './notices/notices.module'
 import { NotificationsModule } from './notifications/notifications.module'
 import { ForecastModule } from './forecast/forecast.module'
 import { PatientsModule } from './patients/patients.module'
@@ -52,6 +55,9 @@ import { TelegramModule } from './telegram/telegram.module'
     AppointmentsModule,
     PaymentsModule,
     DebtsModule,
+    ExportModule,
+    ImportModule,
+    NoticesModule,
     ReceptionModule,
     SearchModule,
     VisitsModule,

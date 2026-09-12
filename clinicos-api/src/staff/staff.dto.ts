@@ -1,3 +1,4 @@
+import { GRANTABLE_PERMISSIONS } from '../common/permissions'
 import { Type } from 'class-transformer'
 import {
   ArrayMaxSize,
@@ -106,6 +107,18 @@ export class StaffInputDto {
   @IsOptional() @IsBoolean()
   hasSystemAccess: boolean = false
 
+  /**
+   * Egasi qo'shimcha bergan ruxsatlar (eksport, import, xabar).
+   *
+   * Rol bilan kelmaydi: ularning har biri butun bazaga tegadi,
+   * shuning uchun egasi xodimga birma-bir beradi.
+   */
+  @IsOptional()
+  @IsArray()
+  @IsIn(GRANTABLE_PERMISSIONS as unknown as string[], { each: true })
+  extraPermissions?: string[]
+
+
   @IsOptional() @ValidateIf((_, v) => v !== null)
   @IsIn(['owner', 'receptionist', 'doctor'])
   role: 'owner' | 'receptionist' | 'doctor' | null = null
@@ -200,6 +213,18 @@ export class UpdateStaffDto {
 
   @IsOptional() @IsBoolean()
   hasSystemAccess?: boolean
+
+  /**
+   * Egasi qo'shimcha bergan ruxsatlar (eksport, import, xabar).
+   *
+   * Rol bilan kelmaydi: ularning har biri butun bazaga tegadi,
+   * shuning uchun egasi xodimga birma-bir beradi.
+   */
+  @IsOptional()
+  @IsArray()
+  @IsIn(GRANTABLE_PERMISSIONS as unknown as string[], { each: true })
+  extraPermissions?: string[]
+
 
   @IsOptional() @ValidateIf((_, v) => v !== null)
   @IsIn(['owner', 'receptionist', 'doctor'])

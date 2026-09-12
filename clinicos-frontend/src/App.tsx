@@ -187,6 +187,12 @@ const WardPage = lazy(() => import('@/pages/Ward').then((m) => ({ default: m.War
 const SettingsPage = lazy(() =>
   import('@/pages/Settings').then((m) => ({ default: m.SettingsPage })),
 )
+const DataExchangePage = lazy(() =>
+  import('@/pages/DataExchange').then((m) => ({ default: m.DataExchangePage })),
+)
+const MessagesPage = lazy(() =>
+  import('@/pages/Messages').then((m) => ({ default: m.MessagesPage })),
+)
 
 export default function App() {
   return (
@@ -365,6 +371,14 @@ function AppRoutes() {
             element={
               <Guard permission="pharmacy.receive">
                 <PharmacyPurchasesPage />
+              </Guard>
+            }
+          />
+          <Route
+            path="/pharmacy/data-exchange"
+            element={
+              <Guard permission="data.export">
+                <DataExchangePage />
               </Guard>
             }
           />
@@ -731,6 +745,28 @@ function AppRoutes() {
           element={
             <Guard permission="analytics.view">
               <AnalyticsPage />
+            </Guard>
+          }
+        />
+
+        {/*
+          Ma'lumot almashish — klinika va platforma uchun bitta sahifa:
+          bo'limlar ro'yxatini server ruxsatga qarab beradi.
+        */}
+        <Route
+          path="messages"
+          element={
+            <Guard permission="patients.message">
+              <MessagesPage />
+            </Guard>
+          }
+        />
+
+        <Route
+          path="data-exchange"
+          element={
+            <Guard permission="data.export">
+              <DataExchangePage />
             </Guard>
           }
         />

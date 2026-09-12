@@ -16,19 +16,7 @@ import { computeSummary } from './attendance'
 import { getDb } from '@/mock/db'
 import { addDays, eachDay, startOfDay, toISODate } from '@/lib/dates'
 import { money, percent } from '@/lib/format'
-import type {
-  ID,
-  PayType,
-  RatingFactor,
-  Role,
-  Staff,
-  StaffPerformance,
-  StaffPosition,
-  StaffStatus,
-  StaffWithPerformance,
-  WorkSchedule,
-  WorkScheduleDay,
-} from '@/types/models'
+import type { ID, PayType, Permission, RatingFactor, Role, Staff, StaffPerformance, StaffPosition, StaffStatus, StaffWithPerformance, WorkSchedule, WorkScheduleDay } from '@/types/models'
 import { effectiveSalary, percentEarnings } from '@/types/models'
 
 export interface StaffQuery {
@@ -113,6 +101,8 @@ export interface StaffInput {
   status: StaffStatus
   hasSystemAccess: boolean
   role: Role | null
+  /** Egasi qo'shimcha bergan ruxsatlar (eksport, import, xabar) */
+  extraPermissions?: Permission[]
   login: string
   /**
    * Boshlang'ich parol.
@@ -187,7 +177,7 @@ export async function createStaff(input: StaffInput): Promise<Staff> {
       phone: staff.phone,
       role: staff.role,
       avatarUrl: null,
-      extraPermissions: [],
+      extraPermissions: input.extraPermissions ?? [],
       isActive: true,
       lastLoginAt: null,
       createdAt: now,
@@ -215,6 +205,16 @@ export async function updateStaff(id: ID, patch: Partial<StaffInput>): Promise<S
 
   const updated = getDb().staff.update(id, next, apiContext().clinicId)
   if (!updated) throw new Error('Xodim topilmadi')
+
+  /*
+    Ruxsatlar FOYDALANUVCHI yozuvida yashaydi (serverda ham shunday):
+    xodim kartasi bilan kirish hisobi boshqa-boshqa yozuv.
+  */
+  if (patch.extraPermissions && updated.login) {
+    const store = getDb()
+    const user = store.users.allAcrossTenants().find((row) => row.email === updated.login)
+    if (user) store.users.updateAcrossTenants(user.id, { extraPermissions: patch.extraPermissions })
+  }
   return delay(updated, 260)
 }
 

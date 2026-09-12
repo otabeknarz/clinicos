@@ -27,7 +27,7 @@ import { useAction } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { SPECIALTIES } from '@/i18n/data'
 import { useToast } from '@/store/toast-context'
-import type { PayType, Role, Staff, StaffPosition, StaffStatus } from '@/types/models'
+import type { PayType, Permission, Role, Staff, StaffPosition, StaffStatus } from '@/types/models'
 
 /**
  * Xodim qo'shish / tahrirlash.
@@ -36,6 +36,9 @@ import type { PayType, Role, Staff, StaffPosition, StaffStatus } from '@/types/m
  * va tizimga kirish. Oxirgisi eng nozik — parolni egasining o'zi
  * belgilaydi, lekin u hech qayerda ochiq saqlanmaydi.
  */
+/** Egasi bera oladigan ruxsatlar — serverdagi `GRANTABLE_PERMISSIONS` ko'zgusi */
+const GRANTABLE: Permission[] = ['data.export', 'data.import', 'patients.message']
+
 export function StaffFormModal({
   open,
   onClose,
@@ -74,6 +77,8 @@ export function StaffFormModal({
 
   const [hasAccess, setHasAccess] = useState(false)
   const [role, setRole] = useState<Role>('receptionist')
+  /* Rolga kirmaydigan, egasi alohida beradigan ruxsatlar */
+  const [extra, setExtra] = useState<Permission[]>([])
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -104,6 +109,7 @@ export function StaffFormModal({
     setStatus(staff?.status ?? 'active')
     setHasAccess(staff?.hasSystemAccess ?? false)
     setRole(staff?.role ?? 'receptionist')
+    setExtra(staff?.extraPermissions ?? [])
     /*
       Login — hisobning emaili. Tahrirlashda mavjudidan faqat nom
       qismi olinadi: eski xodimlarda boshqa domen bo'lishi mumkin
@@ -196,6 +202,7 @@ export function StaffFormModal({
       status,
       hasSystemAccess: hasAccess,
       role: hasAccess ? role : null,
+      extraPermissions: hasAccess ? extra : [],
       login: hasAccess ? buildPlatformEmail(login) : '',
       password: password || undefined,
       mustChangePassword: mustChange,
@@ -575,6 +582,42 @@ export function StaffFormModal({
                   ]}
                 />
               </div>
+
+              {/*
+                QO'SHIMCHA RUXSATLAR. Rol bilan kelmaydi: ularning har
+                biri butun bazaga tegadi (Excel'ga chiqarish, bazani
+                ko'chirish, bemorlarga umumiy xabar). Shuning uchun
+                egasi ularni xodimga birma-bir beradi.
+              */}
+              <Field label={t('staff.extraPermissions')} hint={t('staff.extraPermissionsHint')}>
+                <div className="flex flex-wrap gap-2">
+                  {GRANTABLE.map((permission) => {
+                    const active = extra.includes(permission)
+                    return (
+                      <button
+                        key={permission}
+                        type="button"
+                        onClick={() =>
+                          setExtra((current) =>
+                            current.includes(permission)
+                              ? current.filter((item) => item !== permission)
+                              : [...current, permission],
+                          )
+                        }
+                        className={cn(
+                          'rounded-full px-3 py-1.5 text-footnote font-medium',
+                          'transition-colors duration-150',
+                          active
+                            ? 'bg-accent text-white'
+                            : 'bg-fill-4 text-label-secondary hover:text-label',
+                        )}
+                      >
+                        {t(`permission.${permission}`)}
+                      </button>
+                    )
+                  })}
+                </div>
+              </Field>
 
               {/* --- Parol --- */}
               <Field

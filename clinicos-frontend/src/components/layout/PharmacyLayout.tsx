@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   BarChart3,
   Boxes,
+  FileSpreadsheet,
   FileText,
   KeyRound,
   Lock,
@@ -116,6 +117,12 @@ const NAV: PharmacyNavItem[] = [
     permission: 'pharmacy.analytics',
   },
   {
+    to: '/pharmacy/data-exchange',
+    labelKey: 'exchange.title',
+    icon: FileSpreadsheet,
+    permission: 'data.export',
+  },
+  {
     to: '/pharmacy/cash-control',
     labelKey: 'nav.pharmacyCashControl',
     icon: ShieldCheck,
@@ -133,6 +140,7 @@ const MANAGE_PATHS = new Set([
   '/pharmacy/staff',
   '/pharmacy/analytics',
   '/pharmacy/cash-control',
+  '/pharmacy/data-exchange',
 ])
 
 export function PharmacyLayout() {

@@ -53,6 +53,16 @@ export type Permission =
   | 'debts.waive'
   | 'revenue.view'
   | 'analytics.view'
+  /* Ma'lumot almashish — Excel va Google Sheets. Bo'limni KO'RISH
+     huquqi uni faylga aylantirish huquqini bermaydi: eksport butun
+     bazani bir bosishda tashqariga chiqaradi, import esa bazaga
+     yozadi. Shuning uchun ikkalasi alohida va egasi ularni xodimga
+     birma-bir beradi. `patients.message` — bemorlarga umumiy xabar.
+     IZOHDA BO'SH QATOR BO'LMASIN: `check:permissions` ro'yxatni
+     birinchi bo'sh qatorgacha o'qiydi. */
+  | 'data.export'
+  | 'data.import'
+  | 'patients.message'
   | 'visits.view'
   | 'visits.create'
   | 'settings.view'
@@ -99,6 +109,9 @@ export type Permission =
  * bo'lardi va solishtiruvning ma'nosi qolmasdi.
  */
 export const OWNER_PERMISSIONS: readonly Permission[] = [
+  'data.export',
+  'data.import',
+  'patients.message',
   'dashboard.view',
   'patients.view',
   'patients.viewMedical',
@@ -220,6 +233,7 @@ export const PHARMACIST_PERMISSIONS: readonly Permission[] = [
  * `payments.create` yo'qligi kabi.
  */
 export const PHARMACY_OWNER_PERMISSIONS: readonly Permission[] = [
+  'data.export',
   'pharmacy.view',
   'pharmacy.manage',
   'pharmacy.receive',
@@ -229,6 +243,7 @@ export const PHARMACY_OWNER_PERMISSIONS: readonly Permission[] = [
 ] as const
 
 export const DOCTOR_PERMISSIONS: readonly Permission[] = [
+  'patients.message',
   'dashboard.view',
   'patients.view',
   'patients.viewMedical',
@@ -244,6 +259,7 @@ export const DOCTOR_PERMISSIONS: readonly Permission[] = [
 ] as const
 
 export const SUPERADMIN_PERMISSIONS: readonly Permission[] = [
+  'data.export',
   'platform.view',
   'platform.manage',
   'platform.impersonate',
@@ -312,3 +328,22 @@ export const ROLE_PERMISSIONS: Record<Role, readonly string[]> = {
 export function resolvePermissions(role: Role, extra: string[] = []): string[] {
   return [...new Set([...ROLE_PERMISSIONS[role], ...extra])]
 }
+
+/**
+ * EGASI XODIMGA BERA OLADIGAN RUXSATLAR.
+ *
+ * Ro'yxat QISQA va ataylab shunday: bu yerga `payments.refund` yoki
+ * `debts.waive` qo'shilsa, egasi bilmasdan pulga tegadigan huquqni
+ * berib yuborishi mumkin bo'lardi — ular rol bilan keladi va rol
+ * o'zgartirish alohida qaror.
+ *
+ * Bular esa ish qurollari: hisobotni Excel'ga chiqarish, bazani
+ * ko'chirish va bemorlarga xabar yuborish. Ularning har biri
+ * xavfli bo'lgani uchun rolga qo'shilmagan, lekin kerak bo'lganda
+ * bitta xodimga berilishi mumkin.
+ */
+export const GRANTABLE_PERMISSIONS = [
+  'data.export',
+  'data.import',
+  'patients.message',
+] as const satisfies readonly Permission[]

@@ -293,6 +293,7 @@ export class StaffService {
             phone: dto.phone.trim(),
             passwordHash: await argon2.hash(dto.password),
             role: toDb(dto.role),
+            extraPermissions: dto.extraPermissions ?? [],
             /*
               `mustChangePassword` DTO da qabul qilinardi-yu, hech
               qayerga yozilmasdi: forma "birinchi kirishda parolni
@@ -686,6 +687,7 @@ const STAFF_EXPAND = {
       email: true,
       role: true,
       mustChangePassword: true,
+      extraPermissions: true,
       telegramUserId: true,
     },
   },
@@ -899,6 +901,7 @@ async function syncUser(
         fullName: dto.fullName?.trim(),
         phone: dto.phone?.trim(),
         role: dto.role ? toDb(dto.role) : undefined,
+        extraPermissions: dto.extraPermissions,
         doctorId,
         mustChangePassword: dto.mustChangePassword,
         ...password,
@@ -915,6 +918,7 @@ async function syncUser(
       phone: dto.phone?.trim() || current.phone,
       passwordHash: await argon2.hash(dto.password as string),
       role: toDb(dto.role as 'owner' | 'receptionist' | 'doctor'),
+      extraPermissions: dto.extraPermissions ?? [],
       doctorId,
       mustChangePassword: dto.mustChangePassword ?? true,
     },
@@ -928,6 +932,7 @@ type StaffRow = Staff & {
     email: string
     role: string
     mustChangePassword: boolean
+    extraPermissions: string[]
     telegramUserId: string | null
   } | null
   doctor: { specialty: string; consultationFee: number } | null
@@ -960,6 +965,7 @@ function toApiStaff(row: StaffRow) {
     /* Ilgari bu yerda `false` yozib qo'yilgandi — forma har safar
        haqiqiy holatni emas, standart qiymatni ko'rsatardi */
     mustChangePassword: row.user?.mustChangePassword ?? false,
+    extraPermissions: row.user?.extraPermissions ?? [],
     /*
       TELEGRAM ULANGANMI.
       Xabar shu bittagina ustunga bog'liq: u bo'sh bo'lsa xabar

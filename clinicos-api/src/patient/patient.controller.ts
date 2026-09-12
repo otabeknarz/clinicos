@@ -1,15 +1,4 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Get,
-  Headers,
-  Post,
-  ServiceUnavailableException,
-  UploadedFile,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common'
+import { BadRequestException, Body, Controller, Get, Headers, Param, Post, ServiceUnavailableException, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { ThrottlerGuard } from '@nestjs/throttler'
 
@@ -191,4 +180,21 @@ export class PatientController {
       ],
     }
   }
+
+  // GET /patient/notices
+  @Get('notices')
+  @Public()
+  @UseGuards(PatientGuard)
+  notices() {
+    return this.patient.notices()
+  }
+
+  // POST /patient/notices/:id/read
+  @Post('notices/:id/read')
+  @Public()
+  @UseGuards(PatientGuard)
+  readNotice(@Param('id') id: string) {
+    return this.patient.markNoticeRead(id)
+  }
+
 }

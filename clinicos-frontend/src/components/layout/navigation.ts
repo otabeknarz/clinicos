@@ -12,7 +12,9 @@ import {
   LayoutDashboard,
   Layers,
   Settings,
+  FileSpreadsheet,
   MessageCircle,
+  MessagesSquare,
   MessageSquare,
   Pill,
   Receipt,
@@ -185,6 +187,17 @@ export const NAVIGATION: NavGroup[] = [
         permission: 'calendar.view',
       },
       { to: '/ward', labelKey: 'nav.ward', icon: BedDouble, permission: 'ward.view' },
+      {
+        /*
+          Bemorlarga umumiy xabar. Ruxsat ALOHIDA (`patients.message`):
+          ro'yxatni ko'rish huquqi klinika nomidan hammaga yozish
+          huquqini bermaydi.
+        */
+        to: '/messages',
+        labelKey: 'messages.title',
+        icon: MessagesSquare,
+        permission: 'patients.message',
+      },
     ],
   },
   {
@@ -283,6 +296,17 @@ export const NAVIGATION: NavGroup[] = [
   {
     labelKey: 'nav.group.system',
     items: [
+      {
+        /*
+          Excel va Google Sheets bilan ishlash. Ruxsat ALOHIDA
+          (`data.export`): bo'limni ko'rish huquqi butun bazani
+          faylga aylantirish huquqini bermaydi.
+        */
+        to: '/data-exchange',
+        labelKey: 'exchange.title',
+        icon: FileSpreadsheet,
+        permission: 'data.export',
+      },
       { to: '/settings', labelKey: 'nav.settings', icon: Settings, permission: 'settings.view' },
     ],
   },

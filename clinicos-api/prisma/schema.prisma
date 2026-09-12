@@ -94,6 +94,8 @@ model Clinic {
   prescriptions   Prescription[]
   pharmacyShifts  PharmacyShift[]
   pharmacyStaff   PharmacyStaff[]
+  exportLinks     ExportLink[]
+  patientNotices  PatientNotice[]
 
   @@index([kind])
   @@map("clinics")
@@ -339,6 +341,7 @@ model Patient {
 
   admissions Admission[]
   feedback   Feedback[]
+  notices    PatientNotice[]
 
   /// Bir klinikada bitta telefon — bitta bemor
   @@unique([clinicId, phone])
@@ -488,6 +491,7 @@ model Appointment {
   service  Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   visit      Visit?
   payments   Payment[]
+  notices    PatientNotice[]
   debtWaiver DebtWaiver?
   followUp FollowUp?
 
@@ -1893,4 +1897,81 @@ model PharmacyStaff {
   @@unique([clinicId, login])
   @@index([clinicId, status])
   @@map("pharmacy_staff")
+}
+
+/// GOOGLE SHEETS HAVOLASI.
+///
+/// Tashqi jadval (`=IMPORTDATA(...)`) shu manzildan o'qiydi, ya'ni
+/// u parolsiz ochiladi. Shuning uchun bazada TOKENNING O'ZI emas,
+/// SHA-256 xeshi turadi: baza nusxasi qo'lga tushsa ham, undan
+/// ishlaydigan havola yasab bo'lmaydi.
+///
+/// Muddatsiz havola yo'q va har ochilishi yozib boriladi — egasi
+/// "bu havola hali ham kerakmi" degan savolga javob topa olsin.
+model ExportLink {
+  id       String @id @default(uuid())
+  clinicId String @map("clinic_id")
+
+  /// Qaysi bo'lim (`export.datasets.ts` dagi kalit)
+  dataset   String
+  tokenHash String @unique @map("token_hash")
+
+  createdById   String @map("created_by_id")
+  createdByName String @map("created_by_name")
+
+  lastUsedAt DateTime? @map("last_used_at")
+  useCount   Int       @default(0) @map("use_count")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId])
+  @@map("export_links")
+}
+
+/// BEMORGA XABAR.
+///
+/// Ikki manbadan keladi:
+///   - `BROADCAST` — xodim yozgan umumiy xabar (qabulga yozilganlarga
+///     yoki tanlab olinganlarga);
+///   - `REMINDER` — qabuldan ikki kun oldin tizimning o'zi yuboradi.
+///
+/// YOZUV HAR DOIM QOLADI, Telegram yetkazilgan-yetkazilmaganidan
+/// qat'i nazar: bemor botni ochmagan bo'lsa ham, xabarni kabinetda
+/// ko'radi. Telegram — yetkazish yo'li, xabarning o'zi emas.
+enum PatientNoticeKind {
+  BROADCAST
+  REMINDER
+}
+
+model PatientNotice {
+  id       String @id @default(uuid())
+  clinicId String @map("clinic_id")
+
+  patientId String @map("patient_id")
+  /// Faqat ESLATMADA to'ladi — qaysi qabul uchun
+  appointmentId String? @map("appointment_id")
+
+  kind PatientNoticeKind @default(BROADCAST)
+  text String
+
+  /// Kim yubordi. Eslatmani tizim yuboradi — bo'sh qoladi.
+  createdById   String? @map("created_by_id")
+  createdByName String  @default("") @map("created_by_name")
+
+  /// Telegram orqali yetib bordimi (bot ochilmagan bo'lsa — false)
+  delivered Boolean   @default(false)
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  clinic      Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient     Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  /// Bitta qabulga bitta eslatma — fon vazifasi qayta ishga tushsa ham takrorlanmaydi
+  @@unique([appointmentId, kind])
+  @@index([clinicId, patientId, createdAt])
+  @@map("patient_notices")
 }

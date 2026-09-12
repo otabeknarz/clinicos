@@ -89,6 +89,16 @@ export type Permission =
   | 'debts.waive'
   | 'revenue.view'
   | 'analytics.view'
+  /* Ma'lumot almashish — Excel va Google Sheets. Bo'limni KO'RISH
+     huquqi uni faylga aylantirish huquqini bermaydi: eksport butun
+     bazani bir bosishda tashqariga chiqaradi, import esa bazaga
+     yozadi. Shuning uchun ikkalasi alohida va egasi ularni xodimga
+     birma-bir beradi. `patients.message` — bemorlarga umumiy xabar.
+     IZOHDA BO'SH QATOR BO'LMASIN: `check:permissions` ro'yxatni
+     birinchi bo'sh qatorgacha o'qiydi. */
+  | 'data.export'
+  | 'data.import'
+  | 'patients.message'
   | 'visits.view'
   | 'visits.create'
   | 'settings.view'
@@ -1578,6 +1588,13 @@ export interface Staff {
   hasSystemAccess: boolean
   role: Role | null
   /**
+   * Egasi qo'shimcha bergan ruxsatlar.
+   *
+   * Rolga kirmaydigan, lekin ba'zan kerak bo'ladigan huquqlar:
+   * Excel'ga chiqarish, bazani ko'chirish, bemorlarga xabar.
+   */
+  extraPermissions?: Permission[]
+  /**
    * Login - tizimga kirish uchun. Odatda email.
    * Kirish huquqi berilganda majburiy.
    */
@@ -2712,4 +2729,31 @@ export interface CabinetDebtItem {
 export interface CabinetDebt {
   items: CabinetDebtItem[]
   total: UZS
+}
+
+/* ------------------------------------------------------------------ */
+/* Eksport                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Google Sheets havolasi.
+ *
+ * `path` FAQAT yaratilgan paytda keladi: tokenning o'zi serverda
+ * saqlanmaydi (xeshi turadi), ya'ni keyin uni qayta ko'rsatib
+ * bo'lmaydi. Yo'qotilsa — yangisi yaratiladi.
+ */
+export interface ExportLinkInfo {
+  id: ID
+  dataset: string
+  createdByName: string
+  createdAt: ISODateTime
+  expiresAt: ISODateTime
+  lastUsedAt: ISODateTime | null
+  useCount: number
+  revoked: boolean
+}
+
+export interface ExportLinkCreated extends ExportLinkInfo {
+  /** Manzilning yo'l qismi — to'liq havolani interfeys yig'adi */
+  path: string
 }

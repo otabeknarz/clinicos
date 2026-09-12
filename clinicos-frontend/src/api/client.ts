@@ -31,6 +31,14 @@ const API_URL = import.meta.env.VITE_API_URL as string | undefined
 /** Backend manzili berilmagan bo'lsa — demo (mock) rejimda ishlaymiz */
 export const USE_MOCK = !API_URL
 
+/**
+ * Server manzili — Google Sheets havolasini to'liq ko'rsatish uchun.
+ *
+ * Demo rejimda server yo'q, shuning uchun brauzerning o'z manzili
+ * olinadi: havola ishlamaydi, lekin ko'rinishi haqiqiysiday bo'ladi.
+ */
+export const API_BASE = API_URL ?? window.location.origin
+
 /* ------------------------------------------------------------------ */
 /* Xatolik                                                             */
 /* ------------------------------------------------------------------ */
@@ -253,6 +261,45 @@ export async function request<T>(
  * brauzer o'zi hisoblaydi — sarlavhani QO'LDA qo'yish kerak emas va
  * qo'yilsa so'rov buziladi.
  */
+/**
+ * FAYL OLIB KELISH (CSV).
+ *
+ * `request()` javobni JSON deb o'qiydi — eksportda esa fayl keladi.
+ * Fayl nomi server bergan `Content-Disposition` dan olinadi: nom
+ * bo'limga va sanaga bog'liq, uni brauzerda qayta yasash kerak emas.
+ */
+export async function requestFile(
+  path: string,
+  query?: Record<string, string | number | undefined>,
+): Promise<{ filename: string; text: string }> {
+  const url = new URL(path.replace(/^\//, ''), `${API_URL}/`)
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value === undefined || value === null || value === '') continue
+      url.searchParams.set(key, String(value))
+    }
+  }
+
+  const headers: Record<string, string> = { Accept: 'text/csv' }
+  if (authToken) headers.Authorization = `Bearer ${authToken}`
+
+  const response = await fetch(url.toString(), { method: 'GET', headers })
+  if (!response.ok) {
+    let message = 'Eksport qilinmadi'
+    try {
+      const body = (await response.json()) as { message?: string }
+      if (body?.message) message = body.message
+    } catch {
+      /* javob JSON bo'lmasa — umumiy xabar qoladi */
+    }
+    throw new ApiError(message, response.status)
+  }
+
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const match = /filename="?([^";]+)"?/.exec(disposition)
+  return { filename: match?.[1] ?? 'clinicos.csv', text: await response.text() }
+}
+
 export async function upload<T>(
   path: string,
   file: Blob,

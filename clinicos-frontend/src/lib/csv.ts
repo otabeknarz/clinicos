@@ -62,3 +62,96 @@ export function datedFilename(base: string): string {
   ].join('-')
   return `${base}-${stamp}.csv`
 }
+
+/**
+ * Serverdan kelgan tayyor CSV matnini saqlash.
+ *
+ * Matn allaqachon to'g'ri yozilgan (BOM, nuqtali vergul) — bu yerda
+ * unga tegilmaydi, faqat fayl qilib beriladi.
+ */
+export function downloadCsvText(filename: string, text: string) {
+  const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+/**
+ * CSV O'QISH (demo rejim uchun).
+ *
+ * Serverda o'zining o'qish qismi bor (`src/import/csv-parse.ts`) —
+ * bu esa faqat demoda, fayl brauzerda ochilganda ishlaydi. Qoida bir
+ * xil: ajratgich fayldan aniqlanadi, qo'shtirnoq ichidagi ajratgich
+ * qatorni bo'lib yubormaydi.
+ */
+export function parseCsvText(text: string): Record<string, string>[] {
+  const clean = text.replace(/^\uFEFF/, '')
+  const firstLine = clean.split(/\r?\n/, 1)[0] ?? ''
+  const best = [';', ',', '\t']
+    .map((sep) => ({ sep, count: firstLine.split(sep).length - 1 }))
+    .sort((a, b) => b.count - a.count)[0]
+  const delimiter = best.count > 0 ? best.sep : ';'
+
+  const table: string[][] = []
+  let row: string[] = []
+  let cell = ''
+  let quoted = false
+
+  for (let i = 0; i < clean.length; i++) {
+    const char = clean[i]
+
+    if (quoted) {
+      if (char === '"') {
+        if (clean[i + 1] === '"') {
+          cell += '"'
+          i++
+        } else {
+          quoted = false
+        }
+      } else {
+        cell += char
+      }
+      continue
+    }
+
+    if (char === '"') {
+      quoted = true
+    } else if (char === delimiter) {
+      row.push(cell)
+      cell = ''
+    } else if (char === '\n') {
+      row.push(cell)
+      table.push(row)
+      row = []
+      cell = ''
+    } else if (char !== '\r') {
+      cell += char
+    }
+  }
+
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell)
+    table.push(row)
+  }
+
+  if (table.length === 0) return []
+  const headers = table[0].map((header) => header.trim())
+
+  return table
+    .slice(1)
+    .filter((line) => line.some((value) => value.trim() !== ''))
+    .map((line) => {
+      const out: Record<string, string> = {}
+      headers.forEach((header, position) => {
+        out[header] = (line[position] ?? '').trim()
+      })
+      return out
+    })
+}

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 
-import { toApiDate, toApiDateTime } from '../common/api-enum'
+import { toApi, toApiDate, toApiDateTime } from '../common/api-enum'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
 
@@ -207,4 +207,39 @@ export class PatientService {
       total: items.reduce((sum, item) => sum + item.remaining, 0),
     }
   }
+
+  /**
+   * KABINETDAGI XABARLAR.
+   *
+   * Klinika yuborgan umumiy xabar va qabuldan ikki kun oldingi
+   * eslatma shu yerda turadi. Bemor botni ochmagan yoki bloklagan
+   * bo'lsa ham ularni ko'radi: Telegram — yetkazish yo'li, xabarning
+   * o'zi esa yozuv.
+   */
+  async notices() {
+    const rows = await this.db.patientNotice.findMany({
+      where: { patientId: this.patientId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { id: true, text: true, kind: true, readAt: true, createdAt: true },
+    })
+
+    return rows.map((row) => ({
+      id: row.id,
+      text: row.text,
+      kind: toApi(row.kind),
+      read: row.readAt !== null,
+      createdAt: toApiDateTime(row.createdAt),
+    }))
+  }
+
+  /** O'qildi — kabinetda ochilganda */
+  async markNoticeRead(id: string) {
+    const done = await this.db.patientNotice.updateMany({
+      where: { id, patientId: this.patientId, readAt: null },
+      data: { readAt: new Date() },
+    })
+    return { ok: done.count > 0 }
+  }
+
 }

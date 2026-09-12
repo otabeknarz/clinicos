@@ -42,6 +42,7 @@ import type { Permission, Role, Session } from '@/types/models'
  * orqali va SABAB bilan kiradi — har bir kirish qayd etiladi.
  */
 const SUPERADMIN_PERMISSIONS: Permission[] = [
+  'data.export',
   'platform.view',
   'platform.manage',
   'platform.impersonate',
@@ -50,6 +51,9 @@ const SUPERADMIN_PERMISSIONS: Permission[] = [
 ]
 
 const OWNER_PERMISSIONS: Permission[] = [
+  'data.export',
+  'data.import',
+  'patients.message',
   'dashboard.view',
   'patients.view',
   'patients.viewMedical',
@@ -132,6 +136,7 @@ const RECEPTIONIST_PERMISSIONS: Permission[] = [
  * `visibleDoctorId` orqali server faqat unga tegishli bemorlarni qaytaradi.
  */
 const DOCTOR_PERMISSIONS: Permission[] = [
+  'patients.message',
   'dashboard.view',
   'patients.view',
   'patients.viewMedical',
@@ -182,6 +187,7 @@ const PHARMACIST_PERMISSIONS: Permission[] = [
  * solishtiruvning ma'nosi qolmaydi.
  */
 const PHARMACY_OWNER_PERMISSIONS: Permission[] = [
+  'data.export',
   'pharmacy.view',
   'pharmacy.manage',
   'pharmacy.receive',
