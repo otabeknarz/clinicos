@@ -1711,6 +1711,7 @@ export const dict: Dict = {
   'exchange.to': 'Tugash sanasi',
   'exchange.rangeHint': 'Sana berilmasa — butun tarix',
   'exchange.dated': 'Sana oralig‘i qo‘llanadi',
+  'exchange.preparing': 'Tayyorlanmoqda…',
   'exchange.download': 'Yuklash',
   'exchange.downloaded': 'Fayl tayyor',
   'exchange.empty': 'Sizda eksport qilinadigan bo‘lim yo‘q',

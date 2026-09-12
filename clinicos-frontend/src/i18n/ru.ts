@@ -1662,6 +1662,7 @@ export const dict: Dict = {
   'exchange.to': 'Дата окончания',
   'exchange.rangeHint': 'Без дат — вся история',
   'exchange.dated': 'Применяется период',
+  'exchange.preparing': 'Готовится…',
   'exchange.download': 'Скачать',
   'exchange.downloaded': 'Файл готов',
   'exchange.empty': 'Нет разделов для экспорта',

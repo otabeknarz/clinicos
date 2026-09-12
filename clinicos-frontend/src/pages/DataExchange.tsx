@@ -17,6 +17,7 @@ import { Button, IconButton } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Select, TextInput } from '@/components/ui/Form'
 import { EmptyState, ErrorState } from '@/components/ui/States'
+import { cn } from '@/lib/cn'
 import { dateShort } from '@/lib/format'
 import { DATED_DATASETS, EXPORT_DATASETS } from '@/lib/exportDatasets'
 import { useAction, useAsync } from '@/lib/useAsync'
@@ -105,31 +106,47 @@ export function DataExchangePage() {
           <EmptyState title={t('exchange.empty')} />
         ) : (
           <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-            {allowed.map((dataset) => (
-              <li
-                key={dataset.key}
-                className="flex items-center justify-between gap-3 rounded-[14px] bg-sunken px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-subhead font-medium text-label">
-                    {t(`dataset.${dataset.key}`)}
-                  </p>
-                  {DATED_DATASETS.has(dataset.key) ? (
-                    <p className="text-caption text-label-tertiary">{t('exchange.dated')}</p>
-                  ) : null}
-                </div>
-                <Button
-                  size="sm"
-                  variant="gray"
-                  icon={<Download size={15} />}
-                  loading={busy === dataset.key}
-                  disabled={busy !== null && busy !== dataset.key}
-                  onClick={() => void runDownload(dataset.key)}
+            {allowed.map((dataset) => {
+              /*
+                FAQAT BOSILGAN QATOR O'ZGARADI.
+
+                Ilgari butun ro'yxat javob berardi: avval hamma tugma
+                aylanardi, keyin hammasi o'chib qolardi — ikkala holatda
+                ham "hammasi yuklanyapti" degan taassurot tug'ilardi.
+                Endi bosilgan qator belgilanadi va uning tugmasi
+                "Tayyorlanmoqda" bo'ladi, qolganlariga tegilmaydi.
+              */
+              const downloading = busy === dataset.key
+
+              return (
+                <li
+                  key={dataset.key}
+                  className={cn(
+                    'flex items-center justify-between gap-3 rounded-[14px] px-4 py-3',
+                    'transition-colors duration-200',
+                    downloading ? 'bg-accent-soft' : 'bg-sunken',
+                  )}
                 >
-                  {t('exchange.download')}
-                </Button>
-              </li>
-            ))}
+                  <div className="min-w-0">
+                    <p className="truncate text-subhead font-medium text-label">
+                      {t(`dataset.${dataset.key}`)}
+                    </p>
+                    {DATED_DATASETS.has(dataset.key) ? (
+                      <p className="text-caption text-label-tertiary">{t('exchange.dated')}</p>
+                    ) : null}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="gray"
+                    icon={<Download size={15} />}
+                    loading={downloading}
+                    onClick={() => void runDownload(dataset.key)}
+                  >
+                    {downloading ? t('exchange.preparing') : t('exchange.download')}
+                  </Button>
+                </li>
+              )
+            })}
           </ul>
         )}
       </Card>

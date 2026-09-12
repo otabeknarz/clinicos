@@ -39,7 +39,12 @@ export async function listExportDatasets(): Promise<{ key: string; sheet: boolea
 // GET /export/:dataset
 export async function downloadExport(dataset: string, range: ExportRange = {}): Promise<void> {
   if (!USE_MOCK) {
-    const file = await requestFile(`/export/${dataset}`, { from: range.from, to: range.to })
+    const stamp = new Date().toISOString().slice(0, 10)
+    const file = await requestFile(
+      `/export/${dataset}`,
+      { from: range.from, to: range.to },
+      `${dataset}-${stamp}.csv`,
+    )
     downloadCsvText(file.filename, file.text)
     return
   }

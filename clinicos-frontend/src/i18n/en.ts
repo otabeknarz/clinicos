@@ -1657,6 +1657,7 @@ export const dict: Dict = {
   'exchange.to': 'To date',
   'exchange.rangeHint': 'No dates — full history',
   'exchange.dated': 'Date range applies',
+  'exchange.preparing': 'Preparing…',
   'exchange.download': 'Download',
   'exchange.downloaded': 'File ready',
   'exchange.empty': 'Nothing to export',

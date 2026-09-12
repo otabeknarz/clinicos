@@ -42,6 +42,16 @@ async function bootstrap() {
   app.enableCors({
     origin: process.env.CORS_ORIGIN?.split(',') ?? true,
     credentials: true,
+    /*
+      FAYL NOMI. Brauzer boshqa domendan kelgan javobning
+      sarlavhalarini JS ga KO'RSATMAYDI — faqat bir nechta
+      standart sarlavhani. Shuning uchun eksport fayli nomi
+      (`Content-Disposition`) o'qilmay, hamma fayl bir xil nom
+      bilan tushardi: "clinicos.csv", "clinicos(1).csv"... Bu esa
+      tashqaridan "har safar bir xil narsa yuklanyapti" bo'lib
+      ko'rinardi.
+    */
+    exposedHeaders: ['Content-Disposition'],
   })
 
   const port = Number(process.env.PORT ?? 3000)

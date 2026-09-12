@@ -271,6 +271,7 @@ export async function request<T>(
 export async function requestFile(
   path: string,
   query?: Record<string, string | number | undefined>,
+  fallbackName = 'clinicos.csv',
 ): Promise<{ filename: string; text: string }> {
   const url = new URL(path.replace(/^\//, ''), `${API_URL}/`)
   if (query) {
@@ -297,7 +298,12 @@ export async function requestFile(
 
   const disposition = response.headers.get('Content-Disposition') ?? ''
   const match = /filename="?([^";]+)"?/.exec(disposition)
-  return { filename: match?.[1] ?? 'clinicos.csv', text: await response.text() }
+  /*
+    Sarlavha o'qilmasa (masalan eski server CORS'da uni ochmagan
+    bo'lsa) — nomni chaqiruvchi beradi. Hamma fayl bir xil nom
+    bilan tushib qolmasin.
+  */
+  return { filename: match?.[1] ?? fallbackName, text: await response.text() }
 }
 
 export async function upload<T>(
