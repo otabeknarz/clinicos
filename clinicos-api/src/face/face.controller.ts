@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common'
 
 import { Audit } from '../common/audit.interceptor'
 import { RequirePermission } from '../common/guards/permissions.guard'
-import { EnrollFaceDto, FaceCheckInDto } from './face.dto'
+import { EnrollFaceDto, FaceCheckInDto, FaceVerifyDto } from './face.dto'
 import { FaceService } from './face.service'
 
 /**
@@ -41,6 +41,18 @@ export class FaceController {
   @Audit('delete', 'staff-face')
   remove(@Param('staffId') staffId: string) {
     return this.faces.remove(staffId)
+  }
+
+  /*
+    POST /attendance/face/verify
+
+    "Keldi" tugmasining tasdig'i: registrator kimni belgilayotganini
+    aytadi, kamera esa o'sha odam ekanini tekshiradi.
+  */
+  @Post('verify')
+  @RequirePermission('attendance.manage')
+  verify(@Body() dto: FaceVerifyDto) {
+    return this.faces.verify(dto)
   }
 
   // POST /attendance/face/check-in

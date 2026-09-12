@@ -13,7 +13,9 @@ import {
 } from 'lucide-react'
 
 import { getDailyAttendance, markAttendance } from '@/api/attendance'
+import { listEnrolledFaces } from '@/api/face'
 import { ExcusedReasonModal } from '@/components/modals/ExcusedReasonModal'
+import { FaceConfirmModal } from '@/components/modals/FaceConfirmModal'
 import { LateArrivalModal } from '@/components/modals/LateArrivalModal'
 import { AttendanceFlagsBanner } from '@/components/staff/AttendanceFlagsBanner'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -74,6 +76,8 @@ export function AttendancePage() {
   const [excusedFor, setExcusedFor] = useState<DailyAttendanceRow | null>(null)
   /* Kamera belgilagan yozuvning surati — bosilganda kattalashadi */
   const [photoFor, setPhotoFor] = useState<DailyAttendanceRow | null>(null)
+  /* "Keldi" bosilgan xodim — yuzi tasdiqlanguncha yozuv yozilmaydi */
+  const [faceFor, setFaceFor] = useState<DailyAttendanceRow | null>(null)
 
   const dateKey = toISODate(day)
   const canManage = can('attendance.manage')
@@ -86,7 +90,37 @@ export function AttendancePage() {
     [dateKey, version],
   )
 
+  /*
+    KIMNING YUZI RO'YXATDAN O'TGAN.
+
+    Ro'yxatdan o'tmagan xodimni kamera tasdiqlay olmaydi — unda
+    "Keldi" eski yo'l bilan ishlaydi. Aks holda yuzi olinmagan
+    bitta xodim butun kunlik ishni to'xtatib qo'yardi.
+  */
+  const faces = useAsync(listEnrolledFaces, [])
+  const enrolled = new Set((faces.data ?? []).map((face) => face.staffId))
+
+  /* Kamera tegishli bo'lmagan, hali belgilanmagan xodimlar */
+  const pendingManual = (data?.rows ?? []).filter(
+    (row) => row.isWorkday && row.status === null && !enrolled.has(row.staffId),
+  )
+
   async function mark(row: DailyAttendanceRow, status: AttendanceStatus) {
+    /*
+      "KELDI" — KAMERA TASDIG'I BILAN.
+
+      Nazorat shu yerda tizim tomoniga o'tadi: yozuv uchun
+      xodimning o'zi kamera oldida turishi kerak, registratorning
+      so'zi yetarli emas. Ikki holatda eski yo'l qoladi —
+      xodimning yuzi ro'yxatdan o'tmagan bo'lsa va o'tgan kun
+      to'ldirilayotgan bo'lsa (kechagi kun uchun kamera oldida
+      turib bo'lmaydi).
+    */
+    if (status === 'present' && isToday(day) && enrolled.has(row.staffId)) {
+      setFaceFor(row)
+      return
+    }
+
     // Kechikishda kelish vaqti so'raladi — uni taxmin qilib bo'lmaydi
     if (status === 'late') {
       setLateFor(row)
@@ -109,6 +143,28 @@ export function AttendancePage() {
         staffId: row.staffId,
         date: dateKey,
         status,
+        lateMinutes: 0,
+        note: row.note,
+        markedBy: session?.user.id,
+        markedByName: session?.user.fullName,
+      })
+      setVersion((v) => v + 1)
+    } catch {
+      toast.error(t('toast.error'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /** Kamera ochilmadi — eski yo'l bilan belgilaymiz */
+  async function markManually(row: DailyAttendanceRow) {
+    setFaceFor(null)
+    setBusy(row.staffId)
+    try {
+      await markAttendance({
+        staffId: row.staffId,
+        date: dateKey,
+        status: 'present',
         lateMinutes: 0,
         note: row.note,
         markedBy: session?.user.id,
@@ -170,7 +226,15 @@ export function AttendancePage() {
    * hammani belgilab, keyin istisnolarni tuzatish tezroq.
    */
   async function markAllPresent() {
-    const pending = (data?.rows ?? []).filter((r) => r.isWorkday && r.status === null)
+    /*
+      YUZI RO'YXATDAN O'TGAN XODIM BU TUGMAGA KIRMAYDI.
+
+      Aks holda tasdiqlashning ma'nosi qolmasdi: bitta tugma bilan
+      hammani "keldi" qilib qo'yish mumkin bo'lardi. Ular kamera
+      orqali belgilanadi, bu tugma esa faqat qolganlari uchun —
+      hamma ro'yxatdan o'tib bo'lgach, o'zi yo'qoladi.
+    */
+    const pending = pendingManual
     if (pending.length === 0) return
 
     setBusy('all')
@@ -251,7 +315,7 @@ export function AttendancePage() {
               <span className="text-footnote font-medium text-label">{dateLong(day)}</span>
 
               <div className="ml-auto flex items-center gap-2">
-                {canManage && !isFuture && (data?.counts.unmarked ?? 0) > 0 ? (
+                {canManage && !isFuture && pendingManual.length > 0 ? (
                   <Button
                     variant="tinted"
                     size="sm"
@@ -384,6 +448,23 @@ export function AttendancePage() {
           </>
         )}
       </Card>
+
+      <FaceConfirmModal
+        open={faceFor !== null}
+        staff={faceFor ? { id: faceFor.staffId, fullName: faceFor.fullName } : null}
+        onClose={() => setFaceFor(null)}
+        onManual={() => faceFor && void markManually(faceFor)}
+        onConfirmed={(result) => {
+          setFaceFor(null)
+          /* Kechikkan bo'lsa server o'zi shunday yozadi — aytib qo'yamiz */
+          if (result.status === 'late') {
+            toast.info(t('face.late', { time: result.arrivedAt ?? '' }))
+          } else {
+            toast.success(t('face.present', { time: result.arrivedAt ?? '' }))
+          }
+          setVersion((v) => v + 1)
+        }}
+      />
 
       <Modal
         open={photoFor !== null}

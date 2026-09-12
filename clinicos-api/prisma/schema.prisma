@@ -2072,3 +2072,62 @@ model StaffFace {
   @@index([clinicId, staffId])
   @@map("staff_faces")
 }
+
+/// So'rov holati — platforma bo'limi shu bo'yicha ishlaydi
+enum LeadStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  LOST
+}
+
+/// O'ZI RO'YXATDAN O'TGAN ODAM — PLATFORMAGA SO'ROV.
+///
+/// Klinika darhol ochiladi va 14 kun bepul ishlaydi, lekin sotuv
+/// ishi shu bilan tugamaydi: kimdir qo'ng'iroq qilishi kerak.
+/// Shuning uchun ro'yxatdan o'tish AYRIM yozuv bo'lib tushadi.
+///
+/// NEGA ALOHIDA JADVAL, `Subscription` NING O'ZI YETMAYDI:
+/// obuna klinikaga bog'langan va klinika o'chirilsa u ham ketadi;
+/// so'rov esa sotuv tarixi — kim kelgani, nima deb yozgani va
+/// nima bo'lgani saqlanib qolishi kerak. Bundan tashqari obunada
+/// "lavozimi" va "yo'nalishi" kabi sotuvga kerakli maydonlar yo'q.
+///
+/// TENANT FILTRIDAN TASHQARIDA: ustun nomi `clinicId` EMAS
+/// (`createdClinicId`) — aks holda `gen:tenant-models` uni klinika
+/// jadvali deb hisoblab, platforma o'z so'rovlarini ko'ra olmay
+/// qolardi.
+model Lead {
+  id String @id @default(uuid())
+
+  /// Shu so'rovdan ochilgan klinika. Klinika o'chirilsa ham so'rov qoladi.
+  createdClinicId String? @map("created_clinic_id")
+
+  clinicName String @map("clinic_name")
+  fullName   String @map("full_name")
+  /// ENG MUHIM MAYDON: sotuvchi shu raqamga qo'ng'iroq qiladi
+  phone      String
+  /// Klinikada kim bo'lib ishlaydi: rahbar, bosh shifokor, administrator...
+  position   String
+  /// Klinikaning yo'nalishi (`ClinicKind`): ko'p tarmoqli, stomatologiya...
+  direction  String
+  /// Shahar — sotuvchi kimga yaqinligini biladi, uchrashuv shunga qarab
+  city       String @default("")
+  /// Klinika hajmi ("1-5", "6-15", "16-40", "40+").
+  ///
+  /// Sotuvda telefondan keyingi eng foydali maydon: 3 kishilik
+  /// kabinet bilan 40 kishilik markazga bir xil gapirib bo'lmaydi.
+  /// Aniq son emas, oraliq so'raladi — aniq sonni odam bilmaydi
+  /// ham, o'ylab o'tirsa formani tashlab ketadi.
+  staffCount String @default("") @map("staff_count")
+
+  status LeadStatus @default(NEW)
+  /// Sotuvchining izohi — qo'ng'iroqdan keyin yoziladi
+  note   String     @default("")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("leads")
+}

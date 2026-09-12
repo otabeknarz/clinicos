@@ -88,6 +88,7 @@ export const GLOBAL_MODELS = new Set<string>([
   'ChatGroupMember',
   'ChatMessageRead',
   'Clinic',
+  'Lead',
   'Plan',
   'PlatformMember',
   'Session',

@@ -26,6 +26,8 @@ import {
   PlatformSearchDto,
   SuspendDto,
   TenantModulesDto,
+  LeadQueryDto,
+  LeadUpdateDto,
   TenantCreateDto,
   TenantQueryDto,
   TenantUpdateDto,
@@ -201,6 +203,109 @@ export class PlatformService {
    * kira olmaydi — yarim yaratilgan yozuv faqat chalkashlik
    * keltiradi.
    */
+  /**
+   * SOTUV SO'ROVLARI.
+   *
+   * O'zi ro'yxatdan o'tgan har bir odam shu ro'yxatga tushadi.
+   * Klinikasi allaqachon ishlab turibdi — bu yerda SOTUV ishi
+   * yuritiladi: kim qo'ng'iroq qilindi, nima dedi, nima bo'ldi.
+   *
+   * Ro'yxat klinikadan ALOHIDA: mijoz ketib qolsa ham so'rov
+   * tarixi qoladi, va aksincha — so'rov bo'yicha klinika ochilgan
+   * bo'lsa, uning hozirgi holati ham ko'rinib turadi.
+   */
+  async leads(query: LeadQueryDto) {
+    const where: Prisma.LeadWhereInput = {
+      AND: [
+        query.search?.trim()
+          ? {
+              OR: [
+                { clinicName: { contains: query.search.trim(), mode: 'insensitive' } },
+                { fullName: { contains: query.search.trim(), mode: 'insensitive' } },
+                { phone: { contains: query.search.trim() } },
+              ],
+            }
+          : {},
+        query.status === 'all' ? {} : { status: toDb(query.status) },
+      ],
+    }
+
+    const [rows, total, fresh] = await Promise.all([
+      this.db.lead.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+      this.db.lead.count({ where }),
+      this.db.lead.count({ where: { status: 'NEW' } }),
+    ])
+
+    /* Klinikaning hozirgi holati — qo'ng'iroqdan oldin ko'rinib tursin */
+    const clinicIds = rows.map((row) => row.createdClinicId).filter((id): id is string => !!id)
+    const clinics = clinicIds.length
+      ? await this.db.clinic.findMany({
+          where: { id: { in: clinicIds } },
+          select: {
+            id: true,
+            deletedAt: true,
+            subscription: { select: { status: true, trialEndsAt: true } },
+            _count: { select: { patients: true, users: true } },
+          },
+        })
+      : []
+
+    const byId = new Map(clinics.map((clinic) => [clinic.id, clinic]))
+
+    const items = rows.map((row) => {
+      const clinic = row.createdClinicId ? byId.get(row.createdClinicId) : undefined
+      return {
+        id: row.id,
+        clinicId: row.createdClinicId,
+        clinicName: row.clinicName,
+        fullName: row.fullName,
+        phone: row.phone,
+        position: row.position,
+        direction: row.direction,
+        city: row.city,
+        staffCount: row.staffCount,
+        status: toApi(row.status),
+        note: row.note,
+        createdAt: toApiDateTime(row.createdAt)!,
+        /*
+          "QANCHALIK JONLI" — sotuvchiga eng kerakli ikki raqam.
+          Bemor kiritgan va xodim qo'shgan klinika sinovni rostdan
+          sinab ko'ryapti; bo'sh turgani esa boshqa gap.
+        */
+        patients: clinic?._count.patients ?? 0,
+        users: clinic?._count.users ?? 0,
+        trialEndsAt: clinic?.subscription?.trialEndsAt
+          ? toApiDate(clinic.subscription.trialEndsAt)
+          : null,
+        tenantStatus: clinic?.subscription?.status ? toApi(clinic.subscription.status) : null,
+        clinicDeleted: Boolean(clinic?.deletedAt),
+      }
+    })
+
+    return { ...paginated(items, total, query.page, query.pageSize), fresh }
+  }
+
+  /** Qo'ng'iroqdan keyin: holat va izoh */
+  async updateLead(id: string, dto: LeadUpdateDto) {
+    const lead = await this.db.lead.findUnique({ where: { id } })
+    if (!lead) throw new NotFoundException('So‘rov topilmadi')
+
+    await this.db.lead.update({
+      where: { id },
+      data: {
+        status: dto.status ? toDb(dto.status) : undefined,
+        note: dto.note ?? undefined,
+      },
+    })
+
+    return { ok: true }
+  }
+
   async createTenant(dto: TenantCreateDto) {
     const plan = await this.db.plan.findUnique({ where: { id: dto.planId } })
     if (!plan) throw new NotFoundException('Tarif topilmadi')

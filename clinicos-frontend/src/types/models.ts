@@ -2277,7 +2277,22 @@ export interface Feedback {
   /** Klinika javobi */
   reply: string
   repliedAt: ISODateTime | null
+  /**
+   * Bemor biriktirgan rasmlar.
+   *
+   * Kabinetdan yozilgan fikrga rasm qo'shish mumkin — "palatada
+   * shunday edi" degan gapni ko'rsatish uchun. Havolalar qisqa
+   * muddatli imzolangan, ya'ni sahifa yangilanganda qaytadan
+   * olinadi.
+   */
+  images: FeedbackImage[]
   createdAt: ISODateTime
+}
+
+export interface FeedbackImage {
+  id: ID
+  /** Imzolangan havola (15 daqiqa) */
+  imageUrl: string
 }
 
 /** Telefon bo'yicha qidiruv natijasi */

@@ -1,14 +1,26 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common'
+import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common'
 import { Request } from 'express'
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator'
+import { IsString, MaxLength, MinLength } from 'class-validator'
 
 import { clientIp } from '../common/client-ip'
 import { Public } from '../common/guards/jwt-auth.guard'
 import { RequestContext } from '../common/request-context'
 import { AuthService } from './auth.service'
+import { RegisterDto } from './register.dto'
 
 class LoginDto {
-  @IsEmail({}, { message: 'Email formati noto‘g‘ri' })
+  /*
+    TELEFON YOKI EMAIL.
+
+    Maydon nomi tarixiy — mijozlar (veb va Telegram ilovasi) uni
+    `email` deb yuboradi. Ichida esa endi telefon ham bo'lishi
+    mumkin: yangi klinikalar raqam bilan ro'yxatdan o'tadi.
+    Shakli bu yerda tekshirilmaydi — `AuthService` o'zi ajratadi,
+    va qat'iy tekshiruv kirishga qo'shimcha to'siq bo'lardi.
+  */
+  @IsString()
+  @MinLength(3, { message: 'Telefon yoki email kiriting' })
+  @MaxLength(200)
   email!: string
 
   @IsString()
@@ -54,6 +66,34 @@ export class AuthController {
       ipAddress: clientIp(req),
       userAgent: req.get('user-agent') ?? null,
     })
+  }
+
+  /*
+    POST /auth/register  →  { code, url, phone }
+
+    O'zi ro'yxatdan o'tish BIR QADAMDA EMAS: forma to'ldirilgach,
+    odam Telegram botida raqamini ulashadi va shundan keyingina
+    klinika ochiladi. Sabab — birov boshqa odamning raqami bilan
+    hisob ochib ketmasligi kerak; bepul SMS yo'q, Telegram esa
+    raqamni o'zi tasdiqlaydi (`auth.service.ts` da batafsil).
+  */
+  @Public()
+  @Post('register')
+  register(@Body() dto: RegisterDto) {
+    return this.auth.startRegistration(dto)
+  }
+
+  /*
+    GET /auth/register/status?code=
+
+    Brauzer shu marshrutni so'rab turadi: odam Telegramda
+    raqamini ulashishi bilan sessiya tayyor bo'ladi va u
+    to'g'ridan-to'g'ri ichkariga kiradi. Kod bir marta ishlaydi.
+  */
+  @Public()
+  @Get('register/status')
+  registerStatus(@Query('code') code: string) {
+    return this.auth.registrationStatus((code ?? '').trim())
   }
 
   // GET /auth/me  →  sahifa yangilanganda sessiyani tiklash

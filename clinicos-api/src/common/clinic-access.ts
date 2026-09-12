@@ -44,6 +44,14 @@ export function checkClinicAccess(input: {
   role: string
   clinicIsActive: boolean
   subscriptionStatus: TenantStatus | null
+  /**
+   * Sinov muddati qachon tugaydi.
+   *
+   * `TRIAL` holatining o'zi to'smaydi — u yangi mijozning normal
+   * holati. To'sadigani MUDDAT: 14 kun o'tgach klinika yopiladi,
+   * aks holda "bepul 14 kun" cheksiz bepul bo'lib qolardi.
+   */
+  trialEndsAt?: Date | null
   /** Klinika o'chirilgan payt. `null` — o'chirilmagan. */
   clinicDeletedAt?: Date | null
   /**
@@ -95,6 +103,21 @@ export function checkClinicAccess(input: {
     bitta yetishmagan qator butun klinikani yopib qo'yardi.
   */
   if (input.subscriptionStatus === null) return ALLOWED
+
+  /*
+    SINOV MUDDATI TUGAGANMI.
+
+    Kunning oxirigacha ishlaydi: muddat sanasi `@db.Date`, ya'ni
+    tungi 00:00. Aniq o'sha soniyada yopilsa, mijoz oxirgi kuni
+    ishlay olmasdi.
+  */
+  if (input.subscriptionStatus === TenantStatus.TRIAL && input.trialEndsAt) {
+    const endOfDay = new Date(input.trialEndsAt)
+    endOfDay.setHours(23, 59, 59, 999)
+    if (Date.now() > endOfDay.getTime()) {
+      return { ok: false, reason: 'Sinov muddati tugadi — tarif tanlash uchun bog‘laning' }
+    }
+  }
 
   if (BLOCKING_STATUSES.includes(input.subscriptionStatus)) {
     return {

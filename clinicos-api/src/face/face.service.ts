@@ -5,7 +5,7 @@ import { RequestContext } from '../common/request-context'
 import { AttendanceService } from '../attendance/attendance.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { StorageService } from '../storage/storage.service'
-import { EnrollFaceDto, FaceCheckInDto } from './face.dto'
+import { EnrollFaceDto, FaceCheckInDto, FaceVerifyDto } from './face.dto'
 
 /**
  * YUZ BO'YICHA DAVOMAT.
@@ -131,37 +131,9 @@ export class FaceService {
    * ikkita joyda ikkita qoida bo'lib qolmasligi kerak.
    */
   async checkIn(dto: FaceCheckInDto) {
-    const faces = await this.db.staffFace.findMany({
-      include: {
-        staff: { select: { id: true, fullName: true, shiftStart: true, status: true } },
-      },
-    })
+    const winner = await this.identify(dto.descriptor)
 
-    const active = faces.filter((face) => face.staff.status === 'ACTIVE')
-    if (active.length === 0) {
-      throw new NotFoundException('Hali birorta xodimning yuzi ro‘yxatdan o‘tmagan')
-    }
-
-    /* Har bir xodim uchun ENG YAQIN namunasi olinadi */
-    const best = new Map<string, { distance: number; face: (typeof active)[number] }>()
-    for (const face of active) {
-      const distance = euclidean(dto.descriptor, face.descriptor)
-      const current = best.get(face.staffId)
-      if (!current || distance < current.distance) best.set(face.staffId, { distance, face })
-    }
-
-    const ranked = [...best.values()].sort((a, b) => a.distance - b.distance)
-    const winner = ranked[0]
-    const runnerUp = ranked[1]
-
-    if (!winner || winner.distance > MATCH_THRESHOLD) {
-      throw new NotFoundException('Yuz tanilmadi')
-    }
-    if (runnerUp && runnerUp.distance - winner.distance < MIN_GAP) {
-      throw new NotFoundException('Ishonchli tanilmadi — qaytadan urinib ko‘ring')
-    }
-
-    const staff = winner.face.staff
+    const staff = winner.staff
     const now = new Date()
     const arrivedAt = clock(now)
 
@@ -210,6 +182,108 @@ export class FaceService {
       alreadyMarked: false,
       distance: round(winner.distance),
     }
+  }
+
+  /**
+   * "KELDI" TUGMASINING TASDIG'I.
+   *
+   * Registrator kimni belgilayotganini oldindan aytadi, server esa
+   * kamera oldidagi odam AYNAN O'SHA ekanini tekshiradi. Shu bilan
+   * nazorat odamdan tizimga o'tadi: "keldi" deb yozish uchun
+   * xodimning o'zi kamera oldida turishi kerak.
+   *
+   * Tekshiruv `identify` orqali — ya'ni yuz butun jamoaga
+   * solishtiriladi. Faqat so'ralgan xodim bilan solishtirilsa,
+   * unga o'xshab ketadigan boshqa odam ham o'tib ketardi.
+   */
+  async verify(dto: FaceVerifyDto) {
+    const own = await this.db.staffFace.count({ where: { staffId: dto.staffId } })
+    if (own === 0) {
+      throw new BadRequestException('Bu xodimning yuz izi ro‘yxatdan o‘tmagan')
+    }
+
+    const winner = await this.identify(dto.descriptor)
+    const staff = winner.staff
+
+    if (staff.id !== dto.staffId) {
+      /*
+        BOSHQA ODAM TURIBDI. Kimligini AYTMAYMIZ: ro'yxatni
+        bilmagan odam kamera oldida turib, boshqa xodimlarning
+        ismini terib olishi mumkin bo'lardi.
+      */
+      throw new NotFoundException('Yuz mos kelmadi')
+    }
+
+    const now = new Date()
+    const arrivedAt = clock(now)
+    const late = minutesOf(arrivedAt) > minutesOf(staff.shiftStart)
+    const photoKey = await this.savePhoto(dto.photo)
+
+    /*
+      QAYTA BELGILASH TO'SILMAYDI — `checkIn` dan farqi shu.
+      Registrator tugmani ataylab bosdi: bu tuzatish bo'lishi
+      mumkin (masalan "kelmadi" deb yozilgan xodim keldi).
+    */
+    await this.attendance.mark(
+      {
+        staffId: staff.id,
+        date: dayString(now),
+        status: late ? 'late' : 'present',
+        arrivedAt,
+        note: 'Yuz orqali tasdiqlandi',
+      },
+      { photoKey, selfMarked: true },
+    )
+
+    return {
+      staffId: staff.id,
+      fullName: staff.fullName,
+      status: late ? 'late' : 'present',
+      arrivedAt,
+      alreadyMarked: false,
+      distance: round(winner.distance),
+    }
+  }
+
+  /**
+   * Kamera oldidagi odam kimligini aniqlaydi.
+   *
+   * Ikkita chaqiruvchi bor (`checkIn` va `verify`) va qoida ikkalasida
+   * bir xil bo'lishi shart: bo'lmasa bir yo'l ikkinchisidan bo'shroq
+   * bo'lib qolardi va o'sha yo'l tanlanardi.
+   */
+  private async identify(descriptor: number[]) {
+    const faces = await this.db.staffFace.findMany({
+      include: {
+        staff: { select: { id: true, fullName: true, shiftStart: true, status: true } },
+      },
+    })
+
+    const active = faces.filter((face) => face.staff.status === 'ACTIVE')
+    if (active.length === 0) {
+      throw new NotFoundException('Hali birorta xodimning yuzi ro‘yxatdan o‘tmagan')
+    }
+
+    /* Har bir xodim uchun ENG YAQIN namunasi olinadi */
+    const best = new Map<string, { distance: number; face: (typeof active)[number] }>()
+    for (const face of active) {
+      const distance = euclidean(descriptor, face.descriptor)
+      const current = best.get(face.staffId)
+      if (!current || distance < current.distance) best.set(face.staffId, { distance, face })
+    }
+
+    const ranked = [...best.values()].sort((a, b) => a.distance - b.distance)
+    const winner = ranked[0]
+    const runnerUp = ranked[1]
+
+    if (!winner || winner.distance > MATCH_THRESHOLD) {
+      throw new NotFoundException('Yuz tanilmadi')
+    }
+    if (runnerUp && runnerUp.distance - winner.distance < MIN_GAP) {
+      throw new NotFoundException('Ishonchli tanilmadi — qaytadan urinib ko‘ring')
+    }
+
+    return { staff: winner.face.staff, distance: winner.distance }
   }
 
   /**

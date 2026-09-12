@@ -507,3 +507,33 @@ html:has(.story-page){scroll-behavior:auto}
 .auth-page .auth-demo-list button:disabled{opacity:.5;pointer-events:none}
 .auth-page .auth-demo-list small{display:block;font-size:10px;color:#6f8099}
 .auth-page .auth-demo-list em{font-style:normal;color:var(--blue);font-weight:650;font-size:11px;flex-shrink:0}
+
+/*
+  PAROL O'LCHAGICHI.
+
+  Nuqtalarni sanab bo'lmaydi, shuning uchun uzunlik yonida
+  ko'rinib turadi: har bir belgi bitta katakchani yoqadi, sakkizta
+  to'lgach hammasi yashilga o'tadi va tugma yonadi.
+*/
+.pw-meter{display:flex;align-items:center;gap:10px;margin-top:8px}
+.pw-meter-track{display:flex;gap:3px;flex:1}
+.pw-meter-cell{height:4px;flex:1;border-radius:3px;background:#e4e9f4;transition:background-color .18s ease,transform .18s cubic-bezier(.34,1.4,.64,1)}
+.pw-meter-cell.is-filled{background:#2864f0;transform:scaleY(1.35)}
+.pw-meter-cell.is-done{background:#16a34a}
+.pw-meter-count{font-size:11px;font-weight:600;color:#7d90aa;font-variant-numeric:tabular-nums;transition:color .18s ease}
+.pw-meter-count.is-done{color:#16a34a}
+
+/*
+  TELEFON MAYDONI — kod o'zgarmas qism bo'lib turadi.
+
+  Odam faqat qolgan to'qqiz raqamni teradi, ular esa bo'laklarga
+  ajralib boradi (`90 123 45 67`).
+*/
+.phone-field{display:flex;align-items:center;gap:8px;border:1px solid #dfe5f2;border-radius:12px;background:#fff;padding:0 14px}
+.phone-field:focus-within{border-color:#2864f0;box-shadow:0 0 0 3px rgb(40 100 240 / .12)}
+.phone-field .phone-prefix{font-size:13px;font-weight:600;color:#67758e;font-variant-numeric:tabular-nums}
+.phone-field input{border:0;background:transparent;padding-left:0;box-shadow:none;font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.phone-field input:focus{border:0;box-shadow:none}
+
+/* Tugma shart bajarilmaguncha o'chiq turadi */
+.auth-submit:disabled{opacity:.5;cursor:not-allowed}

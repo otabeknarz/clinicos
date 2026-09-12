@@ -432,3 +432,26 @@ export class ArchiveDto {
   @IsString() @MinLength(5, { message: 'Sababni yozing' }) @MaxLength(500)
   reason!: string
 }
+
+/** So'rovlar ro'yxati uchun filtr */
+export class LeadQueryDto extends PageQueryDto {
+  @IsOptional() @IsString() @MaxLength(100)
+  search?: string
+
+  @IsOptional() @IsIn(['all', 'new', 'contacted', 'converted', 'lost'])
+  status: 'all' | 'new' | 'contacted' | 'converted' | 'lost' = 'all'
+}
+
+/**
+ * So'rov ustida ishlash.
+ *
+ * Ikkalasi ham ixtiyoriy: sotuvchi ba'zan faqat izoh yozadi
+ * ("ertaga qayta qo'ng'iroq"), holatni esa keyin o'zgartiradi.
+ */
+export class LeadUpdateDto {
+  @IsOptional() @IsIn(['new', 'contacted', 'converted', 'lost'])
+  status?: 'new' | 'contacted' | 'converted' | 'lost'
+
+  @IsOptional() @IsString() @MaxLength(2000)
+  note?: string
+}

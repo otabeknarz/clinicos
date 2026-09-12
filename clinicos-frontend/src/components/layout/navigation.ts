@@ -24,6 +24,7 @@ import {
   UserCog,
   UserRound,
   Users,
+  UserPlus,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -101,6 +102,16 @@ export const NAVIGATION: NavGroup[] = [
         to: '/platform/clinics',
         labelKey: 'platform.clinics',
         icon: Building2,
+        permission: 'platform.view',
+      },
+      /*
+        SO'ROVLAR — klinikalardan keyin turadi: u yerda ishlayotgan
+        mijozlar, bu yerda esa hali mijoz bo'lmaganlar.
+      */
+      {
+        to: '/platform/leads',
+        labelKey: 'nav.leads',
+        icon: UserPlus,
         permission: 'platform.view',
       },
       /*

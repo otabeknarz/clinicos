@@ -112,6 +112,34 @@ export const DISABLED_BY_KIND: Record<ClinicKind, ClinicModule[]> = {
 }
 
 /**
+ * SINOV MUDDATIDA YOPIQ TURADIGAN BO'LIMLAR.
+ *
+ * 14 kunlik bepul versiya KUNDALIK ISHNI to'liq ko'rsatadi:
+ * bemorlar, qabullar, tashriflar, to'lovlar, xizmatlar,
+ * shifokorlar, xodimlar, davomat, izohlar, chat va qarzlar —
+ * ya'ni klinika ertaga ishlashni boshlay oladi.
+ *
+ * YOPIQ QOLADIGANI — RAHBAR QATLAMI: tushum, tahlil va kassa
+ * solishtiruvi, shuningdek statsionar. Bular "o'lchash va
+ * nazorat" qismi, ya'ni mahsulot nima uchun pul olishi.
+ * Sinovda hamma narsa ochiq bo'lsa, to'lash uchun sabab
+ * qolmaydi; kundalik ish yopiq bo'lsa esa sinovdan umuman
+ * ma'no chiqmaydi.
+ *
+ * Platforma admini har bir klinikada buni qo'lda o'zgartira
+ * oladi — bu boshlang'ich to'plam, qat'iy qoida emas.
+ */
+export const TRIAL_DISABLED_MODULES: ClinicModule[] = [
+  'revenue',
+  'analytics',
+  'cashcontrol',
+  'ward',
+]
+
+/** Sinov necha kun davom etadi */
+export const TRIAL_DAYS = 14
+
+/**
  * QO'LLAB-QUVVATLASH DARAJASI — tarifning bir qismi, lekin MODUL EMAS.
  *
  * Modul "mahsulotda bu bo'lim bormi" degan savolga javob beradi va uni

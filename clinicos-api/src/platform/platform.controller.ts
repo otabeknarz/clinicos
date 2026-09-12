@@ -27,6 +27,8 @@ import {
   PlatformSearchDto,
   SuspendDto,
   TenantModulesDto,
+  LeadQueryDto,
+  LeadUpdateDto,
   TenantCreateDto,
   TenantQueryDto,
   TenantUpdateDto,
@@ -77,6 +79,28 @@ export class PlatformController {
   @Get('plans')
   listPlans() {
     return this.platform.listPlans()
+  }
+
+  /*
+    GET /platform/leads?search=&status=&page=
+
+    SOTUV SO'ROVLARI — o'zi ro'yxatdan o'tganlar.
+
+    Ro'yxat bu yerda, chunki ish ham shu yerda: qo'ng'iroq qilish,
+    izoh yozish va holatni belgilash. Klinikalar ro'yxatiga
+    qo'shib yuborilmadi — u yerda ishlayotgan mijozlar turadi,
+    bu yerda esa hali mijoz bo'lmaganlar.
+  */
+  @Get('leads')
+  leads(@Query() query: LeadQueryDto) {
+    return this.platform.leads(query)
+  }
+
+  // PATCH /platform/leads/:id
+  @Patch('leads/:id')
+  @RequirePermission('platform.manage')
+  updateLead(@Param('id') id: string, @Body() dto: LeadUpdateDto) {
+    return this.platform.updateLead(id, dto)
   }
 
   @Patch('plans/:id')

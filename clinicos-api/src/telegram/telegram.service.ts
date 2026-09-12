@@ -198,13 +198,40 @@ export class TelegramService {
     return `${this.appUrl}${path}`
   }
 
-  /** Botga kelgan xabardan kerakli ikki maydon */
-  parseMessage(update: unknown): { chatId: string; text: string } | null {
-    const message = (update as { message?: { chat?: { id?: number }; text?: string } })
-      ?.message
+  /**
+   * Botga kelgan xabar.
+   *
+   * `ownPhone` — "raqamni ulashish" tugmasi bosilganda to'ladi va
+   * u ro'yxatdan o'tishni tasdiqlaydi. `contact.user_id ===
+   * from.id` TEKSHIRUVI SHART: Telegram odamning O'ZINIKI emas,
+   * adres daftaridagi boshqa kontaktni ham yuborishga ruxsat
+   * beradi — tekshirilmasa, birovning raqami bilan hisob ochib
+   * ketish yo'li ochiq qolardi. Bemor botida ham shu qoida.
+   */
+  parseMessage(
+    update: unknown,
+  ): { chatId: string; text: string; ownPhone: string | null } | null {
+    const message = (
+      update as {
+        message?: {
+          chat?: { id?: number }
+          from?: { id?: number }
+          text?: string
+          contact?: { phone_number?: string; user_id?: number }
+        }
+      }
+    )?.message
+
     const chatId = message?.chat?.id
     if (!chatId) return null
-    return { chatId: String(chatId), text: (message.text ?? '').trim() }
+
+    const contact = message.contact
+    const ownPhone =
+      contact?.phone_number && contact.user_id && contact.user_id === message.from?.id
+        ? contact.phone_number
+        : null
+
+    return { chatId: String(chatId), text: (message.text ?? '').trim(), ownPhone }
   }
 
   /**

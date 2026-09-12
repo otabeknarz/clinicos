@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
-import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '@/api/auth'
+import {
+  CLINIC_DIRECTIONS,
+  DEMO_ACCOUNTS,
+  DEMO_PASSWORD,
+  LEAD_POSITIONS,
+  register,
+  registerStatus,
+  STAFF_COUNTS,
+} from '@/api/auth'
 import { USE_MOCK } from '@/api/client'
 import { PLATFORM_EMAIL_DOMAIN } from '@/components/ui/EmailLocalInput'
 import { cn } from '@/lib/cn'
@@ -14,6 +22,47 @@ import careImage from '@/pages/public/assets/clinicos-care.png'
 import '@/pages/public/public-base.css'
 
 type Mode = 'login' | 'register'
+
+/**
+ * VILOYATLAR.
+ *
+ * Qo'lda yozilganda "Toshkent", "toshkent sh.", "Tashkent" — uchta
+ * boshqa qiymat bo'lib tushardi va sotuvda hududni ajratib
+ * bo'lmasdi. Ro'yxat bitta shaklni kafolatlaydi.
+ */
+const REGIONS = [
+  'Toshkent shahri',
+  'Toshkent viloyati',
+  'Andijon viloyati',
+  'Buxoro viloyati',
+  'Farg‘ona viloyati',
+  'Jizzax viloyati',
+  'Xorazm viloyati',
+  'Namangan viloyati',
+  'Navoiy viloyati',
+  'Qashqadaryo viloyati',
+  'Qoraqalpog‘iston Respublikasi',
+  'Samarqand viloyati',
+  'Sirdaryo viloyati',
+  'Surxondaryo viloyati',
+] as const
+
+/** Parol shuncha belgidan qisqa bo'lsa — ro'yxatdan o'tib bo'lmaydi */
+const MIN_PASSWORD = 8
+
+/**
+ * Raqamni o'qiladigan qilib ajratadi: "90 123 45 67".
+ *
+ * Ajratilmasa `900000000000000000` ko'rinishida qo'shilib ketardi
+ * va odam qayerda xato qilganini ko'rmasdi. Faqat raqamlar
+ * qoldiriladi, uzunligi 9 ta bilan cheklanadi — kod (`+998`)
+ * maydonning o'zida yozib qo'yilgan.
+ */
+function formatLocalPhone(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 9)
+  const parts = [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 7), digits.slice(7, 9)]
+  return parts.filter(Boolean).join(' ')
+}
 
 /**
  * KIRISH SAHIFASI — foydalanuvchi tasdiqlagan yakuniy dizayn.
@@ -34,7 +83,7 @@ type Mode = 'login' | 'register'
  */
 export function LoginPage() {
   const { t, lang, setLang } = useI18n()
-  const { session, login, loading, error } = useAuth()
+  const { session, login, loading, error, applySession } = useAuth()
   const { enter } = usePatient()
 
   const [params, setParams] = useSearchParams()
@@ -48,6 +97,24 @@ export function LoginPage() {
 
   const loginTab = useRef<HTMLButtonElement>(null)
   const registerTab = useRef<HTMLButtonElement>(null)
+
+  /* --- Ro'yxatdan o'tish formasi --- */
+  const [reg, setReg] = useState({
+    clinicName: '',
+    fullName: '',
+    phone: '',
+    position: 'owner' as (typeof LEAD_POSITIONS)[number],
+    direction: 'general' as (typeof CLINIC_DIRECTIONS)[number],
+    city: '',
+    staffCount: '' as '' | (typeof STAFF_COUNTS)[number],
+    password: '',
+  })
+  const [regBusy, setRegBusy] = useState(false)
+  const [regError, setRegError] = useState('')
+  /* Telegramda tasdiqlashni kutayotgan yozuv */
+  const [verify, setVerify] = useState<{ code: string; url: string; phone: string } | null>(
+    null,
+  )
 
   /* --- Pastki xabar (prototipdagi `.toast`) --- */
   const [toast, setToast] = useState('')
@@ -71,6 +138,44 @@ export function LoginPage() {
       document.title = previous
     }
   }, [registering, t])
+
+  /*
+    TASDIQLANISHINI KUTAMIZ.
+
+    Odam Telegramda tugmani bosishi bilan server sessiyani tayyor
+    qilib qo'yadi; bu yerda uni olib, ichkariga kiritamiz. Har 3
+    soniyada bir marta — bot javobi shu tartibda keladi va tez-tez
+    so'rashning foydasi yo'q.
+  */
+  useEffect(() => {
+    if (!verify) return
+    let stop = false
+
+    const timer = setInterval(async () => {
+      if (stop) return
+      try {
+        const status = await registerStatus(verify.code)
+        if (status.status === 'ready' && status.session) {
+          stop = true
+          clearInterval(timer)
+          applySession(status.session)
+        }
+        if (status.status === 'expired') {
+          stop = true
+          clearInterval(timer)
+          setVerify(null)
+          setRegError(t('login.verifyExpired'))
+        }
+      } catch {
+        /* Tarmoq uzilishi — keyingi urinishda qayta so'raladi */
+      }
+    }, 3000)
+
+    return () => {
+      stop = true
+      clearInterval(timer)
+    }
+  }, [verify, applySession, t])
 
   if (session) return <Navigate to="/" replace />
 
@@ -119,7 +224,19 @@ export function LoginPage() {
   */
   function fullEmail(value: string): string {
     const clean = value.trim().toLowerCase()
-    return clean.includes('@') ? clean : `${clean}@${PLATFORM_EMAIL_DOMAIN}`
+    if (clean.includes('@')) return clean
+
+    /*
+      TELEFON BO'LSA TEGMAYMIZ.
+
+      Yangi klinikalar raqam bilan ro'yxatdan o'tadi. Domen
+      qo'shilsa `+998901234567@clinic-os.uz` bo'lib ketardi va
+      hech qachon topilmasdi — sabab esa ataylab umumiy xabar
+      ostida ko'rinmasdi.
+    */
+    if (/\d/.test(clean) && clean.replace(/\D/g, '').length >= 7) return clean
+
+    return `${clean}@${PLATFORM_EMAIL_DOMAIN}`
   }
 
   async function submit(e: React.FormEvent) {
@@ -132,9 +249,46 @@ export function LoginPage() {
     }
   }
 
-  function submitRegister(e: React.FormEvent) {
+  /**
+   * RO'YXATDAN O'TISH — IKKI QADAM.
+   *
+   * Birinchi qadamda server hech narsa yaratmaydi: u Telegram
+   * havolasini qaytaradi. Klinika odam raqamini ulashgandan keyin
+   * ochiladi — ya'ni birovning raqami bilan hisob ochib bo'lmaydi.
+   * Bepul SMS xizmati yo'q, Telegram esa raqamni o'zi tasdiqlaydi.
+   */
+
+  async function submitRegister(e: React.FormEvent) {
     e.preventDefault()
-    notify(t('login.registerToast'))
+    if (regBusy) return
+
+    setRegError('')
+    setRegBusy(true)
+    try {
+      const started = await register({
+        clinicName: reg.clinicName.trim(),
+        fullName: reg.fullName.trim(),
+        phone: `+998 ${reg.phone}`.trim(),
+        position: reg.position,
+        direction: reg.direction,
+        city: reg.city.trim() || undefined,
+        staffCount: reg.staffCount || undefined,
+        password: reg.password,
+      })
+      /*
+        HAVOLA O'ZI OCHILMAYDI.
+
+        `window.open` ni server javobidan keyin chaqirsak, brauzer
+        uni "foydalanuvchi bosmagan oyna" deb bloklaydi va odam
+        hech narsa ko'rmay qolardi. Shuning uchun keyingi qadamda
+        katta tugma chiqadi — uni bosish o'zi harakat bo'ladi.
+      */
+      setVerify(started)
+    } catch (error) {
+      setRegError(error instanceof Error ? error.message : t('toast.error'))
+    } finally {
+      setRegBusy(false)
+    }
   }
 
   function signInAsDemo(demoEmail: string) {
@@ -142,6 +296,20 @@ export function LoginPage() {
     setPassword(DEMO_PASSWORD)
     void login(demoEmail, DEMO_PASSWORD).catch(() => {})
   }
+
+  /*
+    RO'YXATDAN O'TISH TUGMASI QACHON YONADI.
+
+    Barcha majburiy maydon to'ldirilgan va parol yetarli uzun
+    bo'lgandagina. Yarim to'ldirilgan formani yuborib, server
+    xatosini o'qib o'tirish — eng yomon birinchi taassurot.
+  */
+  const canRegister =
+    reg.clinicName.trim().length >= 2 &&
+    reg.fullName.trim().length >= 3 &&
+    reg.phone.replace(/\D/g, '').length === 9 &&
+    reg.city !== '' &&
+    reg.password.length >= MIN_PASSWORD
 
   const language = LANGS.find((one) => one.code === lang) ?? LANGS[0]
 
@@ -346,6 +514,41 @@ export function LoginPage() {
 
             {/* ================= RO'YXATDAN O'TISH ================= */}
             <form id="registerForm" hidden={!registering} onSubmit={submitRegister}>
+              {/*
+                TASDIQLASH QADAMI.
+
+                Forma to'ldirilgach shu ko'rinish chiqadi va sahifa
+                javobni kutib turadi. Odam Telegramda tugmani
+                bosishi bilan o'zi ichkariga kiradi — qaytib kelib
+                yana parol terib o'tirmaydi.
+              */}
+              {verify ? (
+                <div className="auth-verify">
+                  <p className="auth-verify-title">{t('login.verifyTitle')}</p>
+                  <p className="auth-verify-text">
+                    {t('login.verifyText', { phone: verify.phone })}
+                  </p>
+                  <a
+                    className="button auth-submit"
+                    href={verify.url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {t('login.verifyOpen')} <Icon name="arrow" />
+                  </a>
+                  <p className="form-note">{t('login.verifyWaiting')}</p>
+                  <p className="auth-bottom-link">
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => setVerify(null)}
+                    >
+                      {t('action.back')}
+                    </button>
+                  </p>
+                </div>
+              ) : (
+                <>
               <div className="form-field">
                 <label htmlFor="clinicName">{t('login.clinicName')}</label>
                 <input
@@ -354,8 +557,31 @@ export function LoginPage() {
                   placeholder={t('login.clinicNamePlaceholder')}
                   autoComplete="organization"
                   required
+                  value={reg.clinicName}
+                  onChange={(e) => setReg((v) => ({ ...v, clinicName: e.target.value }))}
                 />
               </div>
+
+              <div className="form-field">
+                <label htmlFor="registerDirection">{t('login.direction')}</label>
+                <select
+                  id="registerDirection"
+                  value={reg.direction}
+                  onChange={(e) =>
+                    setReg((v) => ({
+                      ...v,
+                      direction: e.target.value as (typeof CLINIC_DIRECTIONS)[number],
+                    }))
+                  }
+                >
+                  {CLINIC_DIRECTIONS.map((key) => (
+                    <option key={key} value={key}>
+                      {t(`direction.${key}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="form-field">
                 <label htmlFor="registerName">{t('login.fullName')}</label>
                 <input
@@ -364,18 +590,103 @@ export function LoginPage() {
                   placeholder={t('login.fullNamePlaceholder')}
                   autoComplete="name"
                   required
+                  value={reg.fullName}
+                  onChange={(e) => setReg((v) => ({ ...v, fullName: e.target.value }))}
                 />
               </div>
+
               <div className="form-field">
-                <label htmlFor="registerEmail">{t('login.email')}</label>
-                <input
-                  id="registerEmail"
-                  type="email"
-                  placeholder={t('login.contactEmailPlaceholder')}
-                  autoComplete="email"
-                  required
-                />
+                <label htmlFor="registerPosition">{t('login.position')}</label>
+                <select
+                  id="registerPosition"
+                  value={reg.position}
+                  onChange={(e) =>
+                    setReg((v) => ({
+                      ...v,
+                      position: e.target.value as (typeof LEAD_POSITIONS)[number],
+                    }))
+                  }
+                >
+                  {LEAD_POSITIONS.map((key) => (
+                    <option key={key} value={key}>
+                      {t(`leadPosition.${key}`)}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              {/*
+                TELEFON — EMAIL O'RNIGA.
+
+                Klinika rahbari pochtasini kamdan-kam ishlatadi,
+                telefon esa har doim yonida. Kirish ham shu raqam
+                bilan bo'ladi va sotuv ham shu raqamga qo'ng'iroq
+                qiladi.
+              */}
+              <div className="form-field">
+                <label htmlFor="registerPhone">{t('login.phone')}</label>
+                {/*
+                  KOD MAYDONNING O'ZIDA TURADI.
+
+                  Odam faqat qolganini teradi va raqamlar bo'lakka
+                  ajralib boradi — bir qarashda to'g'ri terilganini
+                  ko'radi.
+                */}
+                <div className="phone-field">
+                  <span className="phone-prefix">+998</span>
+                  <input
+                    id="registerPhone"
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="90 123 45 67"
+                    autoComplete="tel-national"
+                    required
+                    value={reg.phone}
+                    onChange={(e) =>
+                      setReg((v) => ({ ...v, phone: formatLocalPhone(e.target.value) }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="registerCity">{t('login.city')}</label>
+                <select
+                  id="registerCity"
+                  required
+                  value={reg.city}
+                  onChange={(e) => setReg((v) => ({ ...v, city: e.target.value }))}
+                >
+                  <option value="">{t('login.cityPlaceholder')}</option>
+                  {REGIONS.map((region) => (
+                    <option key={region} value={region}>
+                      {region}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="registerSize">{t('login.staffCount')}</label>
+                <select
+                  id="registerSize"
+                  value={reg.staffCount}
+                  onChange={(e) =>
+                    setReg((v) => ({
+                      ...v,
+                      staffCount: e.target.value as '' | (typeof STAFF_COUNTS)[number],
+                    }))
+                  }
+                >
+                  <option value="">{t('login.staffCountPlaceholder')}</option>
+                  {STAFF_COUNTS.map((key) => (
+                    <option key={key} value={key}>
+                      {t('login.staffCountValue', { range: key })}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="form-field">
                 <label htmlFor="registerPassword">{t('login.password')}</label>
                 <div className="password-field">
@@ -386,6 +697,8 @@ export function LoginPage() {
                     minLength={8}
                     autoComplete="new-password"
                     required
+                    value={reg.password}
+                    onChange={(e) => setReg((v) => ({ ...v, password: e.target.value }))}
                   />
                   <button
                     type="button"
@@ -401,10 +714,55 @@ export function LoginPage() {
                 </div>
               </div>
 
-              <button type="submit" className="button auth-submit">
+              {/*
+                PAROL UZUNLIGI KO'RINIB TURADI.
+
+                Maydonda nuqtalar turadi va odam ularni ko'z bilan
+                sanay olmaydi — "yetdimi yoki yo'qmi" degan savol
+                javobsiz qolardi. Shuning uchun: sakkizta katakcha
+                to'lib boradi va yonida aniq son turadi. Tugma ham
+                shu shart bajarilmaguncha yonmaydi.
+              */}
+              <div className="pw-meter" aria-live="polite">
+                <div className="pw-meter-track">
+                  {Array.from({ length: MIN_PASSWORD }, (_, index) => (
+                    <span
+                      key={index}
+                      className={cn(
+                        'pw-meter-cell',
+                        index < reg.password.length && 'is-filled',
+                        reg.password.length >= MIN_PASSWORD && 'is-done',
+                      )}
+                    />
+                  ))}
+                </div>
+                <span
+                  className={cn(
+                    'pw-meter-count',
+                    reg.password.length >= MIN_PASSWORD && 'is-done',
+                  )}
+                >
+                  {Math.min(reg.password.length, MIN_PASSWORD)}/{MIN_PASSWORD}
+                </span>
+              </div>
+
+              {regError ? (
+                <p className="auth-error" role="alert">
+                  {regError}
+                </p>
+              ) : null}
+
+              <button
+                type="submit"
+                className="button auth-submit"
+                disabled={regBusy || !canRegister}
+                aria-busy={regBusy}
+              >
                 {t('login.registerSubmit')} <Icon name="arrow" />
               </button>
               <p className="form-note">{t('login.registerNote')}</p>
+                </>
+              )}
               <p className="auth-bottom-link">
                 {t('login.haveAccount')}{' '}
                 <button type="button" className="text-button" onClick={() => switchMode('login')}>

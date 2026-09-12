@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**212 ta endpoint.**
+**217 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -195,6 +195,31 @@ Ulanishni uzadi — telefon almashtirilganda kerak
 
 ```ts
 unlinkTelegram(): Promise<{ linked: boolean }>
+```
+
+### `POST /auth/register`
+
+Ro'yxatdan o'tish BIRINCHI QADAMI.
+
+Bu chaqiruv hali hech narsa yaratmaydi: javobda Telegram
+havolasi qaytadi va odam raqamini o'sha yerda tasdiqlaydi.
+Sabab oddiy — birov boshqa odamning raqami bilan hisob ochib
+ketmasligi kerak, bepul SMS xizmati esa yo'q.
+
+```ts
+register(input: RegisterInput): Promise<{ code: string url: string phone: string expiresInSec: number }>
+```
+
+### `GET /auth/register/status`
+
+Tasdiqlandimi.
+
+`waiting` — odam hali Telegramda raqamini ulashmagan;
+`ready` — klinika ochildi va sessiya tayyor (BIR MARTA beriladi);
+`expired` — 15 daqiqa o'tdi, formani qaytadan to'ldirish kerak.
+
+```ts
+registerStatus(code: string): Promise<{ status: 'waiting' | 'ready' | 'expired'; session: Session | null }>
 ```
 
 ## Klinika sozlamalari
@@ -1994,6 +2019,7 @@ clinicId,
 status: 'new',
 reply: '',
 repliedAt: null,
+images: [],
 createdAt: now.toISOString(),
 revealAt: new Date(now.getTime() + revealHours * 3_600_000).toISOString(),
 ...input,
@@ -3668,6 +3694,12 @@ enrollFace(input: { staffId: ID fullName: string descriptors: number[][] }): Pro
 deleteFace(staffId: ID): Promise<void>
 ```
 
+### `POST /attendance/face/verify`
+
+```ts
+faceVerify(staffId: ID, descriptor: number[], photo?: string | null): Promise<FaceCheckInResult>
+```
+
 ### `POST /attendance/face/check-in`
 
 ```ts
@@ -3743,6 +3775,28 @@ previewImport(dataset: string, file: File): Promise<ImportPreview>
 
 ```ts
 applyImport(dataset: string, file: File): Promise<ImportResult>
+```
+
+## leads
+
+`src/api/leads.ts`
+
+> SOTUV SO'ROVLARI.
+> 
+> O'zi ro'yxatdan o'tgan har bir klinika shu ro'yxatga tushadi:
+> telefon, lavozim, yo'nalish va klinikaning hozirgi holati.
+> Platforma paneli shu bilan ishlaydi.
+
+### `GET /platform/leads`
+
+```ts
+listLeads(query: { search?: string status?: LeadStatus | 'all' page?: number pageSize?: number }): Promise<LeadPage>
+```
+
+### `PATCH /platform/leads/:id`
+
+```ts
+updateLead(id: ID, patch: { status?: LeadStatus; note?: string }): Promise<void>
 ```
 
 ## notices

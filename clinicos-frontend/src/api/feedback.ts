@@ -228,6 +228,7 @@ export async function createFeedback(input: FeedbackInput): Promise<Feedback> {
     status: 'new',
     reply: '',
     repliedAt: null,
+    images: [],
     createdAt: now.toISOString(),
     revealAt: new Date(now.getTime() + revealHours * 3_600_000).toISOString(),
     ...input,

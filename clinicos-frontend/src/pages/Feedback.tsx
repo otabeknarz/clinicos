@@ -375,17 +375,56 @@ function FeedbackRow({
             <p className="mt-2 text-subhead text-label">{feedback.text}</p>
           ) : null}
 
-          {/* Alohida baholar */}
-          <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1">
-            {(['doctor', 'service', 'cleanliness', 'waiting'] as const).map((key) => (
-              <li key={key} className="text-caption text-label-tertiary">
-                {t(`feedback.score.${key}`)}:{' '}
-                <span className="font-medium tnum text-label-secondary">
-                  {feedback.scores[key]}
-                </span>
-              </li>
-            ))}
-          </ul>
+          {/*
+            BEMOR BIRIKTIRGAN RASMLAR.
+
+            Kabinetdan yozilgan fikrga rasm qo'shiladi va aynan
+            o'sha rasm gapning o'zidan ko'ra ko'proq narsa aytadi.
+            Havola 15 daqiqalik imzolangan bo'ladi — yangi so'rovda
+            qaytadan olinadi, shuning uchun uni saqlab bo'lmaydi.
+          */}
+          {feedback.images.length > 0 ? (
+            <ul className="mt-2.5 flex flex-wrap gap-2">
+              {feedback.images.map((image) => (
+                <li key={image.id}>
+                  <a
+                    href={image.imageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block h-16 w-16 overflow-hidden rounded-[10px] bg-sunken transition-transform duration-200 hover:scale-105"
+                  >
+                    <img
+                      src={image.imageUrl}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                    />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {/*
+            ALOHIDA BAHOLAR — faqat QO'YILGANI.
+
+            Kabinetdan kelgan fikrda umumiy bahodan boshqasi
+            bo'lmasligi mumkin. Ilgari ular baribir chizilardi va
+            qatorda "Shifokor: Xizmat: Tozalik:" degan bo'sh
+            yozuvlar qolib ketardi.
+          */}
+          {SCORES.some((key) => feedback.scores[key] > 0) ? (
+            <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1">
+              {SCORES.filter((key) => feedback.scores[key] > 0).map((key) => (
+                <li key={key} className="text-caption text-label-tertiary">
+                  {t(`feedback.score.${key}`)}:{' '}
+                  <span className="font-medium tnum text-label-secondary">
+                    {feedback.scores[key]}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
 
           {/* Klinika javobi */}
           {feedback.reply ? (
@@ -453,3 +492,6 @@ function FeedbackRow({
     </li>
   )
 }
+
+/** Alohida baho yo'nalishlari — tartibi interfeysdagi bilan bir xil */
+const SCORES = ['doctor', 'service', 'cleanliness', 'waiting'] as const

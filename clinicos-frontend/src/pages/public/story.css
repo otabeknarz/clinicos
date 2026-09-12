@@ -430,21 +430,56 @@
 @media(prefers-reduced-motion:reduce){
 .story-page *{animation:none!important;transition:none!important}
 }
+/*
+  HARAKAT VA EFFEKTLAR — ISH PANELLARIDAGI BILAN BIR XIL.
+
+  Egri chiziqlar, siqilish kuchi va ko'tarilish masofasi endi
+  `index.css` dagi `--ease-apple` / `--ease-spring` dan olinadi.
+  Ilgari bu yerda o'z qiymatlari bor edi va tanishuv sahifasi
+  ichkaridagi mahsulotdan boshqacha "his" berardi.
+*/
 @media (prefers-reduced-motion:no-preference){
-.story-page .button .icon,.story-page .login-button .icon{transition:translate 180ms ease-out}
+.story-page .button .icon,.story-page .login-button .icon{transition:translate 200ms var(--ease-apple)}
 .story-page .button:hover .icon,.story-page .login-button:hover .icon{translate:3px 0}
-.story-page .button:active{transform:translateY(0) scale(.98)}
-:where(.story-page) .v3-role-picker button,:where(.story-page) .v3-step{transition:background 200ms ease,color 200ms ease,border-color 200ms ease,box-shadow 200ms ease}
-:where(.story-page) .v3-role-picker button:active{scale:.97}
-:where(.story-page) .v3-phone-msg,:where(.story-page) .v3-calendar-art,:where(.story-page) .v3-record,:where(.story-page) .v3-role-chip,:where(.story-page) .v3-extra-visual .icon{transition:translate 350ms cubic-bezier(.2,.7,.2,1),box-shadow 350ms ease}
+/* Panellardagi tugma bosilganda 0.96 gacha siqiladi — shu yerda ham */
+.story-page .button,.story-page .login-button{transition:color .2s var(--ease-apple),background-color .2s var(--ease-apple),border-color .2s var(--ease-apple),box-shadow .2s var(--ease-apple),transform .2s var(--ease-apple),scale .2s var(--ease-apple)}
+.story-page .button:active,.story-page .login-button:active{scale:.96}
+:where(.story-page) .v3-role-picker button,:where(.story-page) .v3-step{transition:background .2s var(--ease-apple),color .2s var(--ease-apple),border-color .2s var(--ease-apple),box-shadow .2s var(--ease-apple),scale .2s var(--ease-apple)}
+:where(.story-page) .v3-role-picker button:active{scale:.96}
+/*
+  SICHQONCHA ORTIDAN YURADIGAN YORUG'LIK.
+
+  Koordinatani `useStorySpotlight` yozadi, kuchini esa `--spot`
+  boshqaradi: karta ustiga borilganda 0 dan 1 gacha silliq yonadi
+  (`@property --spot` — `index.css` da e'lon qilingan, aks holda
+  brauzer uni silliq o'zgartira olmasdi).
+*/
+:where(.story-page) .v3-card,
+:where(.story-page) .v3-extra,
+:where(.story-page) .v3-final{background-image:radial-gradient(360px circle at var(--mx,-500px) var(--my,-500px),color-mix(in srgb,rgb(40 100 240 / .1) calc(var(--spot) * 100%),transparent),transparent 62%)}
+:where(.story-page) .v3-card,:where(.story-page) .v3-extra,:where(.story-page) .v3-final{transition:--spot .4s var(--ease-apple),transform .3s var(--ease-spring),box-shadow .3s var(--ease-apple)}
+:where(.story-page) .v3-card:hover,:where(.story-page) .v3-extra:hover,:where(.story-page) .v3-final:hover{--spot:1}
+
+/* Karta prujina bilan ko'tariladi — panellardagi `.card:hover` kabi */
+:where(.story-page) .v3-card,:where(.story-page) .v3-extra{transition:transform .3s var(--ease-spring),box-shadow .3s var(--ease-apple)}
+:where(.story-page) .v3-card:hover,:where(.story-page) .v3-extra:hover{transform:translateY(-3px);box-shadow:0 22px 50px -26px rgb(20 35 70 / .32)}
+:where(.story-page) .v3-phone-msg,:where(.story-page) .v3-calendar-art,:where(.story-page) .v3-record,:where(.story-page) .v3-role-chip,:where(.story-page) .v3-extra-visual .icon{transition:translate .35s var(--ease-spring),box-shadow .3s var(--ease-apple)}
 :where(.story-page) .v3-card:hover .v3-phone-msg,:where(.story-page) .v3-card:hover .v3-calendar-art,:where(.story-page) .v3-card:hover .v3-record{translate:0 -5px}
 :where(.story-page) .v3-permissions-card:hover .v3-role-chip:nth-child(1){translate:0 -3px}
 :where(.story-page) .v3-permissions-card:hover .v3-role-chip:nth-child(2){translate:0 -6px;transition-delay:35ms}
 :where(.story-page) .v3-permissions-card:hover .v3-role-chip:nth-child(3){translate:0 -3px;transition-delay:70ms}
-:where(.story-page) .v3-extra:hover .v3-extra-visual .icon{translate:0 -4px}
-.story-page summary:after{transition:rotate 220ms ease,background 220ms ease}
+/* Ikonka panellardagidek jonlanadi: biroz buriladi va kattalashadi */
+:where(.story-page) .v3-extra:hover .v3-extra-visual .icon{translate:0 -4px;transform:rotate(-6deg) scale(1.07)}
+.story-page summary:after{transition:rotate .22s var(--ease-apple),background .22s var(--ease-apple)}
 .story-page details[open] summary:after{rotate:180deg;background:#edf3ff}
-:where(.story-page) .v3-highlight:after{transform-origin:left center;animation:v3-underline 550ms 100ms cubic-bezier(.2,.7,.2,1) both}
+:where(.story-page) .v3-highlight:after{transform-origin:left center;animation:v3-underline 550ms 100ms var(--ease-out-soft) both}
+/*
+  FONDAGI DOG'LAR — panellardagi `admin-aurora` ning o'zi.
+  Faqat `transform` o'zgaradi, ya'ni GPU da; sahifa qayta
+  chizilmaydi va aylantirish sekinlashmaydi.
+*/
+:where(.story-page) .v3-hero:before{content:'';position:absolute;inset:-14%;z-index:0;pointer-events:none;background:radial-gradient(56rem 38rem at 6% 0%,rgb(90 125 220 / .16),transparent 65%),radial-gradient(48rem 34rem at 96% 6%,rgb(150 130 230 / .12),transparent 62%),radial-gradient(50rem 36rem at 80% 100%,rgb(110 170 210 / .1),transparent 62%);animation:admin-aurora 42s ease-in-out infinite alternate;will-change:transform}
+:where(.story-page) .v3-hero>*{position:relative;z-index:1}
 }
 @keyframes v3-underline{from{scale:0 1;opacity:0}to{scale:1 1;opacity:1}}
 @media(prefers-reduced-motion:reduce){

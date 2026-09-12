@@ -90,6 +90,8 @@ export function generateFeedback(
     rows.push({
       id: `fbk_${seq}`,
       clinicId,
+      /* Demo: har oltinchi fikrga rasm biriktirilgan bo'ladi */
+      images: seq % 6 === 0 ? [{ id: `fim_${seq}`, imageUrl: DEMO_IMAGE }] : [],
       phone: patient.phone,
       patientId: patient.id,
       patientName: patient.fullName,
@@ -121,3 +123,20 @@ export function generateFeedback(
 
   return rows
 }
+
+/**
+ * Demo rejimdagi "rasm".
+ *
+ * Haqiqiy fayl xotirasi yo'q, shuning uchun o'rniga ichma-ich
+ * chizilgan surat qo'yiladi — fikr rasm bilan kelganda kartochka
+ * qanday ko'rinishi shu yerda tekshiriladi.
+ */
+const DEMO_IMAGE =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160">' +
+      '<rect width="160" height="160" fill="#dfe3ec"/>' +
+      '<circle cx="56" cy="54" r="18" fill="#b9c0d0"/>' +
+      '<path d="M18 132l38-44 28 30 22-20 36 34z" fill="#a7b0c4"/>' +
+      '</svg>',
+  )

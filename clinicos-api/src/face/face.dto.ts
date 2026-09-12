@@ -39,3 +39,25 @@ export class FaceCheckInDto {
   @IsNumber({}, { each: true })
   descriptor: number[] = []
 }
+
+/**
+ * KIMLIGINI TASDIQLASH.
+ *
+ * `check-in` dan farqi: bu yerda kim turishi KERAKLIGI oldindan
+ * ma'lum — registrator "Keldi" tugmasini bosgan. Server yuzni
+ * baribir hammaga solishtiradi va eng yaqini aynan shu xodim
+ * bo'lmasa rad etadi: aks holda "tasdiqlash" bo'sh ish bo'lardi.
+ */
+export class FaceVerifyDto {
+  @IsString()
+  staffId = ''
+
+  @IsArray()
+  @ArrayMinSize(SIZE)
+  @ArrayMaxSize(SIZE)
+  @IsNumber({}, { each: true })
+  descriptor: number[] = []
+
+  @IsOptional() @IsString() @MaxLength(2_000_000)
+  photo?: string
+}

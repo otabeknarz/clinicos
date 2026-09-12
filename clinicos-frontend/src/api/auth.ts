@@ -378,3 +378,77 @@ export async function unlinkTelegram(): Promise<{ linked: boolean }> {
   }
   return delay({ linked: false }, 80)
 }
+
+/* ------------------------------------------------------------------ */
+/* O'zi ro'yxatdan o'tish                                             */
+/* ------------------------------------------------------------------ */
+
+/** Klinikaning yo'nalishi — serverdagi ro'yxat bilan bir xil */
+export const CLINIC_DIRECTIONS = ['general', 'dental', 'eye', 'lab'] as const
+/** Ro'yxatdan o'tayotgan odam klinikada kim */
+export const LEAD_POSITIONS = [
+  'owner',
+  'chief_doctor',
+  'manager',
+  'administrator',
+  'doctor',
+  'other',
+] as const
+/** Klinika hajmi */
+export const STAFF_COUNTS = ['1-5', '6-15', '16-40', '40+'] as const
+
+export interface RegisterInput {
+  clinicName: string
+  fullName: string
+  phone: string
+  position: (typeof LEAD_POSITIONS)[number]
+  direction: (typeof CLINIC_DIRECTIONS)[number]
+  city?: string
+  staffCount?: (typeof STAFF_COUNTS)[number]
+  password: string
+}
+
+/**
+ * Ro'yxatdan o'tish BIRINCHI QADAMI.
+ *
+ * Bu chaqiruv hali hech narsa yaratmaydi: javobda Telegram
+ * havolasi qaytadi va odam raqamini o'sha yerda tasdiqlaydi.
+ * Sabab oddiy — birov boshqa odamning raqami bilan hisob ochib
+ * ketmasligi kerak, bepul SMS xizmati esa yo'q.
+ */
+// POST /auth/register
+export async function register(input: RegisterInput): Promise<{
+  code: string
+  url: string
+  phone: string
+  expiresInSec: number
+}> {
+  if (!USE_MOCK) {
+    return request('POST', '/auth/register', { body: input })
+  }
+
+  /* Demo rejimda tasdiqlash yo'q: bot ham, server ham yo'q */
+  return delay({
+    code: 'demo',
+    url: 'https://t.me/clinicos_bot',
+    phone: input.phone,
+    expiresInSec: 900,
+  })
+}
+
+/**
+ * Tasdiqlandimi.
+ *
+ * `waiting` — odam hali Telegramda raqamini ulashmagan;
+ * `ready` — klinika ochildi va sessiya tayyor (BIR MARTA beriladi);
+ * `expired` — 15 daqiqa o'tdi, formani qaytadan to'ldirish kerak.
+ */
+// GET /auth/register/status
+export async function registerStatus(
+  code: string,
+): Promise<{ status: 'waiting' | 'ready' | 'expired'; session: Session | null }> {
+  if (!USE_MOCK) {
+    return request('GET', '/auth/register/status', { query: { code } })
+  }
+  return delay({ status: 'waiting' as const, session: null })
+}

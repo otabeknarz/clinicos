@@ -1,3 +1,4 @@
+import { normalizePhone } from '../common/phone'
 import type { Permission } from '../common/permissions'
 import type { TenantDb } from '../export/export.datasets'
 
@@ -102,19 +103,6 @@ function toDate(value: string): Date | null {
   if (Number.isNaN(parsed.getTime())) return null
   /* Boshqa har qanday ko'rinish ham UTC yarim tunga keltiriladi */
   return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()))
-}
-
-/**
- * Telefonni BIR XIL ko'rinishga soladi: "+998 90 123 45 67".
- *
- * Takrorni telefon bo'yicha topamiz — "998901234567" va
- * "+998 90 123 45 67" boshqa-boshqa yozuv bo'lib qolmasligi kerak.
- */
-export function normalizePhone(value: string): string {
-  const digits = value.replace(/\D/g, '')
-  const local = digits.length === 12 && digits.startsWith('998') ? digits.slice(3) : digits
-  if (local.length !== 9) return value.trim()
-  return `+998 ${local.slice(0, 2)} ${local.slice(2, 5)} ${local.slice(5, 7)} ${local.slice(7)}`
 }
 
 function toGender(value: string): 'MALE' | 'FEMALE' | null {

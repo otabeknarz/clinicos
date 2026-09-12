@@ -74,6 +74,43 @@ export async function deleteFace(staffId: ID): Promise<void> {
   await delay(null)
 }
 
+// POST /attendance/face/verify
+export async function faceVerify(
+  staffId: ID,
+  descriptor: number[],
+  photo?: string | null,
+): Promise<FaceCheckInResult> {
+  if (!USE_MOCK) {
+    return request<FaceCheckInResult>('POST', '/attendance/face/verify', {
+      body: { staffId, descriptor, photo: photo ?? undefined },
+    })
+  }
+
+  const face = mockFaces.find((item) => item.staffId === staffId)
+  if (!face) throw new Error('Bu xodimning yuz izi ro‘yxatdan o‘tmagan')
+
+  /* Demo rejimda ham qoida bir xil: eng yaqin iz shu xodimniki bo'lsin */
+  const ranked = mockFaces
+    .map((item) => ({
+      staffId: item.staffId,
+      distance: Math.min(...item.descriptors.map((sample) => faceDistance(descriptor, sample))),
+    }))
+    .sort((a, b) => a.distance - b.distance)
+
+  const best = ranked[0]
+  if (best.distance > 0.5) throw new Error('Yuz tanilmadi')
+  if (best.staffId !== staffId) throw new Error('Yuz mos kelmadi')
+
+  return delay({
+    staffId,
+    fullName: face.fullName,
+    status: 'present' as const,
+    arrivedAt: new Date().toTimeString().slice(0, 5),
+    alreadyMarked: false,
+    distance: Math.round(best.distance * 1000) / 1000,
+  })
+}
+
 // POST /attendance/face/check-in
 export async function faceCheckIn(
   descriptor: number[],

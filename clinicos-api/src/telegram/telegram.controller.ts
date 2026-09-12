@@ -1,10 +1,13 @@
-import { Body, Controller, Delete, Get, Headers, Post } from '@nestjs/common'
+import {
+  Body, Controller, Delete, forwardRef, Get, Headers, Inject, Post,
+} from '@nestjs/common'
 
 import { Public } from '../common/guards/jwt-auth.guard'
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
 import { TelegramLinkDto } from './telegram.dto'
+import { AuthService } from '../auth/auth.service'
 import { TelegramService } from './telegram.service'
 
 @Controller()
@@ -13,6 +16,8 @@ export class TelegramController {
     private readonly telegram: TelegramService,
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
+    @Inject(forwardRef(() => AuthService))
+    private readonly auth: AuthService,
   ) {}
 
   /*
@@ -127,7 +132,83 @@ export class TelegramController {
     const message = this.telegram.parseMessage(update)
     if (!message) return { ok: true }
 
-    const code = this.telegram.startPayload(message.text)
+    /*
+      RO'YXATDAN O'TISHNI TASDIQLASH.
+
+      Ikki qadam: `/start reg...` — botni ochgan odam qaysi
+      formadan kelganini aytadi; keyin "raqamni ulashish" tugmasi
+      raqamni yuboradi va klinika aynan shunda ochiladi.
+
+      Bu ro'yxatdan o'tishning yagona himoyasi: raqamni Telegram
+      tasdiqlaydi, ya'ni birovning raqamini yozib hisob ochib
+      bo'lmaydi. Bepul SMS yo'q — sabab `auth.service.ts` da.
+    */
+    const startCode = this.telegram.startPayload(message.text)
+    if (startCode.startsWith('reg')) {
+      const claimed = this.auth.claimRegistration(startCode, message.chatId)
+      await this.telegram.send(
+        message.chatId,
+        claimed
+          ? [
+              '<b>Ro‘yxatdan o‘tishni tasdiqlash</b>',
+              '',
+              `Formada ko‘rsatilgan raqam: <b>${claimed.phone}</b>`,
+              '',
+              'Pastdagi tugmani bosing — raqamingiz shu yerdan',
+              'tasdiqlanadi va klinikangiz ochiladi.',
+            ].join('\n')
+          : [
+              '<b>Havola eskirgan</b>',
+              '',
+              'Ro‘yxatdan o‘tish sahifasini qaytadan to‘ldiring.',
+            ].join('\n'),
+        claimed
+          ? {
+              keyboard: [[{ text: 'Raqamni tasdiqlash', request_contact: true }]],
+              resize_keyboard: true,
+              one_time_keyboard: true,
+            }
+          : { remove_keyboard: true },
+      )
+      return { ok: true }
+    }
+
+    if (message.ownPhone) {
+      const done = await this.auth.finishRegistration(message.chatId, message.ownPhone)
+      if (done.ok) {
+        await this.telegram.send(
+          message.chatId,
+          [
+            '<b>Tayyor</b>',
+            '',
+            `"${done.clinicName}" ochildi va 14 kun bepul ishlaydi.`,
+            '',
+            'Brauzerdagi sahifaga qayting — u sizni o‘zi kiritadi.',
+          ].join('\n'),
+          { remove_keyboard: true },
+        )
+      } else {
+        await this.telegram.send(
+          message.chatId,
+          done.reason === 'mismatch'
+            ? [
+                '<b>Raqam mos kelmadi</b>',
+                '',
+                'Telegramdagi raqamingiz formada yozilganidan boshqa.',
+                'Formani shu raqam bilan qaytadan to‘ldiring.',
+              ].join('\n')
+            : [
+                '<b>Havola eskirgan</b>',
+                '',
+                'Ro‘yxatdan o‘tish sahifasini qaytadan to‘ldiring.',
+              ].join('\n'),
+          { remove_keyboard: true },
+        )
+      }
+      return { ok: true }
+    }
+
+    const code = startCode
     const userId = code ? this.telegram.consumeLinkCode(code) : null
 
     if (userId) {
