@@ -9,6 +9,7 @@ import {
   revokeExportLink,
 } from '@/api/exports'
 import { API_BASE } from '@/api/client'
+import { GoogleSheetsCard } from '@/components/data/GoogleSheetsCard'
 import { ImportCard } from '@/components/data/ImportCard'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
@@ -40,6 +41,12 @@ export function DataExchangePage() {
 
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  /*
+    QAYSI bo'lim yuklanayotgani. Ilgari `pending` bitta edi va bitta
+    tugma bosilganda HAMMA tugma "yuklanmoqda" bo'lib qolardi —
+    tashqaridan qaraganda hammasi birdan yuklanayotgandek ko'rinardi.
+  */
+  const [busy, setBusy] = useState<string | null>(null)
 
   const datasets = useAsync(listExportDatasets, [])
   const links = useAsync(listExportLinks, [])
@@ -56,7 +63,9 @@ export function DataExchangePage() {
   })
 
   async function runDownload(key: string) {
+    setBusy(key)
     const ok = await download.run(key)
+    setBusy(null)
     if (ok === null) {
       toast.error(download.lastError()?.message ?? t('toast.error'))
       return
@@ -113,7 +122,8 @@ export function DataExchangePage() {
                   size="sm"
                   variant="gray"
                   icon={<Download size={15} />}
-                  loading={download.pending}
+                  loading={busy === dataset.key}
+                  disabled={busy !== null && busy !== dataset.key}
                   onClick={() => void runDownload(dataset.key)}
                 >
                   {t('exchange.download')}
@@ -127,12 +137,32 @@ export function DataExchangePage() {
       {/* --- Excel'dan ko'chirish --- */}
       {can('data.import') ? <ImportCard /> : null}
 
-      {/* --- Google Sheets --- */}
-      <SheetsCard
+      {/* --- Google Sheets: hisob ulanadi, jadval o'zi yangilanadi --- */}
+      <GoogleSheetsCard
         datasets={allowed.filter((d) => d.sheet)}
-        links={links.data ?? []}
-        onChanged={links.reload}
+        range={{ from: from || undefined, to: to || undefined }}
       />
+
+      {/*
+        MAXFIY HAVOLA — boshqa yo'l.
+
+        Google hisobisiz ham ishlaydi (`=IMPORTDATA`), lekin
+        tushuntirish talab qiladi va havola qo'ldan-qo'lga o'tib
+        ketishi mumkin. Shuning uchun u yopiq bo'limda turadi:
+        kerak bo'lganlar ochadi, qolganlar ko'rmaydi ham.
+      */}
+      <details className="mt-5">
+        <summary className="cursor-pointer text-footnote text-label-secondary">
+          {t('exchange.sheets.advanced')}
+        </summary>
+        <div className="mt-3">
+          <SheetsCard
+            datasets={allowed.filter((d) => d.sheet)}
+            links={links.data ?? []}
+            onChanged={links.reload}
+          />
+        </div>
+      </details>
     </>
   )
 }

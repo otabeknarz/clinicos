@@ -13,5 +13,7 @@ import { ExportService } from './export.service'
   imports: [DebtsModule],
   controllers: [ExportController],
   providers: [ExportService],
+  // Google integratsiyasi shu xizmatdan qatorlarni oladi
+  exports: [ExportService],
 })
 export class ExportModule {}

@@ -1792,4 +1792,20 @@ export const dict: Dict = {
   'permission.data.export': 'Excel’ga chiqarish',
   'permission.data.import': 'Excel’dan ko‘chirish',
   'permission.patients.message': 'Bemorlarga xabar',
+
+  /* --- Google Sheets --- */
+  'google.title': 'Google Sheets',
+  'google.hint': 'Hisobingizni ulang — jadval Drive’ingizda o‘zi yaratiladi',
+  'google.connect': 'Google akkauntni ulash',
+  'google.connectHint': 'Ochilgan oynada hisobingizni tanlang va ruxsat bering',
+  'google.connected': 'Ulangan',
+  'google.disconnect': 'Uzish',
+  'google.disconnected': 'Google uzildi',
+  'google.notConfigured': 'Google integratsiyasi serverda hali sozlanmagan.',
+  'google.send': 'Jadvalga yuborish',
+  'google.update': 'Yangilash',
+  'google.open': 'Jadvalni ochish',
+  'google.synced': '{count} ta qator jadvalga yozildi',
+  'google.lastSync': '{count} ta qator',
+  'exchange.sheets.advanced': 'Boshqa yo‘l: maxfiy havola (Google hisobisiz)',
 }

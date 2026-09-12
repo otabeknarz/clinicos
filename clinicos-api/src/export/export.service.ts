@@ -88,6 +88,25 @@ export class ExportService {
     return this.render(dataset, this.db, parseRange(query))
   }
 
+  /**
+   * Qatorlarning O'ZI — Google Sheets uchun.
+   *
+   * CSV matni emas, jadval: Google'ga kataklar ro'yxati beriladi.
+   * Ruxsat tekshiruvi shu yerda ham ishlaydi.
+   */
+  async rowsFor(key: string, range: { from?: string; to?: string }) {
+    const dataset = this.requireDataset(key)
+    const parsed = parseRange({ from: range.from, to: range.to } as ExportQueryDto)
+    const rows = await dataset.rows({
+      db: this.db,
+      all: this.prisma.acrossAllClinics(),
+      debts: this.debts,
+      range: parsed,
+    })
+    const title = dataset.file.charAt(0).toUpperCase() + dataset.file.slice(1)
+    return { title, headers: dataset.headers, rows }
+  }
+
   private async render(dataset: ExportDataset, db: TenantDb, range: ExportRange) {
     const rows = await dataset.rows({
       db,

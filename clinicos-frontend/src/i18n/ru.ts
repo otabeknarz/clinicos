@@ -1743,4 +1743,20 @@ export const dict: Dict = {
   'permission.data.export': 'Выгрузка в Excel',
   'permission.data.import': 'Загрузка из Excel',
   'permission.patients.message': 'Сообщения пациентам',
+
+  /* --- Google Sheets --- */
+  'google.title': 'Google Sheets',
+  'google.hint': 'Подключите аккаунт — таблица создастся в вашем Drive',
+  'google.connect': 'Подключить аккаунт Google',
+  'google.connectHint': 'В открывшемся окне выберите аккаунт и дайте доступ',
+  'google.connected': 'Подключено',
+  'google.disconnect': 'Отключить',
+  'google.disconnected': 'Google отключён',
+  'google.notConfigured': 'Интеграция с Google ещё не настроена на сервере.',
+  'google.send': 'Отправить в таблицу',
+  'google.update': 'Обновить',
+  'google.open': 'Открыть таблицу',
+  'google.synced': 'записано строк: {count}',
+  'google.lastSync': 'строк: {count}',
+  'exchange.sheets.advanced': 'Другой способ: секретная ссылка (без аккаунта Google)',
 }

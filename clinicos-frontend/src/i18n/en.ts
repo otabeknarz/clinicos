@@ -1738,4 +1738,20 @@ export const dict: Dict = {
   'permission.data.export': 'Export to Excel',
   'permission.data.import': 'Import from Excel',
   'permission.patients.message': 'Message patients',
+
+  /* --- Google Sheets --- */
+  'google.title': 'Google Sheets',
+  'google.hint': 'Connect your account — the sheet is created in your Drive',
+  'google.connect': 'Connect Google account',
+  'google.connectHint': 'Pick your account in the window and grant access',
+  'google.connected': 'Connected',
+  'google.disconnect': 'Disconnect',
+  'google.disconnected': 'Google disconnected',
+  'google.notConfigured': 'The Google integration is not set up on the server yet.',
+  'google.send': 'Send to a sheet',
+  'google.update': 'Refresh',
+  'google.open': 'Open the sheet',
+  'google.synced': '{count} rows written',
+  'google.lastSync': '{count} rows',
+  'exchange.sheets.advanced': 'Another way: secret link (no Google account)',
 }

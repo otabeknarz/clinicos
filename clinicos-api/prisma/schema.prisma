@@ -96,6 +96,8 @@ model Clinic {
   pharmacyStaff   PharmacyStaff[]
   exportLinks     ExportLink[]
   patientNotices  PatientNotice[]
+  googleAccount   GoogleAccount?
+  googleSheets    GoogleSheet[]
 
   @@index([kind])
   @@map("clinics")
@@ -1974,4 +1976,59 @@ model PatientNotice {
   @@unique([appointmentId, kind])
   @@index([clinicId, patientId, createdAt])
   @@map("patient_notices")
+}
+
+/// GOOGLE AKKAUNTI — klinikaga bitta.
+///
+/// Klinika o'z Google hisobini ulaydi, tizim esa uning Drive'ida
+/// jadval yaratadi va ma'lumotni to'ldirib turadi.
+///
+/// TOKEN OCHIQ SAQLANMAYDI. `refreshToken` — uzoq muddatli kalit:
+/// u bilan istalgan vaqtda Google'ga kirish mumkin, shuning uchun
+/// bazaga SHIFRLANGAN holda yoziladi (AES-256-GCM, kalit
+/// `JWT_SECRET` dan chiqariladi). Baza nusxasi qo'lga tushsa ham
+/// undan foydalanib bo'lmaydi.
+///
+/// RUXSAT ENG TORI: `drive.file` — tizim faqat O'ZI YARATGAN
+/// fayllarni ko'radi va tahrirlaydi. Google Drive'dagi qolgan
+/// hujjatlarga umuman kira olmaydi.
+model GoogleAccount {
+  id       String @id @default(uuid())
+  clinicId String @unique @map("clinic_id")
+
+  email            String
+  refreshTokenEnc  String @map("refresh_token_enc")
+
+  connectedById   String @map("connected_by_id")
+  connectedByName String @map("connected_by_name")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@map("google_accounts")
+}
+
+/// Google Sheets'dagi jadval — har bir bo'limga bittadan.
+///
+/// Qayta yuborilganda YANGI jadval yaratilmaydi: o'shaning o'zi
+/// yangilanadi. Aks holda Drive'da "Bemorlar (1)", "Bemorlar (2)"
+/// to'planib ketardi va odam qaysi biri yangi ekanini bilmasdi.
+model GoogleSheet {
+  id       String @id @default(uuid())
+  clinicId String @map("clinic_id")
+
+  dataset       String
+  spreadsheetId String @map("spreadsheet_id")
+  url           String
+
+  rows       Int      @default(0)
+  lastSyncAt DateTime @default(now()) @map("last_sync_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, dataset])
+  @@map("google_sheets")
 }

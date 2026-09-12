@@ -28,6 +28,8 @@ export const TENANT_MODELS = new Set<string>([
   'Feedback',
   'FeedbackImage',
   'FollowUp',
+  'GoogleAccount',
+  'GoogleSheet',
   'ImpersonationLog',
   'Medicine',
   'MedicineBatch',
