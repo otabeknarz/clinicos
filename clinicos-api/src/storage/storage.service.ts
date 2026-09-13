@@ -2,8 +2,10 @@ import { randomUUID } from 'node:crypto'
 import {
   CreateBucketCommand,
   DeleteObjectCommand,
+  DeleteObjectsCommand,
   GetObjectCommand,
   HeadBucketCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3'
@@ -99,6 +101,36 @@ export class StorageService implements OnModuleInit {
         secretAccessKey: process.env.S3_SECRET_KEY ?? '',
       },
     })
+  }
+
+  /** Prefiks ostidagi BARCHA kalitlar (sahifalab) — faqat xizmat vazifalari uchun */
+  async listKeys(prefix: string): Promise<string[]> {
+    const keys: string[] = []
+    let token: string | undefined
+    do {
+      const page = await this.client.send(
+        new ListObjectsV2Command({ Bucket: this.bucket, Prefix: prefix, ContinuationToken: token }),
+      )
+      for (const item of page.Contents ?? []) if (item.Key) keys.push(item.Key)
+      token = page.IsTruncated ? page.NextContinuationToken : undefined
+    } while (token)
+    return keys
+  }
+
+  /** Kalitlarni 1000 tadan bo'lib o'chiradi. O'chirilganlar soni qaytadi. */
+  async deleteKeys(keys: string[]): Promise<number> {
+    let deleted = 0
+    for (let i = 0; i < keys.length; i += 1000) {
+      const chunk = keys.slice(i, i + 1000)
+      const result = await this.client.send(
+        new DeleteObjectsCommand({
+          Bucket: this.bucket,
+          Delete: { Objects: chunk.map((Key) => ({ Key })), Quiet: true },
+        }),
+      )
+      deleted += chunk.length - (result.Errors?.length ?? 0)
+    }
+    return deleted
   }
 
   /** Sozlanganmi — bo'lmasa yuklash endpointi yopiq turadi */

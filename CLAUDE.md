@@ -141,6 +141,13 @@ and `clinicos-s3`. Two things that are easy to undo by accident:
 
 A second, Coolify-free path (nginx + systemd) is kept in `deploy/nginx/` and `deploy/systemd/`.
 
+**Migration `20260918000000_toza_platforma` deletes data** — the pre-sales reset: everything except
+plans, billing terms, trial policies, global module restrictions and the platform founder (SUPERADMIN
+with position "Asoschi"). It ran once in production; on a fresh database it deletes nothing. A local
+database that has not applied it yet will be emptied by `migrate deploy` — reseed afterwards. Uploaded
+files of clinics that no longer exist are removed by `OrphanFilesService`, which runs only when
+`PURGE_ORPHAN_FILES=1` is set and refuses to run if the clinics table is empty.
+
 **MinIO is deployed from `deploy/minio/docker-compose.yaml`, not a Dockerfile** — and it must
 stay that way. A Dockerfile `VOLUME /data` creates an *anonymous* volume per container, so every
 redeploy started with empty storage and silently lost every uploaded file (this happened once).

@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common'
 
+import { OrphanFilesService } from './orphan-files.service'
 import { UploadsController } from './uploads.controller'
 import { StorageService } from './storage.service'
 
@@ -10,7 +11,7 @@ import { StorageService } from './storage.service'
 @Global()
 @Module({
   controllers: [UploadsController],
-  providers: [StorageService],
+  providers: [StorageService, OrphanFilesService],
   exports: [StorageService],
 })
 export class StorageModule {}
