@@ -430,6 +430,7 @@ function StaffModal({
           />
           <TextInput
             label={t('pharmacy.salary')}
+            grouped
             inputMode="numeric"
             value={salary}
             onChange={(e) => setSalary(e.target.value.replace(/\D/g, ''))}

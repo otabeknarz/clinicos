@@ -25,14 +25,14 @@ import { ScanDialog } from '@/components/pharmacy/ScanDialog'
 import { Badge } from '@/components/ui/Badge'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
-import { Field, SearchInput, Select, TextInput } from '@/components/ui/Form'
+import { Field, PhoneInput, SearchInput, Select, TextInput } from '@/components/ui/Form'
 import { Modal } from '@/components/ui/Modal'
 import { Segmented } from '@/components/ui/Tabs'
 import { CardSkeleton, EmptyState } from '@/components/ui/States'
 import { parseGs1, searchTermFrom } from '@/lib/barcode'
 import { prepareMedicalImage } from '@/lib/image'
 import { cn } from '@/lib/cn'
-import { dateShort, money } from '@/lib/format'
+import { dateShort, money, phoneToE164 } from '@/lib/format'
 import { useAction, useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useToast } from '@/store/toast-context'
@@ -225,7 +225,9 @@ function SupplierModal({
   const [inn, setInn] = useState('')
 
   const save = useAction(async () => {
-    return createSupplier({ name: name.trim(), phone, inn: inn.trim(), note: '' })
+    /* Faqat "+998" qolgan bo'lsa — raqam kiritilmagan */
+    const cleanPhone = phone.replace(/\D/g, '').length > 3 ? phoneToE164(phone) : ''
+    return createSupplier({ name: name.trim(), phone: cleanPhone, inn: inn.trim(), note: '' })
   })
 
   async function submit() {
@@ -270,11 +272,7 @@ function SupplierModal({
           onChange={(e) => setName(e.target.value)}
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          <TextInput
-            label={t('common.phone')}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
+          <PhoneInput label={t('common.phone')} value={phone} onChange={setPhone} />
           {/* Soliq raqami — hisob-fakturada ko'rsatiladi */}
           <TextInput
             label={t('pharmacy.inn')}
@@ -603,6 +601,7 @@ function PurchaseModal({
                 {payment === 'partial' ? (
                   <TextInput
                     label={t('pharmacy.paidAmount')}
+                    grouped
                     inputMode="numeric"
                     value={paidAmount}
                     onChange={(e) => setPaidAmount(e.target.value.replace(/\D/g, ''))}

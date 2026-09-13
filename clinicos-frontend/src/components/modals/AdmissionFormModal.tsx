@@ -271,6 +271,7 @@ export function AdmissionFormModal({
           <div className="grid gap-4 sm:grid-cols-2">
             <TextInput
               label={t('ward.prepayment')}
+              grouped
               hint={t('ward.prepaymentHint')}
               inputMode="numeric"
               value={prepay}

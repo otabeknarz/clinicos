@@ -334,6 +334,7 @@ export function StaffFormModal({
               />
               <TextInput
                 label={t('doctor.consultationFee')}
+                grouped
                 inputMode="numeric"
                 hint={t('staff.doctorHint')}
                 value={consultationFee}

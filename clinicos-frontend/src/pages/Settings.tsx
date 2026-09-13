@@ -10,7 +10,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
-import { Select, TextInput } from '@/components/ui/Form'
+import { PhoneInput, Select, TextInput } from '@/components/ui/Form'
 import { ConfirmDialog } from '@/components/ui/Modal'
 import { CardSkeleton, ErrorState } from '@/components/ui/States'
 import { Tabs } from '@/components/ui/Tabs'
@@ -18,7 +18,7 @@ import { resetDb } from '@/mock/db'
 import { USE_MOCK } from '@/api/client'
 import { ROLE_PERMISSIONS } from '@/lib/permissions'
 import { cn } from '@/lib/cn'
-import { phone as formatPhone } from '@/lib/format'
+import { phone as formatPhone, phoneInputMask } from '@/lib/format'
 import { useAction, useAsync } from '@/lib/useAsync'
 import { LANGS, useI18n } from '@/i18n'
 import type { Lang } from '@/i18n'
@@ -119,13 +119,19 @@ function ClinicTab() {
   useEffect(() => {
     if (!data) return
     setName(data.name)
-    setPhone(data.phone)
+    setPhone(data.phone ? phoneInputMask(data.phone) : '')
     setAddress(data.address)
     setSlot(String(data.slotMinutes))
   }, [data])
 
   const save = useAction(async () =>
-    updateClinic({ name, phone, address, slotMinutes: Number(slot) }),
+    updateClinic({
+      name,
+      /* Maskadan faqat "+998" qolgan bo'lsa — raqam o'chirilgan */
+      phone: phone.replace(/\D/g, '').length > 3 ? phone : '',
+      address,
+      slotMinutes: Number(slot),
+    }),
   )
 
   if (loading) return <CardSkeleton className="border-0 shadow-none" />
@@ -147,11 +153,11 @@ function ClinicTab() {
         disabled={!editable}
         onChange={(e) => setName(e.target.value)}
       />
-      <TextInput
+      <PhoneInput
         label={t('common.phone')}
         value={phone}
         disabled={!editable}
-        onChange={(e) => setPhone(e.target.value)}
+        onChange={setPhone}
       />
       <TextInput
         label={t('common.address')}

@@ -23,7 +23,7 @@ import { Segmented } from '@/components/ui/Tabs'
 import { EmptyState } from '@/components/ui/States'
 import { searchTermFrom } from '@/lib/barcode'
 import { cn } from '@/lib/cn'
-import { dateShort, money } from '@/lib/format'
+import { dateShort, groupDigits, money } from '@/lib/format'
 import { useAction, useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useToast } from '@/store/toast-context'
@@ -313,7 +313,7 @@ function PosScreen() {
               </span>
               <input
                 inputMode="numeric"
-                value={discount}
+                value={discount === '' ? '' : groupDigits(Number(discount))}
                 placeholder="0"
                 onChange={(e) => setDiscount(e.target.value.replace(/\D/g, ''))}
                 className="h-9 w-28 rounded-[9px] border border-transparent bg-raised px-3 text-right text-subhead tabular-nums text-label outline-none transition-colors duration-150 focus:border-accent"

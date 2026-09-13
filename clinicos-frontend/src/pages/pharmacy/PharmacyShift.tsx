@@ -7,7 +7,7 @@ import { Card, CardHeader } from '@/components/ui/Card'
 import { Field, Select, TextArea } from '@/components/ui/Form'
 import { Modal } from '@/components/ui/Modal'
 import { CardSkeleton, EmptyState } from '@/components/ui/States'
-import { money } from '@/lib/format'
+import { groupDigits, money } from '@/lib/format'
 import { useAction, useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useToast } from '@/store/toast-context'
@@ -128,7 +128,7 @@ export function PharmacyShiftPage() {
           <input
             inputMode="numeric"
             autoFocus
-            value={counted}
+            value={counted === '' ? '' : groupDigits(Number(counted))}
             placeholder="0"
             onChange={(e) => setCounted(e.target.value.replace(/\D/g, ''))}
             className="h-12 w-full rounded-[10px] border border-transparent bg-raised px-4 text-title-3 font-bold tabular-nums text-label outline-none transition-colors duration-150 focus:border-accent"

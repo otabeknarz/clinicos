@@ -1,9 +1,15 @@
-import { useId } from 'react'
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
+import { useId, useLayoutEffect, useRef } from 'react'
+import type {
+  ChangeEvent,
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from 'react'
 import { ChevronDown } from 'lucide-react'
 
 import { cn } from '@/lib/cn'
-import { phoneInputMask } from '@/lib/format'
+import { groupDigits, phoneInputMask } from '@/lib/format'
 import { useI18n } from '@/i18n'
 
 /**
@@ -80,6 +86,12 @@ export interface TextInputProps extends Omit<InputHTMLAttributes<HTMLInputElemen
   /** O'ng tomondagi qo'shimcha (masalan "so'm") */
   suffix?: ReactNode
   fieldClassName?: string
+  /**
+   * Raqam uch xonadan bo'lib ko'rsatiladi: 1222222 → "1 222 222".
+   * `type="number"` da o'zi yoqiladi. Qiymat va `onChange` baribir
+   * FAQAT RAQAMLAR ("1222222") — chaqiruvchi hech narsani o'zgartirmaydi.
+   */
+  grouped?: boolean
 }
 
 export function TextInput({
@@ -92,10 +104,76 @@ export function TextInput({
   className,
   fieldClassName,
   id,
+  grouped,
   ...rest
 }: TextInputProps) {
   const generatedId = useId()
   const inputId = id ?? generatedId
+
+  /*
+    RAQAM BO'LIB KO'RSATILADI.
+
+    "1222222" ni ko'z bir qarashda o'qiy olmaydi — bir million ikki yuz
+    ming mi, o'n ikki million mi? Xato summa kassaga tushadi. Shuning
+    uchun summa, oylik, narx maydonlari "1 222 222" ko'rinishida turadi.
+
+    `type="number"` ATAYLAB `text` ga almashtiriladi: brauzerning son
+    maydoni bo'shliqli qiymatni umuman ko'rsatmaydi, sichqoncha g'ildiragi
+    esa bilmasdan summani o'zgartirib yuborardi.
+  */
+  const numeric = grouped || rest.type === 'number'
+  const inputRef = useRef<HTMLInputElement>(null)
+  const caretDigits = useRef<number | null>(null)
+
+  useLayoutEffect(() => {
+    const input = inputRef.current
+    const wanted = caretDigits.current
+    if (!numeric || !input || wanted === null || document.activeElement !== input) return
+    caretDigits.current = null
+    /* Kursor o'sha raqamdan keyin qolsin — bo'shliq qo'shilganda sakrab ketmasin */
+    let seen = 0
+    let position = 0
+    while (position < input.value.length && seen < wanted) {
+      if (/\d/.test(input.value[position])) seen += 1
+      position += 1
+    }
+    input.setSelectionRange(position, position)
+  })
+
+  let inputProps: InputHTMLAttributes<HTMLInputElement> = rest
+  if (numeric) {
+    const { type: _type, min: _min, max: _max, step: _step, value, onChange, ...other } = rest
+    const digits = String(value ?? '').replace(/\D/g, '')
+    inputProps = {
+      ...other,
+      type: 'text',
+      inputMode: other.inputMode ?? 'numeric',
+      autoComplete: 'off',
+      value: digits === '' ? '' : groupDigits(Number(digits)),
+      onChange: (event: ChangeEvent<HTMLInputElement>) => {
+        const target = event.target
+        const before = target.value.slice(0, target.selectionStart ?? target.value.length)
+        let caret = before.replace(/\D/g, '').length
+        let next = target.value.replace(/\D/g, '')
+        /*
+          FAQAT BO'SHLIQ O'CHIRILGAN BO'LSA — yonidagi raqam o'chadi.
+          Aks holda "1 222" dagi bo'shliqdan keyin Backspace bosilganda
+          bo'shliq qayta paydo bo'lardi va tugma ishlamagandek ko'rinardi.
+        */
+        const inputType = (event.nativeEvent as InputEvent).inputType
+        if (next === digits && inputType === 'deleteContentBackward' && caret > 0) {
+          next = next.slice(0, caret - 1) + next.slice(caret)
+          caret -= 1
+        } else if (next === digits && inputType === 'deleteContentForward') {
+          next = next.slice(0, caret) + next.slice(caret + 1)
+        }
+        caretDigits.current = caret
+        /* Chaqiruvchiga faqat raqamlar boradi */
+        target.value = next.replace(/^0+(?=\d)/, '')
+        onChange?.(event)
+      },
+    }
+  }
 
   return (
     <Field
@@ -113,6 +191,7 @@ export function TextInput({
           </span>
         ) : null}
         <input
+          ref={inputRef}
           id={inputId}
           required={required}
           aria-invalid={error ? true : undefined}
@@ -121,10 +200,11 @@ export function TextInput({
             'h-10',
             icon && 'pl-10',
             suffix && 'pr-14',
+            numeric && 'tnum',
             error && CONTROL_ERROR,
             className,
           )}
-          {...rest}
+          {...inputProps}
         />
         {suffix ? (
           <span className="pointer-events-none absolute inset-y-0 right-3.5 flex items-center text-footnote text-label-tertiary">
