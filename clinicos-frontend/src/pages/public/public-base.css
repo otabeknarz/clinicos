@@ -583,3 +583,29 @@ html:has(.story-page){scroll-behavior:auto}
 @media(min-width:1500px){
 :where(.auth-page,.story-page) .login-domain{height:58px}
 }
+
+/* Telefon raqamlari soni — parol o'lchagichi bilan bir xil ko'rinishda */
+:where(.auth-page,.story-page) .phone-count{flex:none;font-size:11px;font-weight:600;color:#7d90aa;font-variant-numeric:tabular-nums;transition:color .18s ease}
+:where(.auth-page,.story-page) .phone-count.is-done{color:#16a34a}
+
+/*
+  TUGMA NEGA YONMAYOTGANI.
+  Sariq emas, qizil emas — bu xato emas, ko'rsatma. Shuning uchun
+  yumshoq ko'k: "qaysi maydon qoldi" deb aytadi, xolos.
+*/
+:where(.auth-page,.story-page) .register-missing{margin-top:10px;text-align:center;font-size:12px;font-weight:600;color:#2864f0}
+
+/*
+  XATO QATOR — QIZIL RAMKA.
+  Rang yumshoq (to'q qizil emas): bu tuzatiladigan narsa, halokat
+  emas. Halqa fokusdagi ko'k halqa bilan bir xil qalinlikda.
+*/
+:where(.auth-page,.story-page) .form-field input.is-invalid,
+:where(.auth-page,.story-page) .ui-select-button.is-invalid,
+:where(.auth-page,.story-page) .phone-field.is-invalid{border-color:#ef6b6b;box-shadow:0 0 0 3px rgb(239 68 68 / .12);background:#fff}
+:where(.auth-page,.story-page) .phone-field.is-invalid input{border:0;box-shadow:none}
+:where(.auth-page,.story-page) .phone-count.is-bad{color:#e04848}
+:where(.auth-page,.story-page) .register-missing.is-bad{color:#e04848}
+
+/* To'liq bo'lmagan forma: tugma yonmaydi, lekin bosiladi */
+.auth-submit.is-incomplete{opacity:.5}

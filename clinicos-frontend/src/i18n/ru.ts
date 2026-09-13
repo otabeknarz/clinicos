@@ -1903,4 +1903,9 @@ export const dict: Dict = {
   'trial.daysLeft': 'Пробный период: осталось {count} дн.',
   'trial.lastDay': 'Последний день пробного периода',
   'trial.hint': 'Свяжитесь с нами, чтобы выбрать тариф',
+  'login.needClinic': 'Укажите название клиники',
+  'login.needName': 'Укажите имя и фамилию',
+  'login.needPhone': 'Введите номер полностью — ещё {left} цифр',
+  'login.needRegion': 'Выберите регион',
+  'login.needPassword': 'Для пароля нужно ещё {left} символов',
 }

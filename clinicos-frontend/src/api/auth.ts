@@ -428,7 +428,13 @@ export async function register(input: RegisterInput): Promise<{
     return request('POST', '/auth/register', { body: input })
   }
 
-  /* Demo rejimda tasdiqlash yo'q: bot ham, server ham yo'q */
+  /*
+    DEMO REJIMDA TASDIQLASH TAQLID QILINADI: bot ham, server ham
+    yo'q. Uch soniyadan keyin "Telegram tasdiqladi" deb hisoblanadi
+    va odam demo klinikaga kiradi — aks holda demoda ro'yxatdan
+    o'tish oynasi abadiy "kutilmoqda" bo'lib qolardi.
+  */
+  demoRegisteredAt = Date.now()
   return delay({
     code: 'demo',
     url: 'https://t.me/clinicos_bot',
@@ -451,8 +457,18 @@ export async function registerStatus(
   if (!USE_MOCK) {
     return request('GET', '/auth/register/status', { query: { code } })
   }
-  return delay({ status: 'waiting' as const, session: null })
+
+  if (Date.now() - demoRegisteredAt < 3000) {
+    return delay({ status: 'waiting' as const, session: null })
+  }
+
+  /* Demo egasi sifatida kiramiz — o'sha klinika to'liq ma'lumotli */
+  const session = await login({ email: DEMO_ACCOUNTS[1].email, password: DEMO_PASSWORD })
+  return { status: 'ready' as const, session }
 }
+
+/** Demo: "ro'yxatdan o'tish" qachon bosilgani */
+let demoRegisteredAt = 0
 
 /**
  * Ruxsat qaysi bo'limga tegishli.

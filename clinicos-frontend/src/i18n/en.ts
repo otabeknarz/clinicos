@@ -1898,4 +1898,9 @@ export const dict: Dict = {
   'trial.daysLeft': 'Trial: {count} days left',
   'trial.lastDay': 'Last day of the trial',
   'trial.hint': 'Contact us to pick a plan',
+  'login.needClinic': 'Enter the clinic name',
+  'login.needName': 'Enter your full name',
+  'login.needPhone': 'Enter the full number — {left} more digits',
+  'login.needRegion': 'Choose a region',
+  'login.needPassword': 'The password needs {left} more characters',
 }

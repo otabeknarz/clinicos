@@ -28,6 +28,7 @@ export function AuthSelect({
   value,
   options,
   placeholder,
+  invalid = false,
   onChange,
 }: {
   id: string
@@ -36,6 +37,8 @@ export function AuthSelect({
   options: AuthOption[]
   /** Tanlanmagan holat uchun yozuv. Berilmasa — birinchi qiymat majburiy. */
   placeholder?: string
+  /** Xato — maydon qizil ramkada */
+  invalid?: boolean
   onChange: (value: string) => void
 }) {
   const listId = useId()
@@ -118,7 +121,8 @@ export function AuthSelect({
         <button
           id={id}
           type="button"
-          className={cn('ui-select-button', !selected && 'is-empty')}
+          className={cn('ui-select-button', !selected && 'is-empty', invalid && 'is-invalid')}
+          aria-invalid={invalid || undefined}
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-controls={listId}

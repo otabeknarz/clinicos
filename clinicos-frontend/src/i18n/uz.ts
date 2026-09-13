@@ -1952,4 +1952,9 @@ export const dict: Dict = {
   'trial.daysLeft': 'Sinov muddati: {count} kun qoldi',
   'trial.lastDay': 'Sinovning oxirgi kuni',
   'trial.hint': 'Tarif tanlash uchun biz bilan bog‘laning',
+  'login.needClinic': 'Klinika nomini kiriting',
+  'login.needName': 'Ism va familiyangizni kiriting',
+  'login.needPhone': 'Telefon raqamini to‘liq kiriting — yana {left} ta raqam',
+  'login.needRegion': 'Viloyatni tanlang',
+  'login.needPassword': 'Parol uchun yana {left} ta belgi kerak',
 }

@@ -111,6 +111,17 @@ export function LoginPage() {
     password: '',
   })
   const [regBusy, setRegBusy] = useState(false)
+  /*
+    QIZIL RAMKA QACHON CHIQADI.
+
+    Bo'sh forma boshidanoq qizil bo'lsa, odam hali hech narsa
+    yozmay turib "xato qildim" deb o'ylaydi. Shuning uchun ramka
+    ikki holatda chiqadi: maydondan chiqib ketganda (tegildi) va
+    to'liq bo'lmagan formada tugma bosilganda (hammasi birdan).
+  */
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [showErrors, setShowErrors] = useState(false)
+  const touch = (field: string) => setTouched((v) => (v[field] ? v : { ...v, [field]: true }))
   const [regError, setRegError] = useState('')
   /* Telegramda tasdiqlashni kutayotgan yozuv */
   const [verify, setVerify] = useState<{ code: string; url: string; phone: string } | null>(
@@ -263,6 +274,25 @@ export function LoginPage() {
     e.preventDefault()
     if (regBusy) return
 
+    /*
+      TO'LIQ BO'LMASA — YUBORILMAYDI, lekin jim ham turmaydi:
+      xato maydonlar qizaradi va birinchisiga kursor o'tadi.
+    */
+    if (!canRegister) {
+      setShowErrors(true)
+      const first = (
+        [
+          ['clinicName', 'clinicName'],
+          ['fullName', 'registerName'],
+          ['phone', 'registerPhone'],
+          ['city', 'registerCity'],
+          ['password', 'registerPassword'],
+        ] as const
+      ).find(([field]) => invalid[field])
+      if (first) document.getElementById(first[1])?.focus()
+      return
+    }
+
     setRegError('')
     setRegBusy(true)
     try {
@@ -305,12 +335,42 @@ export function LoginPage() {
     bo'lgandagina. Yarim to'ldirilgan formani yuborib, server
     xatosini o'qib o'tirish — eng yomon birinchi taassurot.
   */
-  const canRegister =
-    reg.clinicName.trim().length >= 2 &&
-    reg.fullName.trim().length >= 3 &&
-    reg.phone.replace(/\D/g, '').length === 9 &&
-    reg.city !== '' &&
-    reg.password.length >= MIN_PASSWORD
+  const phoneDigits = reg.phone.replace(/\D/g, '').length
+
+  /*
+    NIMA YETISHMAYAPTI — BIRINCHISI AYTILADI.
+
+    Tugma o'chiq turib, sababini aytmasa, odam formani qayta-qayta
+    ko'zdan kechiradi va topa olmaydi: bitta kam terilgan raqam
+    ("20 000 00 0") ko'zga tashlanmaydi. Shuning uchun tugma ostida
+    aynan qaysi maydon to'sib turgani yoziladi.
+  */
+  const missing =
+    reg.clinicName.trim().length < 2
+      ? t('login.needClinic')
+      : reg.fullName.trim().length < 3
+        ? t('login.needName')
+        : phoneDigits !== 9
+          ? t('login.needPhone', { left: 9 - phoneDigits })
+          : reg.city === ''
+            ? t('login.needRegion')
+            : reg.password.length < MIN_PASSWORD
+              ? t('login.needPassword', { left: MIN_PASSWORD - reg.password.length })
+              : ''
+
+  const canRegister = missing === ''
+
+  const invalid = {
+    clinicName: reg.clinicName.trim().length < 2,
+    fullName: reg.fullName.trim().length < 3,
+    phone: phoneDigits !== 9,
+    city: reg.city === '',
+    password: reg.password.length < MIN_PASSWORD,
+  }
+
+  /** Maydon qizil ko'rinadimi */
+  const red = (field: keyof typeof invalid) =>
+    invalid[field] && (showErrors || Boolean(touched[field]))
 
   /*
     DOMEN MAYDONNING O'ZIDA KO'RINIB TURADI.
@@ -579,10 +639,12 @@ export function LoginPage() {
                 <input
                   id="clinicName"
                   type="text"
+                  className={cn(red('clinicName') && 'is-invalid')}
+                  aria-invalid={red('clinicName') || undefined}
                   placeholder={t('login.clinicNamePlaceholder')}
                   autoComplete="organization"
-                  required
                   value={reg.clinicName}
+                  onBlur={() => touch('clinicName')}
                   onChange={(e) => setReg((v) => ({ ...v, clinicName: e.target.value }))}
                 />
               </div>
@@ -608,10 +670,12 @@ export function LoginPage() {
                 <input
                   id="registerName"
                   type="text"
+                  className={cn(red('fullName') && 'is-invalid')}
+                  aria-invalid={red('fullName') || undefined}
                   placeholder={t('login.fullNamePlaceholder')}
                   autoComplete="name"
-                  required
                   value={reg.fullName}
+                  onBlur={() => touch('fullName')}
                   onChange={(e) => setReg((v) => ({ ...v, fullName: e.target.value }))}
                 />
               </div>
@@ -649,7 +713,7 @@ export function LoginPage() {
                   ajralib boradi — bir qarashda to'g'ri terilganini
                   ko'radi.
                 */}
-                <div className="phone-field">
+                <div className={cn('phone-field', red('phone') && 'is-invalid')}>
                   <span className="phone-prefix">+998</span>
                   <input
                     id="registerPhone"
@@ -657,18 +721,36 @@ export function LoginPage() {
                     inputMode="numeric"
                     placeholder="90 123 45 67"
                     autoComplete="tel-national"
-                    required
+                    aria-invalid={red('phone') || undefined}
+                    onBlur={() => touch('phone')}
                     value={reg.phone}
                     onChange={(e) =>
                       setReg((v) => ({ ...v, phone: formatLocalPhone(e.target.value) }))
                     }
                   />
+                  {/*
+                    RAQAMLAR SONI. Parol o'lchagichi bilan bir xil
+                    mantiq: 9 tadan nechtasi terilgani ko'rinib turadi,
+                    to'lganda yashilga o'tadi.
+                  */}
+                  {phoneDigits > 0 ? (
+                    <span
+                      className={cn(
+                        'phone-count',
+                        phoneDigits === 9 && 'is-done',
+                        red('phone') && 'is-bad',
+                      )}
+                    >
+                      {phoneDigits}/9
+                    </span>
+                  ) : null}
                 </div>
               </div>
 
               <AuthSelect
                 id="registerCity"
                 label={t('login.city')}
+                invalid={red('city')}
                 value={reg.city}
                 placeholder={t('login.cityPlaceholder')}
                 options={REGIONS.map((region) => ({ value: region, label: region }))}
@@ -698,10 +780,11 @@ export function LoginPage() {
                   <input
                     id="registerPassword"
                     type={showNewPassword ? 'text' : 'password'}
+                    className={cn(red('password') && 'is-invalid')}
+                    aria-invalid={red('password') || undefined}
                     placeholder={t('login.newPasswordPlaceholder')}
-                    minLength={8}
                     autoComplete="new-password"
-                    required
+                    onBlur={() => touch('password')}
                     value={reg.password}
                     onChange={(e) => setReg((v) => ({ ...v, password: e.target.value }))}
                   />
@@ -759,12 +842,27 @@ export function LoginPage() {
 
               <button
                 type="submit"
-                className="button auth-submit"
-                disabled={regBusy || !canRegister}
+                /*
+                  O'CHIQ EMAS, XIRA. To'liq bo'lmagan formada tugma
+                  yonmaydi (rangi xira), lekin bosilsa xato
+                  maydonlarni qizartiradi — o'chiq tugma esa
+                  bosilganda hech narsa demasdi.
+                */
+                className={cn('button auth-submit', !canRegister && 'is-incomplete')}
+                disabled={regBusy}
+                aria-disabled={!canRegister || undefined}
                 aria-busy={regBusy}
               >
                 {t('login.registerSubmit')} <Icon name="arrow" />
               </button>
+              {missing ? (
+                <p
+                  className={cn('register-missing', showErrors && 'is-bad')}
+                  aria-live="polite"
+                >
+                  {missing}
+                </p>
+              ) : null}
               <p className="form-note">{t('login.registerNote')}</p>
                 </>
               )}
