@@ -1900,4 +1900,7 @@ export const dict: Dict = {
   'platform.planClinics': 'клиник',
   'platform.planTrial': 'на пробном',
   'platform.planMrr': 'в месяц',
+  'trial.daysLeft': 'Пробный период: осталось {count} дн.',
+  'trial.lastDay': 'Последний день пробного периода',
+  'trial.hint': 'Свяжитесь с нами, чтобы выбрать тариф',
 }

@@ -1949,4 +1949,7 @@ export const dict: Dict = {
   'platform.planClinics': 'klinika',
   'platform.planTrial': 'sinovda',
   'platform.planMrr': 'oyiga',
+  'trial.daysLeft': 'Sinov muddati: {count} kun qoldi',
+  'trial.lastDay': 'Sinovning oxirgi kuni',
+  'trial.hint': 'Tarif tanlash uchun biz bilan bog‘laning',
 }

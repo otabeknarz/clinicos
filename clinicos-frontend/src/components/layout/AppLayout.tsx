@@ -9,6 +9,7 @@ import { Sidebar } from './Sidebar'
 import { getNavBadges } from '@/api/notifications'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ImpersonationBar } from './ImpersonationBar'
+import { TrialBar } from './TrialBar'
 import { Topbar } from './Topbar'
 import { IconButton } from '@/components/ui/Button'
 import { ErrorState } from '@/components/ui/States'
@@ -136,6 +137,7 @@ export function AppLayout() {
         />
 
         <ImpersonationBar />
+        <TrialBar />
 
         {/*
           Harakat barcha bo'limlarda (sinf nomlari platformadan qolgan —

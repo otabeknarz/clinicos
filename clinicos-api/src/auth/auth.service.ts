@@ -584,7 +584,11 @@ export class AuthService {
     */
     const clinicRow = await this.db.acrossAllClinics().clinic.findUniqueOrThrow({
       where: { id: impersonation?.clinicId ?? user.clinicId },
-      include: { workingHours: { orderBy: { weekday: 'asc' } } },
+      include: {
+        workingHours: { orderBy: { weekday: 'asc' } },
+        /* Sinov muddati interfeysda sanab turadi */
+        subscription: { select: { status: true, trialEndsAt: true } },
+      },
     })
 
     /* Platforma qo'ygan cheklovlar — sababi bilan */
@@ -669,6 +673,28 @@ export class AuthService {
         shu ro'yxatga qarab bandni qulf bilan ko'rsatadi.
       */
       restrictions,
+      /*
+        SINOV MUDDATI — INTERFEYSDA SANAB TURADI.
+
+        "14 kun bepul" degan va'da mijozga KO'RINIB turmasa,
+        muddat sezdirmay tugaydi va u bir kuni kira olmay qoladi.
+        Qolgan kun soni yuqorida turadi va oxiriga yaqin
+        ko'zga tashlanadi.
+      */
+      trial:
+        clinicRow.subscription?.status === 'TRIAL' && clinicRow.subscription.trialEndsAt
+          ? {
+              endsAt: clinicRow.subscription.trialEndsAt.toISOString().slice(0, 10),
+              daysLeft: Math.max(
+                0,
+                Math.ceil(
+                  (new Date(clinicRow.subscription.trialEndsAt).setHours(23, 59, 59, 999) -
+                    Date.now()) /
+                    86_400_000,
+                ),
+              ),
+            }
+          : null,
     }
   }
 }

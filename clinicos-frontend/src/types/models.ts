@@ -900,6 +900,12 @@ export interface Session {
     bandni yashirish mijozga nima yo'qotayotganini bildirmasdi.
   */
   restrictions?: ModuleRestriction[]
+  /**
+   * Sinov muddati — tugaguncha necha kun qolgani.
+   *
+   * `null` yoki yo'q — klinika sinovda emas.
+   */
+  trial?: { endsAt: ISODate; daysLeft: number } | null
 }
 
 /* ------------------------------------------------------------------ */

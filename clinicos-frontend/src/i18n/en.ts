@@ -1895,4 +1895,7 @@ export const dict: Dict = {
   'platform.planClinics': 'clinics',
   'platform.planTrial': 'on trial',
   'platform.planMrr': 'per month',
+  'trial.daysLeft': 'Trial: {count} days left',
+  'trial.lastDay': 'Last day of the trial',
+  'trial.hint': 'Contact us to pick a plan',
 }

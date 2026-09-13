@@ -208,7 +208,18 @@ export class NoticesService {
   ): Promise<void> {
     for (const item of items) {
       if (!item.telegramUserId) continue
-      await this.telegram.send(item.telegramUserId, text, undefined, 'patient')
+      /*
+        "O'QIDIM" TUGMASI. Klinika xabarlari bemorning suhbatida
+        to'planib qolmasligi kerak: o'qigan odam bosadi va xabar
+        yo'qoladi. Kabinetda u baribir qoladi — kerak bo'lsa
+        qaytib o'qiydi.
+      */
+      await this.telegram.send(
+        item.telegramUserId,
+        text,
+        { inline_keyboard: [[{ text: 'O‘qidim', callback_data: 'ack' }]] },
+        'patient',
+      )
       try {
         /*
           Fon vazifasida so'rov konteksti yo'q — klinika filtrli
