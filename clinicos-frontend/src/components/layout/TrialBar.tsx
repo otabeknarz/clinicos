@@ -43,6 +43,14 @@ export function TrialBar() {
           : t('trial.lastDay')}
       </span>
       <span className="text-label-secondary">{t('trial.hint')}</span>
+      {/*
+        QULFLI BO'LIMLAR — nega yopiqligi shu yerda aytiladi.
+        Menyuda ularning yonida "Pullik versiyada" yozuvi bor,
+        tasma esa buni bir qarashda tushuntiradi.
+      */}
+      {session?.restrictions?.some((one) => one.reason === 'trial') ? (
+        <span className="text-label-secondary">· {t('trial.locked')}</span>
+      ) : null}
     </div>
   )
 }

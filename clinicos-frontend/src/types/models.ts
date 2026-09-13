@@ -358,6 +358,8 @@ export interface Tenant {
 export const CLINIC_MODULES = [
   'ward',
   'prescriptions',
+  'messages',
+  'dataexchange',
   'chat',
   'feedback',
   'analytics',
@@ -882,7 +884,8 @@ export interface User {
  */
 export interface ModuleRestriction {
   module: string
-  reason: 'soon' | 'plan' | 'maintenance' | 'off'
+  /** `trial` — klinika sinovda va bu bo'lim pullik versiyada ochiladi */
+  reason: 'soon' | 'plan' | 'maintenance' | 'off' | 'trial'
   note: string
 }
 

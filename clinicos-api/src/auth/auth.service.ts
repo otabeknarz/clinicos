@@ -477,10 +477,14 @@ export class AuthService {
           phone,
           address: dto.city?.trim() ?? '',
           kind: toDbKind(dto.direction),
-          /* Yo'nalish bo'yicha keraksizlari + sinovda yopiladiganlari */
-          disabledModules: [
-            ...new Set([...DISABLED_BY_KIND[dto.direction], ...policy.disabledModules]),
-          ],
+          direction: dto.direction,
+          /*
+            FAQAT YO'NALISHGA KERAKSIZLARI. Sinovda yopiqlari bu yerga
+            YOZILMAYDI — ular jonli hisoblanadi (`RestrictionsService`)
+            va to'lagan zahoti o'z-o'zidan ochiladi. Yozib qo'yilsa,
+            to'lagan mijoz ham ularni ko'rmay qolardi.
+          */
+          disabledModules: DISABLED_BY_KIND[dto.direction],
           /* Dushanbadan shanbagacha 09:00-18:00 — keyin o'zgartiriladi */
           workingHours: {
             create: [1, 2, 3, 4, 5, 6].map((weekday) => ({

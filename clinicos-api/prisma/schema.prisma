@@ -46,6 +46,15 @@ model Clinic {
   /// Klinika yoki apteka. Izohi `ClinicKind` da.
   kind ClinicKind @default(CLINIC)
 
+  /// Yo'nalish: general / dental / eye / lab. Bo'sh — noma'lum.
+  ///
+  /// Sinov sharti SHUNGA qarab jonli qo'llanadi (`RestrictionsService`).
+  /// Ilgari yo'nalish faqat ro'yxatdan o'tish so'rovida qolardi va
+  /// klinikaning o'zi o'zini bilmasdi: admin stomatologiya uchun
+  /// shartni o'zgartirsa, ochilib bo'lgan klinikaga hech narsa
+  /// ta'sir qilmasdi.
+  direction String @default("")
+
   /// Shahar — apteka uchun. Klinikaniki obunada (`Subscription.city`).
   city String @default("")
 

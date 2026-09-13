@@ -295,6 +295,9 @@ function allowedPermissions(
  */
 const MODULE_BY_PERMISSION: Partial<Record<Permission, ClinicModule>> = {
   'prescriptions.manage': 'prescriptions',
+  'patients.message': 'messages',
+  'data.export': 'dataexchange',
+  'data.import': 'dataexchange',
   'ward.view': 'ward',
   'ward.manage': 'ward',
   'chat.use': 'chat',

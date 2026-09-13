@@ -1903,4 +1903,12 @@ export const dict: Dict = {
   'login.needPhone': 'Enter the full number — {left} more digits',
   'login.needRegion': 'Choose a region',
   'login.needPassword': 'The password needs {left} more characters',
+  'access.reason.trial': 'Paid plan',
+  'access.coreTitle': 'Core sections',
+  'access.coreSubtitle': 'These can’t be closed — a clinic can’t work without them',
+  'module.messages': 'Patient messages',
+  'module.dataexchange': 'Data exchange',
+  'platform.module.messages': 'Patient messages',
+  'platform.module.dataexchange': 'Data exchange',
+  'trial.locked': 'Sections with a lock open on a paid plan',
 }

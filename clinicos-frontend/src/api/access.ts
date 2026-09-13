@@ -9,7 +9,8 @@
 import { delay, request, USE_MOCK } from './client'
 import type { ID } from '@/types/models'
 
-export type BlockReason = 'soon' | 'plan' | 'maintenance' | 'off'
+/** `trial` — faqat klinika tomonida ko'rinadi, admin uni qo'ymaydi (sinov shartidan keladi) */
+export type BlockReason = 'soon' | 'plan' | 'maintenance' | 'off' | 'trial'
 
 export interface Restriction {
   id: ID
@@ -48,6 +49,8 @@ export interface TrialList {
 const MOCK_MODULES = [
   'ward',
   'prescriptions',
+  'messages',
+  'dataexchange',
   'chat',
   'feedback',
   'analytics',

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 
 import { PrismaService } from '../prisma/prisma.service'
+import { TRIAL_DISABLED_MODULES } from './modules'
 
 /**
  * ============================================================
@@ -36,7 +37,12 @@ const CACHE_MS = 30_000
 
 export interface Restriction {
   module: string
-  reason: 'soon' | 'plan' | 'maintenance' | 'off'
+  /**
+   * `trial` — BAZADA SAQLANMAYDI, hisoblanadi: klinika sinovda va
+   * shu yo'nalishning sinov sharti bu bo'limni yopgan. To'lagan
+   * zahoti o'z-o'zidan yo'qoladi.
+   */
+  reason: 'soon' | 'plan' | 'maintenance' | 'off' | 'trial'
   note: string
 }
 
@@ -66,6 +72,40 @@ export class RestrictionsService {
           reason: row.reason.toLowerCase() as Restriction['reason'],
           note: row.note,
         })
+      }
+    }
+
+    /*
+      SINOVDAGI KLINIKA — SHARTI JONLI QO'LLANADI.
+
+      Ilgari sinov sharti ro'yxatdan o'tish paytida bir marta
+      nusxalanardi: admin keyin stomatologiya uchun shartni
+      o'zgartirsa, ochilib bo'lgan klinikaga ta'sir qilmasdi,
+      mijoz to'lagach esa yopiq bo'limlar yopiq qolib ketardi.
+      Endi har so'rovda hisoblanadi va `ACTIVE` bo'lishi bilan
+      o'z-o'zidan ochiladi.
+
+      Aniq qoida (admin qo'ygan) sinov shartidan USTUN: bo'lim
+      "texnik ishlar" deb yopilgan bo'lsa, sababi shu bo'lib qoladi.
+    */
+    const clinic = await this.prisma.acrossAllClinics().clinic.findUnique({
+      where: { id: clinicId },
+      select: { direction: true, subscription: { select: { status: true } } },
+    })
+
+    if (clinic?.subscription?.status === 'TRIAL') {
+      const policies = await this.prisma.acrossAllClinics().trialPolicy.findMany({
+        where: { direction: { in: [clinic.direction, 'default'] } },
+      })
+      const policy =
+        policies.find((one) => one.direction === clinic.direction) ??
+        policies.find((one) => one.direction === 'default')
+
+      const closed = policy?.disabledModules ?? [...TRIAL_DISABLED_MODULES]
+      for (const module of closed) {
+        if (!byModule.has(module)) {
+          byModule.set(module, { module, reason: 'trial', note: '' })
+        }
       }
     }
 

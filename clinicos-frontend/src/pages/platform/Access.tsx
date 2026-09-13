@@ -39,11 +39,24 @@ import { useToast } from '@/store/toast-context'
  */
 const REASONS: BlockReason[] = ['soon', 'plan', 'maintenance', 'off']
 
+/** Hech qachon yopilmaydigan bo'limlar — faqat ko'rsatish uchun */
+const CORE_SECTIONS = [
+  'nav.dashboard',
+  'nav.patients',
+  'nav.appointments',
+  'nav.doctors',
+  'nav.staff',
+  'nav.services',
+  'nav.payments',
+  'nav.settings',
+]
+
 const REASON_TONE: Record<BlockReason, Tone> = {
   soon: 'accent',
   plan: 'warn',
   maintenance: 'neutral',
   off: 'bad',
+  trial: 'accent',
 }
 
 const REASON_ICON = {
@@ -51,6 +64,7 @@ const REASON_ICON = {
   plan: Lock,
   maintenance: Wrench,
   off: Ban,
+  trial: Lock,
 }
 
 export function PlatformAccessPage() {
@@ -163,7 +177,10 @@ export function PlatformAccessPage() {
 
         {/* ================= Amaldagi cheklovlar ================= */}
         <Card padded={false}>
-          <CardHeader title={t('access.current')} />
+          {/* `padded={false}` kartada sarlavha o'zi chegara oladi */}
+          <div className="px-5 pt-5 sm:px-6">
+            <CardHeader title={t('access.current')} />
+          </div>
 
           {(access.data?.items ?? []).length === 0 ? (
             <EmptyState title={t('access.empty')} className="py-10" />
@@ -207,9 +224,33 @@ export function PlatformAccessPage() {
         </Card>
       </div>
 
+      {/*
+        ASOSIY BO'LIMLAR — YOPIB BO'LMAYDI.
+
+        Ro'yxatda ular ham ko'rsatiladi, aks holda admin "nega
+        bemorlar yoki to'lovlarni boshqara olmayman" deb o'ylaydi.
+        Sabab: ularsiz klinika umuman ishlamaydi — "o'chirilgan
+        bemorlar" degan holat mahsulotni buzadi.
+      */}
+      <Card className="mt-5">
+        <CardHeader title={t('access.coreTitle')} subtitle={t('access.coreSubtitle')} />
+        <div className="mt-3 flex flex-wrap gap-2">
+          {CORE_SECTIONS.map((key) => (
+            <span
+              key={key}
+              className="rounded-full bg-fill-4 px-3 py-1.5 text-caption font-medium text-label-secondary"
+            >
+              {t(key)}
+            </span>
+          ))}
+        </div>
+      </Card>
+
       {/* ================= Sinov shartlari ================= */}
       <Card padded={false} className="mt-5">
-        <CardHeader title={t('access.trialTitle')} subtitle={t('access.trialSubtitle')} />
+        <div className="px-5 pt-5 pb-2 sm:px-6">
+          <CardHeader title={t('access.trialTitle')} subtitle={t('access.trialSubtitle')} />
+        </div>
 
         <ul>
           {(trials.data?.items ?? []).map((policy) => (
@@ -282,14 +323,42 @@ function TrialRow({
         ) : null}
 
         <div className="ml-auto flex items-center gap-2">
-          <TextInput
-            type="number"
-            min={1}
-            fieldClassName="w-24"
-            value={days}
-            onChange={(e) => setDays(e.target.value)}
-            suffix={t('access.days')}
-          />
+          {/*
+            KUN TANLAGICH.
+
+            Ilgari 96px lik `number` maydon edi va ichidagi "kun"
+            yozuvi raqamning joyini yeb qo'yardi — "14" o'rniga "1"
+            ko'rinardi. Endi raqam o'rtada, ikki yonida − / + tugma;
+            qo'lda ham yozish mumkin.
+          */}
+          <div className="flex h-9 items-center rounded-[10px] border border-separator bg-raised">
+            <button
+              type="button"
+              className="h-full w-9 rounded-l-[10px] text-headline text-label-secondary transition-colors hover:bg-fill-4 disabled:opacity-40"
+              disabled={Number(days) <= 1}
+              aria-label="−"
+              onClick={() => setDays(String(Math.max(1, (Number(days) || 1) - 1)))}
+            >
+              −
+            </button>
+            <input
+              inputMode="numeric"
+              className="h-full w-12 bg-transparent text-center text-subhead font-semibold tnum text-label outline-none"
+              value={days}
+              onChange={(e) => setDays(e.target.value.replace(/\D/g, '').slice(0, 3))}
+              onBlur={() => setDays(String(Math.min(180, Math.max(1, Number(days) || 1))))}
+            />
+            <span className="pr-1 text-footnote text-label-tertiary">{t('access.days')}</span>
+            <button
+              type="button"
+              className="h-full w-9 rounded-r-[10px] text-headline text-label-secondary transition-colors hover:bg-fill-4 disabled:opacity-40"
+              disabled={Number(days) >= 180}
+              aria-label="+"
+              onClick={() => setDays(String(Math.min(180, (Number(days) || 0) + 1)))}
+            >
+              +
+            </button>
+          </div>
           <Button size="sm" disabled={!dirty} loading={busy} onClick={() => void save()}>
             {t('action.save')}
           </Button>

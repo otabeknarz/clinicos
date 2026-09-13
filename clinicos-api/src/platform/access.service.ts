@@ -135,6 +135,9 @@ export class AccessService {
       update: { days: dto.days, disabledModules: dto.disabledModules },
     })
 
+    /* Sinovdagi klinikalarga yarim daqiqa kutmasdan yetib borsin */
+    this.restrictions.clearCache()
+
     return { ok: true }
   }
 

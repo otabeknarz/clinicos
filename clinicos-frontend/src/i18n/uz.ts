@@ -1957,4 +1957,12 @@ export const dict: Dict = {
   'login.needPhone': 'Telefon raqamini to‘liq kiriting — yana {left} ta raqam',
   'login.needRegion': 'Viloyatni tanlang',
   'login.needPassword': 'Parol uchun yana {left} ta belgi kerak',
+  'access.reason.trial': 'Pullik versiyada',
+  'access.coreTitle': 'Asosiy bo‘limlar',
+  'access.coreSubtitle': 'Bular yopilmaydi — ularsiz klinika umuman ishlamaydi',
+  'module.messages': 'Bemorlarga xabar',
+  'module.dataexchange': 'Ma’lumot almashish',
+  'platform.module.messages': 'Bemorlarga xabar',
+  'platform.module.dataexchange': 'Ma’lumot almashish',
+  'trial.locked': 'Qulf belgili bo‘limlar pullik versiyada ochiladi',
 }

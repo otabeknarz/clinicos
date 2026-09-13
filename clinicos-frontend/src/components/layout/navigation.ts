@@ -300,10 +300,16 @@ export const NAVIGATION: NavGroup[] = [
         permission: 'payments.view',
       },
       {
+        /*
+          `debts.view`, `payments.view` EMAS. Ilgari to'lovlar
+          ruxsatiga bog'langan edi va "Qarzlar" bo'limi yopilganda
+          ham band menyuda ochiq turardi — bosilsa sahifa 403
+          qaytarardi.
+        */
         to: '/debts',
         labelKey: 'nav.debts',
         icon: HandCoins,
-        permission: 'payments.view',
+        permission: 'debts.view',
       },
       { to: '/revenue', labelKey: 'nav.revenue', icon: TrendingUp, permission: 'revenue.view' },
       {

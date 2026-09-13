@@ -1908,4 +1908,12 @@ export const dict: Dict = {
   'login.needPhone': 'Введите номер полностью — ещё {left} цифр',
   'login.needRegion': 'Выберите регион',
   'login.needPassword': 'Для пароля нужно ещё {left} символов',
+  'access.reason.trial': 'В платной версии',
+  'access.coreTitle': 'Основные разделы',
+  'access.coreSubtitle': 'Их нельзя закрыть — без них клиника не работает',
+  'module.messages': 'Сообщения пациентам',
+  'module.dataexchange': 'Обмен данными',
+  'platform.module.messages': 'Сообщения пациентам',
+  'platform.module.dataexchange': 'Обмен данными',
+  'trial.locked': 'Разделы с замком откроются в платной версии',
 }

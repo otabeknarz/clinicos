@@ -20,6 +20,10 @@
 export const CLINIC_MODULES = [
   'ward',
   'prescriptions',
+  /* Bemorlarga umumiy xabar — kundalik ishga majburiy emas */
+  'messages',
+  /* Excel'ga chiqarish va ko'chirish */
+  'dataexchange',
   'chat',
   'feedback',
   'analytics',
@@ -61,6 +65,9 @@ export type ClinicModule = (typeof CLINIC_MODULES)[number]
  */
 const MODULE_BY_PERMISSION: Record<string, ClinicModule> = {
   'prescriptions.manage': 'prescriptions',
+  'patients.message': 'messages',
+  'data.export': 'dataexchange',
+  'data.import': 'dataexchange',
   'ward.view': 'ward',
   'ward.manage': 'ward',
   'chat.use': 'chat',
