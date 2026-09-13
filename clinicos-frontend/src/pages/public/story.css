@@ -485,3 +485,60 @@
 @media(prefers-reduced-motion:reduce){
 .story-page *,.story-page *:before,.story-page *:after{animation:none!important;transition:none!important}
 }
+
+/* ------------------------------------------------------------------ */
+/* MATN O'QILISHI                                                      */
+/* ------------------------------------------------------------------ */
+/*
+  Prototipdan ko'chirilgan o'lchamlar juda mayda edi: 9-12px kulrang
+  matn chiroyli ko'rinadi, lekin telefon qo'lida turgan odam uni
+  o'qimaydi — ko'zini qisadi va sahifadan chiqib ketadi.
+  Shuning uchun MAZMUNLI matn kattalashtirildi va rangi
+  to'qlashtirildi. Demo ekranidagi mayda yozuvlarga TEGILMADI: ular
+  kichraytirilgan ish joyi ko'rinishi, kattalashsa maketi buziladi.
+*/
+:where(.story-page) .v3-section-heading>p{font-size:15px;line-height:1.8;color:#5a6b85;max-width:340px}
+:where(.story-page) .v3-card-copy p{font-size:14px;line-height:1.75;color:#56678a}
+:where(.story-page) .v3-extra p{font-size:14px;line-height:1.75;color:#56678a}
+:where(.story-page) .v3-faq-copy p{font-size:14px;line-height:1.8;color:#56678a;max-width:340px}
+:where(.story-page) .v3-final p{font-size:15px;color:#5a6b85;line-height:1.7}
+:where(.story-page) .v3-money-copy p{font-size:14px;line-height:1.75;color:#56678a}
+:where(.story-page) .v3-process-copy p{font-size:14px;line-height:1.75;color:#56678a}
+.story-page summary{font-size:14px;line-height:1.6}
+.story-page details p{font-size:13.5px;line-height:1.8;color:#56678a}
+:where(.story-page) .v3-card-tag{font-size:11px;color:#66799a;letter-spacing:.07em}
+:where(.story-page) .v3-label{font-size:11px;letter-spacing:.1em}
+:where(.story-page) .v3-hero-heading .v3-label{font-size:11px;padding:9px 17px}
+:where(.story-page) .v3-hero-heading p{font-size:16px;line-height:1.75;color:#4f6180}
+.story-page .button{font-size:14px}
+.story-page .login-button{font-size:14px}
+.story-page .nav a{font-size:14px}
+:where(.story-page) .v3-workspace-note{font-size:13px;color:#5a6b85}
+
+@media(max-width:800px){
+:where(.story-page) .v3-section-heading>p,
+:where(.story-page) .v3-card-copy p,
+:where(.story-page) .v3-extra p,
+:where(.story-page) .v3-faq-copy p,
+:where(.story-page) .v3-money-copy p,
+:where(.story-page) .v3-process-copy p{font-size:13.5px}
+:where(.story-page) .v3-hero-heading p{font-size:14.5px}
+.story-page summary{font-size:13px}
+.story-page details p{font-size:12.5px}
+}
+
+/* ------------------------------------------------------------------ */
+/* HARAKAT YUMSHOQLIGI                                                 */
+/* ------------------------------------------------------------------ */
+/*
+  Kirish harakati qisqa va keskin edi: bo'lim "otilib" chiqardi.
+  Endi u sekinroq va yaqinroqdan keladi — sezilmasdan, lekin
+  yoqimli. Bosish javobiga ham tegildi: 0.96 gacha siqilish
+  qattiq ko'rinardi.
+*/
+@media (prefers-reduced-motion:no-preference){
+:where(.story-page) .v3-card:hover,:where(.story-page) .v3-extra:hover{transform:translateY(-2px)}
+.story-page .button:active,.story-page .login-button:active{scale:.975}
+:where(.story-page) .v3-role-picker button:active{scale:.975}
+:where(.story-page) .v3-card,:where(.story-page) .v3-extra{transition:transform .45s var(--ease-out-soft),box-shadow .45s var(--ease-apple),--spot .5s var(--ease-apple)}
+}
