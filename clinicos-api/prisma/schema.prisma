@@ -2034,6 +2034,8 @@ enum PatientNoticeKind {
   REMINDER
   /// Bir kun qolganda — oxirgi eslatma
   REMINDER_SOON
+  /// Qabul yozilgan zahoti — "siz qabulga yozildingiz"
+  BOOKED
 }
 
 model PatientNotice {
@@ -2388,8 +2390,8 @@ model FinanceEntry {
   occurredAt DateTime         @map("occurred_at")
 
   /// Kimga berildi yoki kimdan keldi: "Medtex MChJ", "Elektr ta'minoti"
-  counterparty String  @default("")
-  note         String  @default("")
+  counterparty String   @default("")
+  note         String   @default("")
   /// Chek va hujjat suratlari — S3 kalitlari. Javobda imzolangan havolaga
   /// aylanadi (umumiy interseptor ro'yxatni imzolamaydi — servisda).
   receipts     String[] @default([])
@@ -2409,4 +2411,28 @@ model FinanceEntry {
   @@index([clinicId, occurredAt])
   @@index([clinicId, createdById, occurredAt])
   @@map("finance_entries")
+}
+
+/// BOTDA TASDIQLANGAN RAQAM — kartasi hali ochilmagan bo'lsa ham.
+///
+/// NEGA KERAK: bemor botda raqamini ulashadi, lekin kartasi keyin
+/// ochiladi (yoki boshqa klinikada yangi karta ochiladi). Ilgari
+/// bog'lanish FAQAT ulashish paytida bor kartalarga yozilardi va
+/// keyingi karta botsiz qolardi — qabul yozilsa ham xabar kelmasdi,
+/// bemor esa "botdan ro'yxatdan o'tganman-ku" derdi.
+///
+/// Raqamni Telegram O'ZI tasdiqlagan (`contact.user_id === from.id`),
+/// shuning uchun bu yozuv — ishonchli bog'lanish, taxmin emas.
+///
+/// UMUMIY JADVAL (`clinicId` yo'q): bitta odam bir necha klinikaning
+/// bemori bo'lishi mumkin. Faqat raqam va Telegram id — ism, tashxis
+/// yoki klinika bu yerda YO'Q.
+model TelegramPhoneLink {
+  /// Faqat raqamlar: 998901234567
+  phone          String   @id
+  telegramUserId String   @map("telegram_user_id")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([telegramUserId])
+  @@map("telegram_phone_links")
 }

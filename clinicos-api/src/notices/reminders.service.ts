@@ -75,6 +75,14 @@ export class RemindersService implements OnModuleInit, OnModuleDestroy {
 
   private async send(inDays: number, kind: 'REMINDER' | 'REMINDER_SOON'): Promise<void> {
     /*
+      YAQINDA "QABULGA YOZILDINGIZ" OLGAN BEMORGA ESLATMA SHOSHILMAYDI.
+      Ertangi qabulga bugun yozilgan odamga yarim soatdan keyin yana
+      "ertaga qabulingiz bor" — ikkinchi xabar, ma'nosi bir xil.
+      3 kunlik eslatmada oyna 24 soat, 1 kunlikda 12 soat.
+    */
+    const bookedWindow = new Date(Date.now() - (kind === 'REMINDER' ? 24 : 12) * 3_600_000)
+
+    /*
       Fon vazifasida so'rov konteksti yo'q, shuning uchun filtrsiz
       mijoz ishlatiladi. Bu — `platform/`, `auth/` va Telegram
       webhook'idan keyingi to'rtinchi qonuniy holat: vazifa BARCHA
@@ -94,7 +102,11 @@ export class RemindersService implements OnModuleInit, OnModuleDestroy {
         startsAt: { gte: start, lte: end },
         status: { in: ['SCHEDULED', 'CONFIRMED'] },
         /* Shu turdagi eslatma allaqachon yuborilgan bo'lsa — qayta emas */
-        notices: { none: { kind } },
+        notices: {
+          none: {
+            OR: [{ kind }, { kind: 'BOOKED', createdAt: { gte: bookedWindow } }],
+          },
+        },
         clinic: { isActive: true, deletedAt: null },
       },
       select: {

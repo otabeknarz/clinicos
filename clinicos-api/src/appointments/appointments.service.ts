@@ -177,8 +177,85 @@ export class AppointmentsService {
       tashlanmaydi.
     */
     void this.notifyDoctor(row)
+    /*
+      BEMORGA HAM — agar u bemor botiga ulangan bo'lsa. Ilgari bemor
+      faqat 3 kun va 1 kun oldingi eslatmani olardi: bugunga yoki
+      ertaga kechqurun yozilgan qabulga umuman xabar kelmasdi.
+    */
+    void this.notifyPatient(row)
 
     return toApiAppointment(row)
+  }
+
+  /**
+   * "SIZ QABULGA YOZILDINGIZ" — bemorga, bemor botidan.
+   *
+   * Xabarda "Qabul qildim" tugmasi bor — eslatmadagi bilan bir xil:
+   * bosilsa qabul tasdiqlanadi. Xabar `PatientNotice` ga ham yoziladi
+   * (kabinetda ko'rinadi) va shu yozuv yaqin eslatmani takrorlamaslik
+   * uchun ishlatiladi: ertangi qabulga yozilgan odamga yarim soatdan
+   * keyin yana "ertaga qabulingiz bor" deb yozish ortiqcha.
+   *
+   * HECH QACHON XATO TASHLAMAYDI va har bir tarmoq logga yoziladi —
+   * `notifyDoctor` dagi sabab bilan.
+   */
+  private async notifyPatient(row: { id: string; startsAt: Date; patient: { id: string } }) {
+    try {
+      if (!this.telegram.patientEnabled) {
+        this.log.warn('Bemor boti: tokeni yo‘q — qabul xabari yuborilmadi')
+        return
+      }
+      if (row.startsAt.getTime() < Date.now()) {
+        this.log.log('Bemor boti: qabul vaqti o‘tib ketgan — xabar yuborilmadi')
+        return
+      }
+
+      const details = await this.db.appointment.findFirst({
+        where: { id: row.id },
+        select: {
+          clinicId: true,
+          patient: { select: { id: true, telegramUserId: true } },
+          doctor: { select: { fullName: true } },
+          service: { select: { name: true } },
+          clinic: { select: { name: true, phone: true } },
+        },
+      })
+      if (!details) return
+      if (!details.patient.telegramUserId) {
+        this.log.log(`Bemor boti: bemor ${details.patient.id} botga ulanmagan — xabar yuborilmadi`)
+        return
+      }
+
+      const text = bookedText({
+        clinic: details.clinic.name,
+        clinicPhone: details.clinic.phone,
+        service: details.service.name,
+        doctor: details.doctor.fullName,
+        startsAt: row.startsAt,
+      })
+
+      await this.telegram.send(
+        details.patient.telegramUserId,
+        text,
+        { inline_keyboard: [[{ text: 'Qabul qildim', callback_data: `appt:${row.id}` }]] },
+        'patient',
+      )
+      this.log.log(`Bemor boti: bemor ${details.patient.id} ga qabul xabari yuborildi`)
+
+      await this.db.patientNotice.create({
+        data: {
+          clinicId: details.clinicId,
+          patientId: details.patient.id,
+          appointmentId: row.id,
+          kind: 'BOOKED',
+          text: text.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'),
+          createdByName: 'Tizim',
+          delivered: true,
+        },
+      })
+    } catch (error) {
+      this.log.warn(`Bemor boti: qabul xabari yuborilmadi: ${String(error)}`)
+    }
   }
 
   /**
@@ -636,4 +713,25 @@ function notifyCutoff(): Date {
   return d
 }
 
-
+/** "Siz qabulga yozildingiz" matni — eslatma bilan bir uslubda */
+function bookedText(input: {
+  clinic: string
+  clinicPhone: string
+  service: string
+  doctor: string
+  startsAt: Date
+}): string {
+  const lines = [
+    `<b>${escapeHtml(input.clinic)}</b>`,
+    '',
+    'Siz qabulga yozildingiz.',
+    '',
+    `<b>Qachon:</b> ${escapeHtml(whenInWords(input.startsAt))}`,
+    `<b>Xizmat:</b> ${escapeHtml(input.service)}`,
+    `<b>Shifokor:</b> ${escapeHtml(input.doctor)}`,
+  ]
+  if (input.clinicPhone) {
+    lines.push('', `Kelolmasangiz, oldindan xabar bering: ${escapeHtml(input.clinicPhone)}`)
+  }
+  return lines.join('\n')
+}

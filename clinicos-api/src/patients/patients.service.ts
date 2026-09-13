@@ -177,12 +177,30 @@ export class PatientsService {
           address: dto.address,
           notes: dto.notes,
           primaryDoctorId: dto.primaryDoctorId,
+          telegramUserId: await this.telegramFor(dto.phone),
         },
       })
       return toApiPatient(row)
     } catch (error) {
       throw this.duplicatePhone(error)
     }
+  }
+
+  /**
+   * Shu raqam botda tasdiqlanganmi — tasdiqlangan bo'lsa Telegram id.
+   *
+   * Bemor botda raqamini OLDIN ulashgan bo'lishi mumkin (kartasi
+   * yo'q paytda yoki boshqa klinikada). Karta ochilgan zahoti u botga
+   * bog'lanadi: qabul xabari va eslatmalar kela boshlaydi.
+   *
+   * `TelegramPhoneLink` umumiy jadval — unda klinika ma'lumoti yo'q,
+   * faqat Telegram O'ZI tasdiqlagan raqam va id.
+   */
+  private async telegramFor(phone: string | undefined): Promise<string | null> {
+    const digits = (phone ?? '').replace(/\D/g, '')
+    if (digits.length < 9) return null
+    const link = await this.db.telegramPhoneLink.findUnique({ where: { phone: digits } })
+    return link?.telegramUserId ?? null
   }
 
   async update(id: string, dto: UpdatePatientDto) {
@@ -199,6 +217,12 @@ export class PatientsService {
           notes: dto.notes,
           status: dto.status ? (dto.status === 'active' ? 'ACTIVE' : 'INACTIVE') : undefined,
           primaryDoctorId: dto.primaryDoctorId,
+          /*
+            Raqam o'zgarsa, bog'lanish YANGI raqamdan olinadi. Eski
+            raqamning Telegram hisobi qolib ketsa, xabarlar boshqa odamga
+            ketardi.
+          */
+          ...(dto.phone !== undefined ? { telegramUserId: await this.telegramFor(dto.phone) } : {}),
         },
       })
       return toApiPatient(row)

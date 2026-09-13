@@ -27,7 +27,16 @@ export class OwnerAlertsService {
     private readonly telegram: TelegramService,
   ) {}
 
-  async send(clinicId: string, text: string): Promise<void> {
+  /**
+   * @param skipUserId  xabarga sabab bo'lgan odam — egasining o'zi yozgan
+   *                    bo'lsa, o'z telefoni bekorga jiringlamasin
+   * @param buttons     "Tanishib chiqdim" dan OLDIN qo'shiladigan tugmalar
+   */
+  async send(
+    clinicId: string,
+    text: string,
+    options: { skipUserId?: string; buttons?: unknown[][] } = {},
+  ): Promise<void> {
     if (!this.telegram.enabled) return
 
     try {
@@ -44,18 +53,20 @@ export class OwnerAlertsService {
           isActive: true,
           telegramUserId: { not: null },
         },
-        select: { telegramUserId: true },
+        select: { id: true, telegramUserId: true },
       })
 
-      if (owners.length === 0) return
+      const targets = owners.filter((owner) => owner.id !== options.skipUserId)
+      if (targets.length === 0) return
+
+      const ack = this.telegram.ackButton() as { inline_keyboard: unknown[][] }
+      const markup = options.buttons?.length
+        ? { inline_keyboard: [...options.buttons, ...ack.inline_keyboard] }
+        : ack
 
       await Promise.all(
-        owners.map((owner) =>
-          this.telegram.send(
-            owner.telegramUserId as string,
-            text,
-            this.telegram.ackButton(),
-          ),
+        targets.map((owner) =>
+          this.telegram.send(owner.telegramUserId as string, text, markup),
         ),
       )
     } catch (error) {

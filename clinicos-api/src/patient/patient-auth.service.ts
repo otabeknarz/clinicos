@@ -130,12 +130,34 @@ export class PatientAuthService {
     const digits = phone.replace(/\D/g, '')
     if (digits.length < 9) return 0
 
-    const variants = [`+${digits}`, digits]
+    const db = this.prisma.acrossAllClinics()
 
-    const { count } = await this.prisma.acrossAllClinics().patient.updateMany({
-      where: { phone: { in: variants }, clinic: { deletedAt: null } },
-      data: { telegramUserId },
+    /*
+      RAQAM ESLAB QOLINADI — karta hali yo'q bo'lsa ham. Keyin ochilgan
+      karta (shu yoki boshqa klinikada) shu yozuvdan bog'lanadi
+      (`patients.service.ts`). Aks holda bemor botda "ro'yxatdan
+      o'tganman" deydi, qabul xabari esa kelmaydi.
+    */
+    await db.telegramPhoneLink.upsert({
+      where: { phone: digits },
+      create: { phone: digits, telegramUserId },
+      update: { telegramUserId },
     })
+
+    /*
+      Bazadagi raqam har xil yozilgan bo'lishi mumkin: `+998901234567`,
+      `998901234567`, `+998 90 123 45 67` (Excel'dan ko'chirilgan).
+      Shuning uchun faqat RAQAMLARI solishtiriladi. Barcha klinikalar
+      bo'yicha — bu `auth` domeni, filtrsiz mijozga ruxsat bor.
+    */
+    const count = await db.$executeRaw`
+      UPDATE "patients" p
+      SET "telegram_user_id" = ${telegramUserId}
+      FROM "clinics" c
+      WHERE c."id" = p."clinic_id"
+        AND c."deleted_at" IS NULL
+        AND regexp_replace(p."phone", '[^0-9]', '', 'g') = ${digits}
+    `
 
     this.log.log(`Bemor kabineti: raqam bo‘yicha ${count} ta karta bog‘landi`)
     return count

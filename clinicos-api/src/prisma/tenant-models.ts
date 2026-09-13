@@ -95,6 +95,7 @@ export const GLOBAL_MODELS = new Set<string>([
   'Plan',
   'PlatformMember',
   'Session',
+  'TelegramPhoneLink',
   'TenantInvoice',
   'TrialPolicy',
 ])

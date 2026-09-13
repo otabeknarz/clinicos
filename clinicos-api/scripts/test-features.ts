@@ -28,6 +28,7 @@ import { TelegramService } from '../src/telegram/telegram.service'
  *      tugma qabulni tasdiqlaydi, "Tanishib chiqdim" xabarni yopadi.
  *   7. Apteka o'zi ro'yxatdan o'tadi — PHARMACY turi, sinov, apteka paneli.
  *   8. Kirim-chiqim — yozish, kassaga ta'sir, bekor qilish, ruxsatlar; buxgalter "Xodim" roli bilan.
+ *   9. Bemorga "qabulga yozildingiz", kartasi keyin ochilgan bot foydalanuvchisi, egaga kirim-chiqim xabari.
  *
  * TELEGRAM CHAQIRILMAYDI: xizmatning yuborish metodlari shu yerda
  * almashtiriladi va nima yuborilgani yozib olinadi.
@@ -497,6 +498,8 @@ async function main() {
   const tenants = await call('GET', '/platform/tenants', admin)
   const tenantNames = JSON.stringify(tenants.data)
   check('apteka klinikalar ro‘yxatiga aralashmadi', !tenantNames.includes(`Sinov Dorixona ${RUN}`))
+  /* Sinov aptekasi o'chiriladi — dorisiz apteka keyingi yurishda retsept takliflariga tushib qolardi */
+  if (pharmacy) await prisma.clinic.update({ where: { id: pharmacy.id }, data: { isActive: false } })
 
   /* ================================================================ */
   console.log('\n8. Kirim-chiqim va xodim roli')
@@ -624,6 +627,82 @@ async function main() {
   check('buxgalter bemorlarni ko‘rmaydi', (await call('GET', '/patients', accountantSession.token)).status === 403)
   check('buxgalter to‘lovlarni ko‘rmaydi', (await call('GET', '/payments', accountantSession.token)).status === 403)
   check('buxgalter bekor qila olmaydi', (await call('POST', `/finance/entries/${rent.data.id}/void`, accountantSession.token, { reason: 'sinov uchun' })).status === 403)
+
+  /* ================================================================ */
+  console.log('\n9. Bemorga qabul xabari va egaga kirim-chiqim xabari')
+  /* ================================================================ */
+  /* Sinovda tokenlar bo'sh — botlar "yoqilgan" deb ko'rsatiladi, yuborish baribir almashtirilgan */
+  Object.defineProperty(telegram, 'enabled', { get: () => true, configurable: true })
+  Object.defineProperty(telegram, 'patientEnabled', { get: () => true, configurable: true })
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 400))
+
+  /* Bemor botda raqamini OLDIN ulashadi — kartasi hali yo'q */
+  const botDigits = `99893${RUN}`
+  const botTelegram = `55${RUN}`
+  await patientTg.webhook(
+    { message: { chat: { id: Number(botTelegram) }, from: { id: Number(botTelegram) }, contact: { phone_number: botDigits, user_id: Number(botTelegram) } } },
+    'mahalliy-bemor-kaliti',
+  )
+  const phoneLink = await prisma.telegramPhoneLink.findUnique({ where: { phone: botDigits } })
+  check('kartasiz ham raqam eslab qolindi', phoneLink?.telegramUserId === botTelegram, short(phoneLink))
+
+  /* Registrator keyin karta ochadi — u o'zi botga bog'lanadi */
+  const newPatient = await call('POST', '/patients', receptionToken, {
+    fullName: 'Botdagi Bemor', phone: `+${botDigits}`, birthDate: '1990-05-05', gender: 'female',
+  })
+  check('karta ochildi', newPatient.status === 201, short(newPatient.data))
+  const linkedPatient = await prisma.patient.findUnique({ where: { id: newPatient.data?.id } })
+  check('yangi karta botga o‘zi bog‘landi', linkedPatient?.telegramUserId === botTelegram, String(linkedPatient?.telegramUserId))
+
+  const bookDoctor = await prisma.doctor.findFirstOrThrow({ where: { clinicId: receptionUser.clinicId, status: 'ACTIVE' } })
+  const bookService = await prisma.service.findFirstOrThrow({ where: { clinicId: receptionUser.clinicId } })
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  tomorrow.setHours(18, 40, 0, 0)
+
+  sent.length = 0
+  const booked = await call('POST', '/appointments', receptionToken, {
+    patientId: newPatient.data.id, doctorId: bookDoctor.id, serviceId: bookService.id, startsAt: tomorrow.toISOString(),
+  })
+  check('qabul yozildi', booked.status === 201, short(booked.data))
+  await settle()
+  const bookedMessage = sent.find((m) => m.to === botTelegram)
+  check('bemorga "qabulga yozildingiz" bordi', Boolean(bookedMessage?.text.includes('qabulga yozildingiz')), short(sent.map((m) => m.to)))
+  check('xabar bemor botidan', bookedMessage?.bot === 'patient')
+  check('xabarda "Qabul qildim" tugmasi', bookedMessage?.markup?.inline_keyboard?.[0]?.[0]?.callback_data === `appt:${booked.data?.id}`)
+  const bookedNotice = await prisma.patientNotice.findFirst({ where: { appointmentId: booked.data?.id, kind: 'BOOKED' } })
+  check('kabinetda ham yozildi', Boolean(bookedNotice))
+
+  sent.length = 0
+  await (app.get(RemindersService) as any).send(1, 'REMINDER_SOON')
+  check('yarim soatdan keyin "ertaga qabulingiz bor" takrorlanmadi', !sent.some((m) => m.to === botTelegram))
+
+  /* Egaga kirim-chiqim xabari */
+  const ownerUser = await prisma.user.findFirstOrThrow({ where: { email: 'owner@shifomed.uz' } })
+  const ownerTelegram = `44${RUN}`
+  const ownerTelegramBefore = ownerUser.telegramUserId
+  await prisma.user.update({ where: { id: ownerUser.id }, data: { telegramUserId: ownerTelegram } })
+  await prisma.user.update({ where: { id: receptionUser.id }, data: { extraPermissions: [...receptionUser.extraPermissions, 'finance.create'] } })
+  try {
+    sent.length = 0
+    const purchase = await call('POST', '/finance/entries', receptionToken, {
+      type: 'expense', category: 'purchase', amount: 150_000, method: 'cash', counterparty: 'Kanselyariya', note: 'Qog‘oz',
+    })
+    check('registrator chiqim yozdi', purchase.status === 201, short(purchase.data))
+    await settle()
+    const alert = sent.find((m) => m.to === ownerTelegram)
+    check('egaga botdan chiqim xabari bordi', Boolean(alert?.text.includes('Chiqim') && alert.text.includes('Yozdi:')), short(alert?.text))
+    check('xabarda summa va "kassadan"', Boolean(alert?.text.includes('150') && alert.text.includes('kassadan')))
+    check('xabarda bo‘limni ochish tugmasi', Boolean(alert?.markup?.inline_keyboard?.[0]?.[0]?.web_app))
+
+    sent.length = 0
+    await call('POST', '/finance/entries', financeOwner, { type: 'income', category: 'investment', amount: 1_000_000, method: 'transfer' })
+    await settle()
+    check('egasining o‘zi yozgani o‘ziga yuborilmadi', !sent.some((m) => m.to === ownerTelegram))
+  } finally {
+    await prisma.user.update({ where: { id: ownerUser.id }, data: { telegramUserId: ownerTelegramBefore } })
+    await prisma.user.update({ where: { id: receptionUser.id }, data: { extraPermissions: receptionUser.extraPermissions } })
+  }
 
   await app.close()
   console.log(`\n${passed} ta o‘tdi, ${failed} ta xato`)

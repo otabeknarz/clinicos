@@ -5,6 +5,9 @@ import { toApi, toApiDateTime, toDb } from '../common/api-enum'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
 import { StorageService } from '../storage/storage.service'
+import { escapeHtml, money } from '../common/telegram-text'
+import { OwnerAlertsService } from '../telegram/owner-alerts.service'
+import { TelegramService } from '../telegram/telegram.service'
 import {
   CreateFinanceEntryDto,
   EXPENSE_CATEGORIES,
@@ -36,6 +39,8 @@ export class FinanceService {
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
     private readonly storage: StorageService,
+    private readonly owners: OwnerAlertsService,
+    private readonly telegram: TelegramService,
   ) {}
 
   private get db() {
@@ -221,7 +226,36 @@ export class FinanceService {
       },
     })
 
+    /* Egasiga botdan — kutilmaydi, yozuvni to'xtatmaydi */
+    void this.notifyOwners(row, userId)
+
     return this.toApiEntry(row)
+  }
+
+  /**
+   * HAR BIR KIRIM-CHIQIM EGASIGA BOTDAN.
+   *
+   * Ega klinikada har kuni bo'lmaydi, lekin kassadan kim, qancha va
+   * nimaga pul berganini o'sha zahoti bilishi kerak — oy oxirida
+   * hisobotda ko'rish kech. Egasining O'ZI yozgan yozuv yuborilmaydi.
+   */
+  private async notifyOwners(row: EntryRow & { clinicId: string }, authorId: string) {
+    const expense = row.type === 'EXPENSE'
+    const lines = [
+      `<b>${expense ? 'Chiqim' : 'Kirim'}: ${expense ? '−' : '+'}${escapeHtml(money(row.amount))}</b>`,
+      '',
+      `<b>Turi:</b> ${escapeHtml(CATEGORY_LABEL[row.category] ?? row.category)}`,
+      `<b>Usul:</b> ${METHOD_LABEL[row.method]}${row.method === 'CASH' ? (expense ? ' — kassadan' : ' — kassaga') : ''}`,
+    ]
+    if (row.counterparty) lines.push(`<b>${expense ? 'Kimga' : 'Kimdan'}:</b> ${escapeHtml(row.counterparty)}`)
+    if (row.note) lines.push(`<b>Izoh:</b> ${escapeHtml(row.note)}`)
+    lines.push(`<b>Yozdi:</b> ${escapeHtml(row.createdBy.fullName)}`)
+    if (row.receipts.length > 0) lines.push(`📎 ${row.receipts.length} ta rasm biriktirilgan`)
+
+    await this.owners.send(row.clinicId, lines.join('\n'), {
+      skipUserId: authorId,
+      buttons: [[{ text: 'Kirim-chiqimni ochish', web_app: { url: this.telegram.appLink('/finance') } }]],
+    })
   }
 
   /**
@@ -280,6 +314,32 @@ export class FinanceService {
 }
 
 /* ------------------------------------------------------------------ */
+
+/** Botdagi xabar uchun — interfeysdagi nomlar bilan bir xil */
+const CATEGORY_LABEL: Record<string, string> = {
+  purchase: 'Xarid va buyurtma',
+  supplies: 'Dori va sarf materiallari',
+  salary: 'Maosh va avans',
+  rent: 'Ijara',
+  utilities: 'Kommunal va internet',
+  repair: 'Ta’mirlash va jihoz',
+  marketing: 'Reklama',
+  taxes: 'Soliq va to‘lovlar',
+  transport: 'Transport',
+  food: 'Oziq-ovqat',
+  other: 'Boshqa chiqim',
+  rent_income: 'Ijaradan kirim',
+  investment: 'Egasi qo‘shgan pul',
+  insurance: 'Sug‘urta',
+  partner: 'Hamkordan ulush',
+  other_income: 'Boshqa kirim',
+}
+
+const METHOD_LABEL: Record<PaymentMethod, string> = {
+  CASH: 'Naqd',
+  CARD: 'Karta',
+  TRANSFER: 'O‘tkazma',
+}
 
 interface EntryRow {
   id: string
