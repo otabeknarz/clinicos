@@ -1371,3 +1371,86 @@
     animation: none;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* IPAD VA IPHONE (WEBKIT) — SHISHASIZ, BARQAROR KO'RINISH             */
+/* ------------------------------------------------------------------ */
+/*
+  NIMA BO'LARDI: iPad'da ba'zi kartalar va oynalar ochilganda "fonga
+  kirib ketib", ko'rinmay qolardi. Chrome'da takrorlanmaydi — bu
+  WebKit'ning ma'lum xatolari:
+
+    1. `backdrop-filter` bor elementga `filter` animatsiyasi berilsa
+       (kirish harakatidagi `blur(5px)`), Safari shishani chizmay
+       qo'yadi va karta foni bilan qo'shilib ketadi;
+    2. ichma-ich `backdrop-filter` (shisha ichida shisha) — ichkisi
+       bo'sh chiziladi;
+    3. `will-change: transform` bilan ko'tarilgan `fixed` fon qatlami
+       (`z-index: -1`) aylantirishda mazmunning USTIGA chiqib qoladi.
+
+  YECHIM FAQAT iOS/iPadOS DA: `-webkit-touch-callout` ni faqat shu
+  tizimlardagi WebKit qo'llaydi, ya'ni kompyuterdagi ko'rinishga
+  tegilmaydi. Bu yerda shisha o'rniga TO'Q (shaffof bo'lmagan) yuza,
+  kirish harakati esa xiraliksiz.
+*/
+@supports (-webkit-touch-callout: none) {
+  /* Fon qatlami mazmun ostida qolsin va harakatsiz tursin */
+  body.soft-ui {
+    isolation: isolate;
+  }
+
+  .soft-ui::before {
+    animation: none;
+    will-change: auto;
+  }
+
+  /* Shisha o'rniga to'q yuza */
+  .soft-ui .card,
+  .soft-ui .modal-panel,
+  .soft-ui .popover-panel,
+  .soft-ui aside > div,
+  .material-thick,
+  .material {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .soft-ui .card {
+    background-color: var(--color-raised);
+  }
+
+  .soft-ui .modal-panel,
+  .soft-ui .popover-panel,
+  .material-thick {
+    background: var(--color-raised);
+  }
+
+  .soft-ui aside > div,
+  .soft-ui header.material {
+    background: var(--color-raised);
+  }
+
+  /* Oyna orqasi — xiralashtirish o'rniga quyuqroq parda */
+  .soft-ui .modal-scrim {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: rgb(22 34 66 / 0.32);
+  }
+
+  /* Kirish harakati — xiraliksiz (filter animatsiyasi yo'q) */
+  .platform-motion .page-head,
+  .platform-motion .card {
+    animation-name: admin-enter-lite;
+  }
+}
+
+@keyframes admin-enter-lite {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

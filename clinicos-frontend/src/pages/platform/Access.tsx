@@ -39,17 +39,6 @@ import { useToast } from '@/store/toast-context'
  */
 const REASONS: BlockReason[] = ['soon', 'plan', 'maintenance', 'off']
 
-/** Hech qachon yopilmaydigan bo'limlar — faqat ko'rsatish uchun */
-const CORE_SECTIONS = [
-  'nav.dashboard',
-  'nav.patients',
-  'nav.appointments',
-  'nav.doctors',
-  'nav.staff',
-  'nav.services',
-  'nav.payments',
-  'nav.settings',
-]
 
 const REASON_TONE: Record<BlockReason, Tone> = {
   soon: 'accent',
@@ -84,6 +73,27 @@ export function PlatformAccessPage() {
   const [busy, setBusy] = useState(false)
 
   const modules = access.data?.modules ?? []
+
+  /*
+    HAMMA BO'LIM, GURUHLARGA BO'LINGAN. Ro'yxat uzun (30 ga yaqin)
+    va guruhsiz "Kassa" klinikaniki yoki aptekaniki ekanini
+    ajratib bo'lmasdi. Guruh nomi har bir variant boshida turadi.
+  */
+  const groups = access.data?.groups ?? { core: [], features: modules, pharmacy: [] }
+  const groupedOptions = (
+    [
+      ['core', groups.core],
+      ['features', groups.features],
+      ['pharmacy', groups.pharmacy],
+    ] as const
+  ).flatMap(([group, keys]) =>
+    keys.map((key) => ({
+      value: key,
+      label: `${t(`access.group.${group}`)} · ${t(`module.${key}`)}`,
+    })),
+  )
+
+  const isCore = groups.core.includes(module)
 
   async function add() {
     if (!module) return
@@ -131,7 +141,7 @@ export function PlatformAccessPage() {
               onChange={(e) => setModule(e.target.value)}
               options={[
                 { value: '', label: t('access.pickModule') },
-                ...modules.map((key) => ({ value: key, label: t(`module.${key}`) })),
+                ...groupedOptions,
               ]}
             />
 
@@ -168,6 +178,18 @@ export function PlatformAccessPage() {
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
+
+            {/*
+              ASOSIY BO'LIM — OGOHLANTIRISH. Yopish mumkin (admin
+              hammasini boshqaradi), lekin natijasi og'ir: klinika
+              kundalik ishni qila olmay qoladi. Buni bosishdan oldin
+              bilishi kerak.
+            */}
+            {isCore ? (
+              <p className="rounded-[12px] bg-warn-soft px-3 py-2 text-footnote text-warn">
+                {t('access.coreWarning')}
+              </p>
+            ) : null}
 
             <Button block disabled={!module} loading={busy} onClick={() => void add()}>
               {t('access.apply')}
@@ -223,28 +245,6 @@ export function PlatformAccessPage() {
           )}
         </Card>
       </div>
-
-      {/*
-        ASOSIY BO'LIMLAR — YOPIB BO'LMAYDI.
-
-        Ro'yxatda ular ham ko'rsatiladi, aks holda admin "nega
-        bemorlar yoki to'lovlarni boshqara olmayman" deb o'ylaydi.
-        Sabab: ularsiz klinika umuman ishlamaydi — "o'chirilgan
-        bemorlar" degan holat mahsulotni buzadi.
-      */}
-      <Card className="mt-5">
-        <CardHeader title={t('access.coreTitle')} subtitle={t('access.coreSubtitle')} />
-        <div className="mt-3 flex flex-wrap gap-2">
-          {CORE_SECTIONS.map((key) => (
-            <span
-              key={key}
-              className="rounded-full bg-fill-4 px-3 py-1.5 text-caption font-medium text-label-secondary"
-            >
-              {t(key)}
-            </span>
-          ))}
-        </div>
-      </Card>
 
       {/* ================= Sinov shartlari ================= */}
       <Card padded={false} className="mt-5">

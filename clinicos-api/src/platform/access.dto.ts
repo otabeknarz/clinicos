@@ -12,11 +12,12 @@ import {
   Min,
 } from 'class-validator'
 
-import { CLINIC_MODULES } from '../common/modules'
+import { CLINIC_MODULES, CORE_MODULES, RESTRICTABLE_MODULES } from '../common/modules'
 
 /** Bo'limni yopish qoidasi */
 export class RestrictionDto {
-  @IsIn([...CLINIC_MODULES])
+  /* Tizimdagi HAR BIR bo'lim — asosiylari va apteka ham */
+  @IsIn([...RESTRICTABLE_MODULES])
   module!: string
 
   /*
@@ -44,6 +45,6 @@ export class TrialPolicyDto {
 
   @IsArray()
   @ArrayMaxSize(20)
-  @IsIn([...CLINIC_MODULES], { each: true })
+  @IsIn([...CORE_MODULES, ...CLINIC_MODULES], { each: true })
   disabledModules: string[] = []
 }

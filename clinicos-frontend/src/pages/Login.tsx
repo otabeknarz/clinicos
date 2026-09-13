@@ -13,14 +13,16 @@ import {
 import { USE_MOCK } from '@/api/client'
 import { PLATFORM_EMAIL_DOMAIN } from '@/components/ui/EmailLocalInput'
 import { cn } from '@/lib/cn'
-import { LANGS, useI18n } from '@/i18n'
+import { useI18n } from '@/i18n'
 import { getDb } from '@/mock/db'
 import { useAuth } from '@/store/auth-context'
 import { usePatient } from '@/store/patient-context'
 import { AuthSelect } from '@/pages/public/AuthSelect'
 import { Icon, IconSprite } from '@/pages/public/PublicIcons'
 import careImage from '@/pages/public/assets/clinicos-care.png'
+import { PublicControls } from '@/pages/public/PublicControls'
 import '@/pages/public/public-base.css'
+import '@/pages/public/public-dark.css'
 
 type Mode = 'login' | 'register'
 
@@ -83,7 +85,7 @@ function formatLocalPhone(value: string): string {
  * qilmasdi.
  */
 export function LoginPage() {
-  const { t, lang, setLang } = useI18n()
+  const { t } = useI18n()
   const { session, login, loading, error, applySession } = useAuth()
   const { enter } = usePatient()
 
@@ -196,17 +198,6 @@ export function LoginPage() {
     ;(next === 'register' ? registerTab : loginTab).current?.focus()
   }
 
-  /**
-   * Tilni almashtirish — dizayndagi "O'zbekcha" yozuvi o'rnida.
-   *
-   * Ko'rinishi o'zgarmagan, faqat bosiladigan bo'ldi: ilova uch
-   * tilda ishlaydi va kirish sahifasi ilgari ham tanlangan tilga
-   * ergashardi — buni yo'qotib bo'lmasdi.
-   */
-  function nextLanguage() {
-    const index = LANGS.findIndex((one) => one.code === lang)
-    setLang(LANGS[(index + 1) % LANGS.length].code)
-  }
 
   /**
    * Demo bemor sifatida kabinetga kirish.
@@ -388,7 +379,6 @@ export function LoginPage() {
   const showDomain =
     typedLogin.length > 0 && !typedLogin.includes('@') && !/\d{3}/.test(typedLogin)
 
-  const language = LANGS.find((one) => one.code === lang) ?? LANGS[0]
 
   return (
     <div className="auth-page auth-body">
@@ -408,14 +398,12 @@ export function LoginPage() {
                 Clinic<em>OS</em>
               </span>
             </Link>
-            <button
-              type="button"
-              className="auth-language"
-              onClick={nextLanguage}
-              aria-label={t('login.langLabel')}
-            >
-              <Icon name="globe" /> {language.label}
-            </button>
+            {/*
+              TIL VA REJIM — tanishtiruv sahifasidagi bilan bir xil
+              boshqaruv. Ilgari bu yerda faqat "keyingi til" tugmasi
+              bor edi va rejimni almashtirib bo'lmasdi.
+            */}
+            <PublicControls />
           </div>
 
           <div className="auth-content">

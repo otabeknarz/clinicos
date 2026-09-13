@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common'
 
-import { CLINIC_MODULES, TRIAL_DAYS, TRIAL_DISABLED_MODULES } from '../common/modules'
+import {
+  CLINIC_MODULES,
+  CORE_MODULES,
+  PHARMACY_MODULES,
+  TRIAL_DAYS,
+  TRIAL_DISABLED_MODULES,
+} from '../common/modules'
 import { RestrictionsService } from '../common/restrictions.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { RestrictionDto, TrialPolicyDto } from './access.dto'
@@ -46,7 +52,13 @@ export class AccessService {
     const names = new Map(clinics.map((one) => [one.id, one.name]))
 
     return {
-      modules: [...CLINIC_MODULES],
+      /* Admin tanlaydigan ro'yxat — guruhlarga bo'lingan, hech biri chetda emas */
+      modules: [...CORE_MODULES, ...CLINIC_MODULES, ...PHARMACY_MODULES],
+      groups: {
+        core: [...CORE_MODULES],
+        features: [...CLINIC_MODULES],
+        pharmacy: [...PHARMACY_MODULES],
+      },
       items: rows.map((row) => ({
         id: row.id,
         clinicId: row.targetClinicId || null,
@@ -110,7 +122,8 @@ export class AccessService {
     const directions = ['default', 'general', 'dental', 'eye', 'lab']
 
     return {
-      modules: [...CLINIC_MODULES],
+      /* Sinov faqat klinika uchun — apteka bo'limlari bu yerda yo'q */
+      modules: [...CORE_MODULES, ...CLINIC_MODULES],
       items: directions.map((direction) => {
         const row = byDirection.get(direction)
         return {

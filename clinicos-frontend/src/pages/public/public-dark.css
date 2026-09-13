@@ -1,0 +1,198 @@
+/*
+  AVTOMATIK YARATILGAN — qo'lda o'zgartirmang.
+  Manba: public-base.css va story.css. Qayta yaratish:
+  python scripts/gen-public-dark.py
+*/
+html.dark .story-page,html.dark .auth-page{color-scheme:dark}
+html.dark .story-page,html.dark .auth-page{--ink:#e4e9f3;--muted:#9aa6bb}
+html.dark .public-control{background:#161b26;border-color:#2b3445;color:#c3cde0}
+html.dark .public-lang-list{background:#161b26;border-color:#2b3445}
+html.dark .public-lang-option{color:#d5ddeb}
+html.dark .public-lang-option:hover{background:#1f2738}
+html.dark .phone-field input{background:transparent!important;box-shadow:none!important}
+html.dark .phone-field{background:#141925;border-color:#2b3445}
+html.dark :where(.auth-page,.story-page){background:#121419}
+html.dark :where(.auth-page,.story-page) .button.light{background:#121419}
+html.dark :where(.auth-page,.story-page) .button.light:hover{background:#0d1322}
+html.dark :where(.auth-page,.story-page) .skip{background:#121419}
+html.dark :where(.auth-page,.story-page) .header{background:rgb(18 20 25 / 0.93);border-bottom:1px solid #31363e}
+html.dark :where(.auth-page,.story-page) .login-button{border:1px solid #343b45}
+html.dark :where(.auth-page,.story-page) .menu-button{background:#121419}
+html.dark :where(.auth-page,.story-page) .hero-shell{border:1px solid #2e3343;background:linear-gradient(120deg,#0d1523 0%,#0e1325 55%,#10132b 100%)}
+html.dark :where(.auth-page,.story-page) .hero-shell:before{background:radial-gradient(circle,rgb(25 29 61 / 0.46),transparent 68%)}
+html.dark :where(.auth-page,.story-page) .hero-shell:after{border:1px solid rgb(49 54 82 / 0.25)}
+html.dark :where(.auth-page,.story-page) .hero-label{color:#adb3c1;background:rgb(18 20 25 / 0.70);border:1px solid #2b2f3b}
+html.dark :where(.auth-page,.story-page) .hero-label span{background:#2f4168}
+html.dark :where(.auth-page,.story-page) .app-preview{background:#121419;border:1px solid #333a47}
+html.dark :where(.auth-page,.story-page) .preview-bar{border-bottom:1px solid #313640;background:#0d1221}
+html.dark :where(.auth-page,.story-page) .window-dots i{background:#242830}
+html.dark :where(.auth-page,.story-page) .preview-pill{color:#a8adb5;border:1px solid #323842}
+html.dark :where(.auth-page,.story-page) .preview-sidebar{background:#10161f;border-right:1px solid #303641}
+html.dark :where(.auth-page,.story-page) .preview-menu span{color:#a6acb3}
+html.dark :where(.auth-page,.story-page) .preview-menu span.active{background:#0f1728}
+html.dark :where(.auth-page,.story-page) .mini-account i{background:#151c27;color:#aab0bc}
+html.dark :where(.auth-page,.story-page) .preview-content{background:#121419}
+html.dark :where(.auth-page,.story-page) .mini-metric{border:1px solid #313642}
+html.dark :where(.auth-page,.story-page) .mini-metric:first-child{background:#0e1626;border-color:#25314e}
+html.dark :where(.auth-page,.story-page) .schedule>div{border-top:1px solid #30363f}
+html.dark :where(.auth-page,.story-page) .schedule>.doctor-label{color:#a9aeb6}
+html.dark :where(.auth-page,.story-page) .booking{background:#0f1728;border-left:2px solid #364566!important;color:#9ca8bb}
+html.dark :where(.auth-page,.story-page) .booking.green{background:#18241d;color:#b2c4be}
+html.dark :where(.auth-page,.story-page) .booking.purple{background:#150f27;border-color:#463f5a!important}
+html.dark :where(.auth-page,.story-page) .art-float{background:rgb(18 20 25 / 0.93);border:1px solid #2b2f3b}
+html.dark :where(.auth-page,.story-page) .art-float .float-icon{background:#18261f;color:#aac9bd}
+html.dark :where(.auth-page,.story-page) .float-telegram .float-icon{background:#0f1b28;color:#92b0c2}
+html.dark :where(.auth-page,.story-page) .capabilities{color:#a4aab0}
+html.dark :where(.auth-page,.story-page) .feature-switch button:hover{border-color:#3a424f}
+html.dark :where(.auth-page,.story-page) .feature-stage{border:1px solid #313744;background:#13171f}
+html.dark :where(.auth-page,.story-page) .check-list{color:#b1b7be}
+html.dark :where(.auth-page,.story-page) .feature-visual{background:linear-gradient(135deg,#0f1628,#141623)}
+html.dark :where(.auth-page,.story-page) .work-card{background:#121419;border:1px solid #2f3846}
+html.dark :where(.auth-page,.story-page) .tag{color:#a7afb8;border:1px solid #323a44;background:#0d1422}
+html.dark :where(.auth-page,.story-page) .work-row{border-top:1px solid #31373e}
+html.dark :where(.auth-page,.story-page) .work-state{background:#19231e;color:#b0c5bd}
+html.dark :where(.auth-page,.story-page) .work-state.blue{background:#0f1627}
+html.dark :where(.auth-page,.story-page) .role-avatar{background:#0f1628}
+html.dark :where(.auth-page,.story-page) .role-card:nth-child(2) .role-avatar{background:#150f27}
+html.dark :where(.auth-page,.story-page) .role-card:nth-child(3) .role-avatar{background:#19231e;color:#a8bcb3}
+html.dark :where(.auth-page,.story-page) .cash-shell:before{background-image:linear-gradient(rgb(21 32 55 / 0.02) 1px,transparent 1px),linear-gradient(90deg,rgb(21 32 55 / 0.02) 1px,transparent 1px)}
+html.dark :where(.auth-page,.story-page) .receipt{background:#121419}
+html.dark :where(.auth-page,.story-page) .receipt .total{background:#19231d}
+html.dark :where(.auth-page,.story-page) .total dt,html.dark :where(.auth-page,.story-page) .total dd{color:#b6c8c0}
+html.dark :where(.auth-page,.story-page) .cash-badge{background:#1c3328;color:#bfd3ca}
+html.dark :where(.auth-page,.story-page) .telegram-visual{background:#0f1b27}
+html.dark :where(.auth-page,.story-page) .telegram-message{background:#121419}
+html.dark :where(.auth-page,.story-page) .ward-visual{background:#1a1522}
+html.dark :where(.auth-page,.story-page) .bed{background:#121419;border:1px solid #3a3246}
+html.dark :where(.auth-page,.story-page) .bed.available{background:#1a2621;color:#a5b2ac;border-color:#38443d}
+html.dark :where(.auth-page,.story-page) .pharmacy-visual{background:#19201c}
+html.dark :where(.auth-page,.story-page) .medicine{background:#121419;border:1px solid #3a463f}
+html.dark :where(.auth-page,.story-page) .medicine i{background:#3c4c46}
+html.dark :where(.auth-page,.story-page) .medicine i+i{background:#202925}
+html.dark :where(.auth-page,.story-page) .faq-area{background:#101520;border-block:1px solid #30363f}
+html.dark :where(.auth-page,.story-page) details{border-bottom:1px solid #343a43}
+html.dark :where(.auth-page,.story-page) details:first-child{border-top:1px solid #343a43}
+html.dark :where(.auth-page,.story-page) summary:after{background:#121419;border:1px solid #333842}
+html.dark :where(.auth-page,.story-page) .closing-inner{background:linear-gradient(110deg,#0f1827,#0f1229 75%,#11172c)}
+html.dark :where(.auth-page,.story-page) .footer-bottom{border-top:1px solid #30363f}
+html.dark :where(.auth-page,.story-page) .toast{border:1px solid rgb(43 47 59 / 0.19)}
+html.dark .auth-page{background:#15181f;background-image:radial-gradient(ellipse at 55% 15%,rgb(27 25 43 / 0.50),transparent 55%),radial-gradient(ellipse at 75% 85%,rgb(22 32 50 / 0.44),transparent 60%)}
+html.dark :where(.auth-page,.story-page) .auth-description{color:#a8acb3}
+html.dark :where(.auth-page,.story-page) .auth-tabs{border-bottom:1px solid #363a43}
+html.dark :where(.auth-page,.story-page) .auth-tabs button{color:#a8acb3}
+html.dark :where(.auth-page,.story-page) .form-field label{color:#bec3cb}
+html.dark :where(.auth-page,.story-page) .form-field input{border:1px solid #373c45;background:rgb(18 20 25 / 0.85);color:#d0d6df}
+html.dark :where(.auth-page,.story-page) .form-field input:focus{border-color:#324062;background:#121419}
+html.dark :where(.auth-page,.story-page) .password-toggle:hover{background:#0e1626}
+html.dark :where(.auth-page,.story-page) .auth-options{color:#a7acb4}
+html.dark :where(.auth-page,.story-page) .auth-bottom-link{color:#a7acb4}
+html.dark :where(.auth-page,.story-page) .promo-panel{border:1px solid rgb(43 47 59 / 0.85);background:linear-gradient(135deg,#101829,#14142b)}
+html.dark :where(.auth-page,.story-page) .promo-panel:before{background:radial-gradient(ellipse at 95% 0%,rgb(42 25 41 / 0.54),transparent 60%),radial-gradient(ellipse at 5% 10%,rgb(18 20 25 / 0.53),transparent 65%)}
+html.dark :where(.auth-page,.story-page) .promo-tag{background:rgb(18 20 25 / 0.50);border:1px solid rgb(43 47 59 / 0.60);color:#a6adb9}
+html.dark :where(.auth-page,.story-page) .promo-description{color:#a6acb5}
+html.dark :where(.auth-page,.story-page) .promo-cta{background:rgb(18 20 25 / 0.92)}
+html.dark :where(.auth-page,.story-page) .promo-footer{color:#a4aab4}
+html.dark .auth-page .auth-error{background:#251111;color:#cda5a2}
+html.dark .auth-page .auth-demo{border-top:1px solid #363a43}
+html.dark .auth-page .auth-demo-title{color:#bec3cb}
+html.dark .auth-page .auth-demo-list button{border:1px solid #373c45;background:rgb(18 20 25 / 0.85);color:#d0d6df}
+html.dark .auth-page .auth-demo-list button:hover{border-color:#324062;background:#121419}
+html.dark .pw-meter-cell{background:#1a1e26}
+html.dark .pw-meter-count.is-done{color:#a9d1b8}
+html.dark .phone-field{border:1px solid #323844;background:#121419}
+html.dark .phone-field .phone-prefix{color:#a7abb2}
+html.dark :where(.auth-page,.story-page) .ui-select-button{border:1px solid #373c45;background:rgb(18 20 25 / 0.85);color:#d0d6df}
+html.dark :where(.auth-page,.story-page) .ui-select-button:hover{border-color:#38404d}
+html.dark :where(.auth-page,.story-page) .ui-select-button:focus-visible{border-color:#324062;background:#121419}
+html.dark :where(.auth-page,.story-page) .ui-select.is-open .ui-select-button{border-color:#324062;background:#121419}
+html.dark :where(.auth-page,.story-page) .ui-select-list{border:1px solid #323943;background:rgb(18 20 25 / 0.95)}
+html.dark :where(.auth-page,.story-page) .ui-select-option{color:#c4cbd5}
+html.dark :where(.auth-page,.story-page) .ui-select-option.is-cursor{background:#0e1626}
+html.dark :where(.auth-page,.story-page) .phone-count.is-done{color:#a9d1b8}
+html.dark :where(.auth-page,.story-page) .form-field input.is-invalid,html.dark :where(.auth-page,.story-page) .ui-select-button.is-invalid,html.dark :where(.auth-page,.story-page) .phone-field.is-invalid{border-color:#663939;background:#121419}
+html.dark .public-control{border:1px solid #323843;background:rgb(18 20 25 / 0.80);color:#b3b8c0}
+html.dark .public-control:hover{border-color:#343c4b}
+html.dark .public-lang-list{border:1px solid #323943;background:rgb(18 20 25 / 0.96)}
+html.dark .public-lang-option{color:#c4cbd5}
+html.dark .public-lang-option:hover{background:#0e1626}
+html.dark .story-page{background:#121419}
+html.dark .story-page .header{background:rgb(18 20 25 / 0.93);border-bottom:1px solid #30363f}
+html.dark .story-page .nav{color:#a9adb3}
+html.dark .story-page .button.light{background:#121419;border-color:#303846}
+html.dark .story-page .login-button{background:#121419}
+html.dark :where(.story-page) .v3-label{color:#9da8bd}
+html.dark :where(.story-page) .v3-hero{background:radial-gradient(ellipse at 50% 66%,#0f1729 0,transparent 67%),linear-gradient(#0d1221,#0e1424 85%,#121419 85%)}
+html.dark :where(.story-page) .v3-hero-heading .v3-label{background:#121419;border:1px solid #2b3246}
+html.dark :where(.story-page) .v3-highlight:after{border-top:2px solid #2e3b58}
+html.dark :where(.story-page) .v3-hero-heading>p{color:#a5a9af}
+html.dark :where(.story-page) .v3-hero-annotation{border-left:2px solid #2f3847}
+html.dark :where(.story-page) .v3-role-picker{border:1px solid #303845;background:#121419}
+html.dark :where(.story-page) .v3-role-picker button:not([aria-pressed=true]):hover{background:#131823}
+html.dark :where(.story-page) .v3-console{background:#121419;border:1px solid #323945}
+html.dark :where(.story-page) .v3-avatar{background:#151d2a;color:#aab4bf}
+html.dark :where(.story-page) .v3-console-main{background:#0c1321}
+html.dark :where(.story-page) .v3-console-date{border:1px solid #323843;background:#121419}
+html.dark :where(.story-page) .v3-metric{border:1px solid #303843;background:#121419}
+html.dark :where(.story-page) .v3-metric:first-child{background:#0f1728;border-color:#26334e}
+html.dark :where(.story-page) .v3-chart-panel,html.dark :where(.story-page) .v3-list-panel{border:1px solid #303843;background:#121419}
+html.dark :where(.story-page) .v3-mini-row{border-top:1px solid #2f3540}
+html.dark :where(.story-page) .v3-state{color:#afc2ba;background:#19241d}
+html.dark :where(.story-page) .v3-state.blue{background:#0f1727}
+html.dark :where(.story-page) .v3-under-console a{color:#9aa6bd}
+html.dark :where(.story-page) .v3-trust{border-bottom:1px solid #303742}
+html.dark :where(.story-page) .v3-card{border:1px solid #323943}
+html.dark :where(.story-page) .v3-calendar-card{background:#141a20}
+html.dark :where(.story-page) .v3-schedule{background:#121419;border:1px solid #323a44}
+html.dark :where(.story-page) .v3-schedule-top{border-bottom:1px solid #31373e}
+html.dark :where(.story-page) .v3-grid>div{border-top:1px solid #2f3540}
+html.dark :where(.story-page) .v3-slot{background:#101727;border-left:2px solid #384660!important}
+html.dark :where(.story-page) .v3-slot.green{background:#1a251f;border-color:#4a5b52!important;color:#a9b6af}
+html.dark :where(.story-page) .v3-slot.pink{background:#201822;border-color:#524555!important}
+html.dark :where(.story-page) .v3-telegram-card:before{border:1px solid rgb(43 47 59 / 0.12)}
+html.dark :where(.story-page) .v3-phone-msg{background:#121419;border:1px solid rgb(43 47 59 / 0.23);color:#c3cad5}
+html.dark :where(.story-page) .v3-msg-head .icon{background:#0f1b27}
+html.dark :where(.story-page) .v3-phone-msg>p{color:#a4aab2}
+html.dark :where(.story-page) .v3-msg-action{background:#0e1726}
+html.dark :where(.story-page) .v3-patient-card{background:#201c15}
+html.dark :where(.story-page) .v3-record{background:#121419;border:1px solid #433f37}
+html.dark :where(.story-page) .v3-record-head{border-bottom:1px solid #413b34}
+html.dark :where(.story-page) .v3-record-head .v3-avatar{background:#2c261e}
+html.dark :where(.story-page) .v3-record-line{border-bottom:1px solid #403a32;color:#b1aea9}
+html.dark :where(.story-page) .v3-record-line strong{color:#bfbcb8}
+html.dark :where(.story-page) .v3-process{background:#0d1523;border-block:1px solid #2c3542}
+html.dark :where(.story-page) .v3-step[aria-pressed=true]{background:#121419;border-color:#2e3848;color:#c4cdd9}
+html.dark :where(.story-page) .v3-step>span:first-child{border:1px solid #323a46}
+html.dark :where(.story-page) .v3-process-stage{background:linear-gradient(140deg,#11192a,#191826)}
+html.dark :where(.story-page) .v3-process-stage:before{border:1px solid rgb(43 47 59 / 0.44)}
+html.dark :where(.story-page) .v3-flow-card{background:#121419;border:1px solid #313643}
+html.dark :where(.story-page) .v3-flow-badge{background:#0e1726}
+html.dark :where(.story-page) .v3-flow-dl>div{border-top:1px solid #313640}
+html.dark :where(.story-page) .v3-flow-confirm{background:#19231d;color:#abbbb3}
+html.dark :where(.story-page) .v3-money .v3-label:before{background:#222e45}
+html.dark :where(.story-page) .v3-reconcile{background:#21342a;color:#bccec4}
+html.dark :where(.story-page) .v3-extra{border:1px solid #323942}
+html.dark :where(.story-page) .v3-extra-visual{background:#131924}
+html.dark :where(.story-page) .v3-extra:nth-child(2) .v3-extra-visual{background:#19231d}
+html.dark :where(.story-page) .v3-faq{border-top:1px solid #313841}
+html.dark .story-page details{border-color:#323943}
+html.dark :where(.story-page) .v3-final{background:#0e1526}
+html.dark :where(.story-page) .v3-final:before{border:1px solid #28344e}
+html.dark :where(.story-page) .v3-footer{border-top:1px solid #303741}
+html.dark :where(.story-page) .v3-footer-bottom{border-top:1px solid #30363f}
+html.dark :where(.story-page) .v3-section-heading>p{color:#acb1b8}
+html.dark :where(.story-page) .v3-card-copy p{color:#abb0b9}
+html.dark :where(.story-page) .v3-extra p{color:#abb0b9}
+html.dark :where(.story-page) .v3-faq-copy p{color:#abb0b9}
+html.dark :where(.story-page) .v3-final p{color:#acb1b8}
+html.dark :where(.story-page) .v3-money-copy p{color:#abb0b9}
+html.dark :where(.story-page) .v3-process-copy p{color:#abb0b9}
+html.dark .story-page details p{color:#abb0b9}
+html.dark :where(.story-page) .v3-hero-heading p{color:#b0b5be}
+html.dark :where(.story-page) .v3-workspace-note{color:#acb1b8}
+@media(max-width:800px){
+html.dark :where(.auth-page,.story-page) .nav{background:#121419}
+}
+@media (prefers-reduced-motion:no-preference){
+html.dark .story-page details[open] summary:after{background:#0f1727}
+html.dark :where(.story-page) .v3-hero:before{background:radial-gradient(56rem 38rem at 6% 0%,rgb(54 66 99 / 0.16),transparent 65%),radial-gradient(48rem 34rem at 96% 6%,rgb(52 44 82 / 0.12),transparent 62%),radial-gradient(50rem 36rem at 80% 100%,rgb(56 77 91 / 0.10),transparent 62%)}
+}

@@ -24,6 +24,8 @@ export interface Restriction {
 
 export interface AccessList {
   modules: string[]
+  /** Asosiy bo'limlar, imkoniyatlar va apteka — tanlash ro'yxati shunga bo'linadi */
+  groups?: { core: string[]; features: string[]; pharmacy: string[] }
   items: Restriction[]
 }
 
@@ -61,6 +63,28 @@ const MOCK_MODULES = [
   'revenue',
 ]
 
+const MOCK_CORE = [
+  'dashboard',
+  'patients',
+  'appointments',
+  'visits',
+  'doctors',
+  'services',
+  'payments',
+  'staff',
+  'settings',
+]
+
+const MOCK_PHARMACY = [
+  'pharmacy',
+  'pharmacypos',
+  'pharmacycatalog',
+  'pharmacypurchases',
+  'pharmacyshift',
+  'pharmacyanalytics',
+  'pharmacycash',
+]
+
 let mockRestrictions: Restriction[] = [
   {
     id: 'res_1',
@@ -88,7 +112,11 @@ let mockTrials: TrialPolicy[] = [
 // GET /platform/access
 export async function listRestrictions(): Promise<AccessList> {
   if (!USE_MOCK) return request<AccessList>('GET', '/platform/access')
-  return delay({ modules: MOCK_MODULES, items: mockRestrictions })
+  return delay({
+    modules: [...MOCK_CORE, ...MOCK_MODULES, ...MOCK_PHARMACY],
+    groups: { core: MOCK_CORE, features: MOCK_MODULES, pharmacy: MOCK_PHARMACY },
+    items: mockRestrictions,
+  })
 }
 
 // POST /platform/access
@@ -132,7 +160,7 @@ export async function removeRestriction(id: ID): Promise<void> {
 // GET /platform/trial
 export async function listTrialPolicies(): Promise<TrialList> {
   if (!USE_MOCK) return request<TrialList>('GET', '/platform/trial')
-  return delay({ modules: MOCK_MODULES, items: mockTrials })
+  return delay({ modules: [...MOCK_CORE, ...MOCK_MODULES], items: mockTrials })
 }
 
 // POST /platform/trial

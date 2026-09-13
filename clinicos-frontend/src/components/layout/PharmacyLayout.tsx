@@ -30,6 +30,7 @@ import { useSidebarCollapsed } from '@/lib/useSidebarCollapsed'
 import { useCardSpotlight } from '@/lib/useCardSpotlight'
 import { useEntranceMotion } from '@/lib/useEntranceMotion'
 import { useSoftUi } from '@/lib/useSoftUi'
+import { moduleOf } from '@/api/auth'
 import { useI18n } from '@/i18n'
 import type { Permission } from '@/types/models'
 import { useAuth } from '@/store/auth-context'
@@ -168,7 +169,20 @@ export function PharmacyLayout() {
   const rootRef = useRef<HTMLDivElement>(null)
   useCardSpotlight(rootRef, true)
 
-  const items = NAV.filter((item) => can(item.permission))
+  /*
+    YOPIQ BO'LIM QULF BILAN KO'RINADI — klinika menyusidagi kabi.
+    Admin aptekaning bir bo'limini "texnik ishlar" deb yopsa, u
+    menyudan jimgina yo'qolmasligi kerak.
+  */
+  const restrictions = new Map(
+    (session?.restrictions ?? []).map((one) => [one.module, one]),
+  )
+  const lockedOf = (permission: string) => {
+    const module = moduleOf(permission)
+    return module ? restrictions.get(module) : undefined
+  }
+
+  const items = NAV.filter((item) => can(item.permission) || Boolean(lockedOf(item.permission)))
 
   const groups = [
     { key: 'sales', label: t('pharmacy.navGroup.sales'), manage: false },
@@ -179,12 +193,16 @@ export function PharmacyLayout() {
       label: group.label,
       items: items
         .filter((item) => MANAGE_PATHS.has(item.to) === group.manage)
-        .map((item) => ({
-          to: item.to,
-          end: item.end,
-          label: t(item.labelKey),
-          icon: item.icon,
-        })),
+        .map((item) => {
+          const locked = lockedOf(item.permission)
+          return {
+            to: item.to,
+            end: item.end,
+            label: t(item.labelKey),
+            icon: item.icon,
+            lockedLabel: locked ? t(`access.reason.${locked.reason}`) : undefined,
+          }
+        }),
     }))
     .filter((group) => group.items.length > 0)
 

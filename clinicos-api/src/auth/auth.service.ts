@@ -14,7 +14,7 @@ import { checkClinicAccess } from '../common/clinic-access'
 import { AuditService } from '../common/audit.service'
 import { toApiClinic } from '../clinic/clinic.service'
 import { RequestContext } from '../common/request-context'
-import { isPermissionBlocked, TRIAL_DAYS, TRIAL_DISABLED_MODULES } from '../common/modules'
+import { isPermissionBlocked, moduleOf, TRIAL_DAYS, TRIAL_DISABLED_MODULES } from '../common/modules'
 import { looksLikePhone, normalizePhone } from '../common/phone'
 import { IMPERSONATION_PERMISSIONS, resolvePermissions } from '../common/permissions'
 import { DISABLED_BY_KIND } from '../common/modules'
@@ -595,6 +595,10 @@ export class AuthService {
       },
     })
 
+    const granted = impersonation
+      ? [...IMPERSONATION_PERMISSIONS]
+      : resolvePermissions(user.role, user.extraPermissions)
+
     /* Platforma qo'ygan cheklovlar — sababi bilan */
     const restrictions = await this.restrictions.forClinic(clinicRow.id)
     const blocked = [
@@ -664,10 +668,7 @@ export class AuthService {
         `PermissionsGuard`, u har so'rovda modulni qaytadan
         tekshiradi.
       */
-      permissions: (impersonation
-        ? [...IMPERSONATION_PERMISSIONS]
-        : resolvePermissions(user.role, user.extraPermissions)
-      ).filter((permission) => !isPermissionBlocked(permission, blocked)),
+      permissions: granted.filter((permission) => !isPermissionBlocked(permission, blocked)),
       /*
         NEGA YOPIQLIGI HAM YUBORILADI.
 
@@ -676,7 +677,14 @@ export class AuthService {
         yo'qotayotganini bilmaydi va savol ham bermaydi. Interfeys
         shu ro'yxatga qarab bandni qulf bilan ko'rsatadi.
       */
-      restrictions,
+      /*
+        FAQAT SHU ODAMGA TEGISHLI CHEKLOVLAR. Registratorga
+        "Tushum — pullik versiyada" deb qulf ko'rsatishning ma'nosi
+        yo'q: unda bu bo'lim ochiq bo'lganda ham yo'q edi.
+      */
+      restrictions: restrictions.filter((one) =>
+        granted.some((permission) => moduleOf(permission) === one.module),
+      ),
       /*
         SINOV MUDDATI — INTERFEYSDA SANAB TURADI.
 

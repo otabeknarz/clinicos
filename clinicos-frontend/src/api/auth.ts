@@ -14,7 +14,7 @@ import { ApiError, delay, request, USE_MOCK } from './client'
 import { getDb } from '@/mock/db'
 import { MAIN_CLINIC_ID } from '@/mock/seed'
 import { resolvePermissions } from '@/lib/permissions'
-import type { Clinic, ClinicModule, ID, Permission, Role, Session, User } from '@/types/models'
+import type { Clinic, ID, Permission, Role, Session, User } from '@/types/models'
 
 export interface LoginInput {
   email: string
@@ -285,7 +285,7 @@ function allowedPermissions(
 
   return base.filter((permission) => {
     const module = MODULE_BY_PERMISSION[permission]
-    return module === undefined || !disabled.includes(module)
+    return module === undefined || !(disabled as readonly string[]).includes(module)
   })
 }
 
@@ -293,7 +293,41 @@ function allowedPermissions(
  * Ruxsat qaysi bo'limga tegishli.
  * Serverdagi `src/common/modules.ts` bilan bir xil bo'lishi shart.
  */
-const MODULE_BY_PERMISSION: Partial<Record<Permission, ClinicModule>> = {
+/* Serverdagi `common/modules.ts` bilan AYNAN bir xil — farq bo'lsa demo boshqa ishlaydi */
+const MODULE_BY_PERMISSION: Partial<Record<Permission, string>> = {
+  /* --- Asosiy bo'limlar --- */
+  'dashboard.view': 'dashboard',
+  'patients.view': 'patients',
+  'patients.create': 'patients',
+  'patients.edit': 'patients',
+  'patients.delete': 'patients',
+  'patients.viewMedical': 'patients',
+  'appointments.view': 'appointments',
+  'appointments.create': 'appointments',
+  'appointments.edit': 'appointments',
+  'appointments.cancel': 'appointments',
+  'visits.view': 'visits',
+  'visits.create': 'visits',
+  'doctors.view': 'doctors',
+  'doctors.manage': 'doctors',
+  'services.view': 'services',
+  'services.manage': 'services',
+  'payments.view': 'payments',
+  'payments.create': 'payments',
+  'payments.refund': 'payments',
+  'staff.view': 'staff',
+  'staff.manage': 'staff',
+  'settings.view': 'settings',
+  'settings.manage': 'settings',
+  'users.manage': 'settings',
+  /* --- Apteka bo'limlari --- */
+  'pharmacy.view': 'pharmacy',
+  'pharmacy.sell': 'pharmacypos',
+  'pharmacy.manage': 'pharmacycatalog',
+  'pharmacy.receive': 'pharmacypurchases',
+  'pharmacy.shift': 'pharmacyshift',
+  'pharmacy.analytics': 'pharmacyanalytics',
+  'pharmacy.cashcontrol': 'pharmacycash',
   'prescriptions.manage': 'prescriptions',
   'patients.message': 'messages',
   'data.export': 'dataexchange',
@@ -479,6 +513,6 @@ let demoRegisteredAt = 0
  * Menyu shu orqali "bu band yopiqmi" degan savolga javob topadi.
  * Xarita allaqachon bor edi, lekin yopiq turardi.
  */
-export function moduleOf(permission: string): ClinicModule | undefined {
+export function moduleOf(permission: string): string | undefined {
   return MODULE_BY_PERMISSION[permission as Permission]
 }

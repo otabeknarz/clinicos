@@ -63,7 +63,40 @@ export type ClinicModule = (typeof CLINIC_MODULES)[number]
  * har doim ishlaydi (bemorlar, qabullar, to'lovlar — bularsiz
  * klinika umuman yo'q).
  */
-const MODULE_BY_PERMISSION: Record<string, ClinicModule> = {
+const MODULE_BY_PERMISSION: Record<string, string> = {
+  /* --- Asosiy bo'limlar --- */
+  'dashboard.view': 'dashboard',
+  'patients.view': 'patients',
+  'patients.create': 'patients',
+  'patients.edit': 'patients',
+  'patients.delete': 'patients',
+  'patients.viewMedical': 'patients',
+  'appointments.view': 'appointments',
+  'appointments.create': 'appointments',
+  'appointments.edit': 'appointments',
+  'appointments.cancel': 'appointments',
+  'visits.view': 'visits',
+  'visits.create': 'visits',
+  'doctors.view': 'doctors',
+  'doctors.manage': 'doctors',
+  'services.view': 'services',
+  'services.manage': 'services',
+  'payments.view': 'payments',
+  'payments.create': 'payments',
+  'payments.refund': 'payments',
+  'staff.view': 'staff',
+  'staff.manage': 'staff',
+  'settings.view': 'settings',
+  'settings.manage': 'settings',
+  'users.manage': 'settings',
+  /* --- Apteka bo'limlari --- */
+  'pharmacy.view': 'pharmacy',
+  'pharmacy.sell': 'pharmacypos',
+  'pharmacy.manage': 'pharmacycatalog',
+  'pharmacy.receive': 'pharmacypurchases',
+  'pharmacy.shift': 'pharmacyshift',
+  'pharmacy.analytics': 'pharmacyanalytics',
+  'pharmacy.cashcontrol': 'pharmacycash',
   'prescriptions.manage': 'prescriptions',
   'patients.message': 'messages',
   'data.export': 'dataexchange',
@@ -83,6 +116,59 @@ const MODULE_BY_PERMISSION: Record<string, ClinicModule> = {
   'debts.view': 'debts',
   'debts.waive': 'debts',
   'revenue.view': 'revenue',
+}
+
+/**
+ * ASOSIY BO'LIMLAR — sotiladigan "imkoniyat" emas, klinikaning o'zi.
+ *
+ * Tarifda ham, klinika sozlamasida (`disabledModules`) ham ular
+ * YO'Q: tarif "bemorlar bo'limi bor" deb sotmaydi. Lekin platforma
+ * admini ularni ham CHEKLOV bilan yopa oladi ("texnik ishlar",
+ * "to'lov kechikdi") — admin paneli tizimdagi HAR BIR funksiyani
+ * boshqarishi kerak, bittasi ham chetda qolmasligi kerak.
+ */
+export const CORE_MODULES = [
+  'dashboard',
+  'patients',
+  'appointments',
+  'visits',
+  'doctors',
+  'services',
+  'payments',
+  'staff',
+  'settings',
+] as const
+
+/** Apteka bo'limlari — apteka hisobidagi har bir ish joyi */
+export const PHARMACY_MODULES = [
+  'pharmacy',
+  'pharmacypos',
+  'pharmacycatalog',
+  'pharmacypurchases',
+  'pharmacyshift',
+  'pharmacyanalytics',
+  'pharmacycash',
+] as const
+
+/**
+ * CHEKLOV QO'YISH MUMKIN BO'LGAN HAMMA BO'LIM.
+ *
+ * Har bir ruxsat shu ro'yxatdagi biror bo'limga tegishli
+ * (`MODULE_BY_PERMISSION`) — ya'ni tizimda cheklab bo'lmaydigan
+ * funksiya qolmaydi. Platformaning o'z ruxsatlari (`platform.*`)
+ * bundan tashqarida: admin o'z panelini yopib qo'ya olmasligi kerak.
+ */
+export const RESTRICTABLE_MODULES = [
+  ...CORE_MODULES,
+  ...CLINIC_MODULES,
+  ...PHARMACY_MODULES,
+] as const
+
+export type RestrictableModule = (typeof RESTRICTABLE_MODULES)[number]
+
+/** Ruxsat qaysi bo'limga tegishli — `undefined` faqat platforma ruxsatlarida */
+export function moduleOf(permission: string): string | undefined {
+  return MODULE_BY_PERMISSION[permission]
 }
 
 /** Shu ruxsatga tegishli modul o'chirilganmi */

@@ -7,8 +7,11 @@ import { useI18n } from '@/i18n'
 import { Lang, translateText } from '@/pages/public/about-i18n'
 import { Icon, IconSprite } from './PublicIcons'
 import type { PublicIconName } from './PublicIcons'
+import { PublicControls } from './PublicControls'
 import './public-base.css'
 import './story.css'
+/* Qorong'i rejim — asl uslublardan KEYIN yuklanishi shart */
+import './public-dark.css'
 
 /**
  * TANISHTIRUV SAHIFASI — `/about`.
@@ -114,7 +117,7 @@ export function AboutPage() {
 
         <header className="header">
           <div className="wrap header-inner">
-            <Link className="logo" to="/about" aria-label="ClinicOS bosh sahifa">
+            <Link className="logo" to="/login" aria-label="ClinicOS bosh sahifa">
               <span className="logo-mark">
                 <Icon name="pulse" />
               </span>
@@ -134,6 +137,8 @@ export function AboutPage() {
               <a href="#savollar">Savollar</a>
             </nav>
             <div className="header-actions">
+              {/* Til va rejim — har sahifada tepada, bir joyda */}
+              <PublicControls />
               <Link className="login-button" to="/login">
                 <Icon name="login" /> Kirish
               </Link>
@@ -614,7 +619,7 @@ export function AboutPage() {
           <div className="v3-wrap">
             <div className="v3-footer-top">
               <div>
-                <Link className="logo" to="/about" aria-label="ClinicOS bosh sahifa">
+                <Link className="logo" to="/login" aria-label="ClinicOS bosh sahifa">
                   <span className="logo-mark">
                     <Icon name="pulse" />
                   </span>
