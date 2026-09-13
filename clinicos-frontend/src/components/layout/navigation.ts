@@ -11,6 +11,7 @@ import {
   HandCoins,
   LayoutDashboard,
   Layers,
+  Lock,
   Settings,
   FileSpreadsheet,
   MessageCircle,
@@ -148,6 +149,16 @@ export const NAVIGATION: NavGroup[] = [
         labelKey: 'team.title',
         icon: UserCog,
         permission: 'platform.manage',
+      },
+      /*
+        IMKONIYATLAR — tariflar yonida: ikkalasi ham "mijozga nima
+        beriladi" degan savolga javob beradi.
+      */
+      {
+        to: '/platform/access',
+        labelKey: 'access.title',
+        icon: Lock,
+        permission: 'platform.view',
       },
       {
         to: '/platform/plans',

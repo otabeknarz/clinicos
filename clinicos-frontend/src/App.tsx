@@ -119,6 +119,9 @@ const PlatformDataPage = lazy(() =>
 const PlatformPlansPage = lazy(() =>
   import('@/pages/platform/Plans').then((m) => ({ default: m.PlatformPlansPage })),
 )
+const PlatformAccessPage = lazy(() =>
+  import('@/pages/platform/Access').then((m) => ({ default: m.PlatformAccessPage })),
+)
 const PlatformLeadsPage = lazy(() =>
   import('@/pages/platform/Leads').then((m) => ({ default: m.PlatformLeadsPage })),
 )
@@ -611,6 +614,15 @@ function AppRoutes() {
             </Guard>
           }
         />
+        <Route
+          path="platform/access"
+          element={
+            <Guard permission="platform.view">
+              <PlatformAccessPage />
+            </Guard>
+          }
+        />
+
         <Route
           path="platform/leads"
           element={

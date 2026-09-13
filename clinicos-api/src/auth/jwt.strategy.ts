@@ -6,6 +6,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt'
 import { checkClinicAccess } from '../common/clinic-access'
 import { RequestUser } from '../common/request-context'
 import { IMPERSONATION_PERMISSIONS, resolvePermissions } from '../common/permissions'
+import { RestrictionsService } from '../common/restrictions.service'
 import { PrismaService } from '../prisma/prisma.service'
 
 /** Tokenning ichida nima yotadi */
@@ -36,6 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     config: ConfigService,
     private readonly db: PrismaService,
+    private readonly restrictions: RestrictionsService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -157,6 +159,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       : user.clinic.disabledModules
 
     /*
+      PLATFORMA QO'YGAN CHEKLOV HAM SHU YERGA QO'SHILADI.
+
+      Klinikaning o'z sozlamasi ("bizda statsionar yo'q") va
+      platformaning qoidasi ("bu bo'lim tarifga kirmaydi") bir xil
+      ta'sir qiladi: marshrut yopiladi. Farqi faqat SABABIDA va u
+      interfeysga alohida uzatiladi.
+    */
+    const restricted = await this.restrictions.blockedModules(clinicId)
+
+    /*
       Klinika ichida platforma egasining ruxsatlari ISHLAMAYDI.
       Uning o'z ro'yxati `platform.*` dan iborat va u klinika
       endpointlariga to'g'ri kelmaydi — kirgan odam hamma joyda
@@ -173,7 +185,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       role: user.role,
       doctorId: user.doctorId,
       permissions,
-      disabledModules,
+      disabledModules: [...new Set([...disabledModules, ...restricted])],
       impersonationId,
     }
   }

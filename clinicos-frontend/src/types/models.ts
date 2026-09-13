@@ -251,6 +251,20 @@ export interface Plan {
   supportLevel: SupportLevel
   isActive: boolean
   createdAt: ISODateTime
+  /**
+   * Tarifdan nima chiqayotgani.
+   *
+   * Adminga narxning o'zi kam narsa aytadi: nechta klinika shu
+   * tarifda ishlayapti va oyiga qancha pul keltiradi — asosiy
+   * savol shu.
+   */
+  usage?: {
+    clinics: number
+    /** Ulardan nechtasi hali sinovda */
+    trial: number
+    /** Oylik tushum (muzlatilgan shartlardan hisoblangan) */
+    mrr: UZS
+  }
 }
 
 /**
@@ -860,12 +874,32 @@ export interface User {
 }
 
 /** Kirgan foydalanuvchi sessiyasi. Parol yoki hash HECH QACHON bu yerda bo'lmaydi. */
+/**
+ * Bo'lim nega yopiq — foydalanuvchiga ko'rsatiladigan sabab.
+ *
+ * `soon` — hali tayyor emas; `plan` — tarifga kirmaydi;
+ * `maintenance` — vaqtinchalik ishlar; `off` — shunchaki yopiq.
+ */
+export interface ModuleRestriction {
+  module: string
+  reason: 'soon' | 'plan' | 'maintenance' | 'off'
+  note: string
+}
+
 export interface Session {
   user: User
   clinic: Clinic
   permissions: Permission[]
   /** Backend qo'shilganda — access token. Mock rejimda null. */
   token: string | null
+  /*
+    YOPIQ BO'LIMLAR VA SABABI.
+
+    Ruxsati kesilgan bo'lim menyuda ko'rinmaydi. Bu ro'yxatdagilari
+    esa KO'RINADI — qulf va sabab bilan: "tarifingizda yo'q" degan
+    bandni yashirish mijozga nima yo'qotayotganini bildirmasdi.
+  */
+  restrictions?: ModuleRestriction[]
 }
 
 /* ------------------------------------------------------------------ */

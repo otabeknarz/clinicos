@@ -18,6 +18,7 @@ import { isPermissionBlocked, TRIAL_DAYS, TRIAL_DISABLED_MODULES } from '../comm
 import { looksLikePhone, normalizePhone } from '../common/phone'
 import { IMPERSONATION_PERMISSIONS, resolvePermissions } from '../common/permissions'
 import { DISABLED_BY_KIND } from '../common/modules'
+import { RestrictionsService } from '../common/restrictions.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { TelegramService } from '../telegram/telegram.service'
 import { RegisterDto } from './register.dto'
@@ -48,6 +49,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly audit: AuditService,
     private readonly ctx: RequestContext,
+    private readonly restrictions: RestrictionsService,
     @Inject(forwardRef(() => TelegramService))
     private readonly telegram: TelegramService,
   ) {}
@@ -411,6 +413,28 @@ export class AuthService {
     return { ok: true as const, clinicName: pending.dto.clinicName }
   }
 
+  /**
+   * SHU YO'NALISHDA SINOV SHARTI.
+   *
+   * Aniq yo'nalish topilmasa `default`, u ham bo'lmasa koddagi
+   * qiymat — uchta pog'ona va hech biri yiqilmaydi. Jadvalni
+   * platforma paneli to'ldiradi (`platform/access.service.ts`),
+   * lekin O'QISH shu yerda: modullar bir-biriga tayanib qolmasin.
+   */
+  private async trialPolicy(direction: string) {
+    const rows = await this.db.acrossAllClinics().trialPolicy.findMany({
+      where: { direction: { in: [direction, 'default'] } },
+    })
+
+    const row = rows.find((one) => one.direction === direction) ??
+      rows.find((one) => one.direction === 'default')
+
+    return {
+      days: row?.days ?? TRIAL_DAYS,
+      disabledModules: row?.disabledModules ?? [...TRIAL_DISABLED_MODULES],
+    }
+  }
+
   /** Klinika, egasi, obuna va sotuv so'rovi — bitta tranzaksiyada */
   private async createClinic(dto: RegisterDto, telegramUserId: string) {
     const phone = normalizePhone(dto.phone)
@@ -430,9 +454,18 @@ export class AuthService {
 
     if (!plan) throw new BadRequestException('Tariflar sozlanmagan')
 
+    /*
+      SINOV SHARTI PLATFORMA PANELIDAN OLINADI.
+
+      Necha kun va qaysi bo'limlar ochiq — buni sotuv belgilaydi va
+      har hafta o'zgartirishi mumkin. Jadval bo'sh bo'lsa koddagi
+      qiymat ishlaydi, ya'ni sozlanmagan tizim ham ishlayveradi.
+    */
+    const policy = await this.trialPolicy(dto.direction)
+
     const now = new Date()
     const trialEnds = new Date(now)
-    trialEnds.setDate(trialEnds.getDate() + TRIAL_DAYS)
+    trialEnds.setDate(trialEnds.getDate() + policy.days)
 
     /* Kirish uchun email kerak emas, lekin ustun bo'sh qolmasligi kerak */
     const login = phone
@@ -446,7 +479,7 @@ export class AuthService {
           kind: toDbKind(dto.direction),
           /* Yo'nalish bo'yicha keraksizlari + sinovda yopiladiganlari */
           disabledModules: [
-            ...new Set([...DISABLED_BY_KIND[dto.direction], ...TRIAL_DISABLED_MODULES]),
+            ...new Set([...DISABLED_BY_KIND[dto.direction], ...policy.disabledModules]),
           ],
           /* Dushanbadan shanbagacha 09:00-18:00 — keyin o'zgartiriladi */
           workingHours: {
@@ -554,6 +587,12 @@ export class AuthService {
       include: { workingHours: { orderBy: { weekday: 'asc' } } },
     })
 
+    /* Platforma qo'ygan cheklovlar — sababi bilan */
+    const restrictions = await this.restrictions.forClinic(clinicRow.id)
+    const blocked = [
+      ...new Set([...clinicRow.disabledModules, ...restrictions.map((one) => one.module)]),
+    ]
+
     const token = await this.jwt.signAsync(
       {
         sub: user.id,
@@ -620,7 +659,16 @@ export class AuthService {
       permissions: (impersonation
         ? [...IMPERSONATION_PERMISSIONS]
         : resolvePermissions(user.role, user.extraPermissions)
-      ).filter((permission) => !isPermissionBlocked(permission, clinicRow.disabledModules)),
+      ).filter((permission) => !isPermissionBlocked(permission, blocked)),
+      /*
+        NEGA YOPIQLIGI HAM YUBORILADI.
+
+        Ruxsat kesilgani menyuni yashiradi, lekin "tarifingizda
+        yo'q" degan bo'limni YASHIRISH noto'g'ri: mijoz nima
+        yo'qotayotganini bilmaydi va savol ham bermaydi. Interfeys
+        shu ro'yxatga qarab bandni qulf bilan ko'rsatadi.
+      */
+      restrictions,
     }
   }
 }

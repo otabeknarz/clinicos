@@ -3,6 +3,7 @@ import { LogOut } from 'lucide-react'
 import { BrandMark, BrandWordmark } from './BrandLogo'
 import { NAVIGATION } from './navigation'
 import { SideNav } from './SideNav'
+import { moduleOf } from '@/api/auth'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
 
@@ -40,12 +41,28 @@ export function Sidebar({
     Ruxsat tekshiruvi platforma bo'limlarida saqlanadi — ular
     baribir `platform.*` talab qiladi va kirilgan holatda yashiriladi.
   */
+  /*
+    YOPIQ BO'LIMLAR — sababi bilan.
+
+    Ruxsati kesilganlari menyuga umuman tushmaydi. Bu ro'yxatdagi
+    bo'limlar esa KO'RINADI: qulf va "Tez kunda" / "Tarifda yo'q"
+    yozuvi bilan. Yashirilgan imkoniyat haqida mijoz so'ramaydi ham.
+  */
+  const restrictions = new Map(
+    (session.restrictions ?? []).map((one) => [one.module, one]),
+  )
+
   const groups = NAVIGATION.map((group) => ({
     key: group.labelKey,
     label: t(group.labelKey),
     items: group.items
       .filter((item) => {
         const isPlatform = item.permission.startsWith('platform.')
+
+        /* Yopiq bo'lim ko'rsatiladi — qulf bilan */
+        if (moduleOf(item.permission) && restrictions.has(moduleOf(item.permission)!)) {
+          return !impersonating
+        }
 
         if (impersonating) {
           // Kirilgan holatda: platforma bandlari yopiladi,
@@ -62,13 +79,19 @@ export function Sidebar({
           (!item.roles || item.roles.includes(session.user.role))
         )
       })
-      .map((item) => ({
-        to: item.to,
-        end: item.end,
-        label: t(item.labelKey),
-        icon: item.icon,
-        badge: item.badge ? badges?.[item.badge] : undefined,
-      })),
+      .map((item) => {
+        const module = moduleOf(item.permission)
+        const locked = module ? restrictions.get(module) : undefined
+
+        return {
+          to: item.to,
+          end: item.end,
+          label: t(item.labelKey),
+          icon: item.icon,
+          badge: item.badge ? badges?.[item.badge] : undefined,
+          lockedLabel: locked ? t(`access.reason.${locked.reason}`) : undefined,
+        }
+      }),
   })).filter((group) => group.items.length > 0)
 
   return (

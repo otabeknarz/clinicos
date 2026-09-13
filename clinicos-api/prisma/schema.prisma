@@ -2203,3 +2203,77 @@ model OnlinePrescription {
   @@index([pharmacyClinicId, status])
   @@map("online_prescriptions")
 }
+
+/// Bo'lim nega yopiq — foydalanuvchi shu yozuvni ko'radi
+enum ModuleBlockReason {
+  /// Hali tayyor emas
+  SOON
+  /// Tarifga kirmaydi — sotuvga ishora
+  PLAN
+  /// Vaqtinchalik ishlar
+  MAINTENANCE
+  /// Sababsiz yopilgan
+  OFF
+}
+
+/// BO'LIM CHEKLOVI — SABABI BILAN.
+///
+/// `Clinic.disabledModules` bo'limni jimgina yashiradi. Bu esa
+/// SABABINI aytadi: "tez kunda", "tarifingizda yo'q", "texnik
+/// ishlar". Farqi katta — yashiringan bo'lim mijoz uchun yo'q,
+/// sababi aytilgani esa savol yoki sotuv imkoni.
+///
+/// `targetClinicId` null bo'lsa — HAMMA uchun (masalan hali
+/// tugallanmagan bo'lim). To'ldirilgan bo'lsa — faqat o'sha
+/// klinikada, va u umumiy qoidadan USTUN turadi.
+///
+/// NEGA USTUN NOMI `targetClinicId`: `clinicId` deb atalsa,
+/// `gen:tenant-models` uni klinika jadvali deb hisoblab, platforma
+/// o'z qoidalarini ko'ra olmay qolardi.
+model ModuleRestriction {
+  id String @id @default(uuid())
+
+  /// BO'SH SATR — barcha klinikalar uchun.
+  ///
+  /// `null` emas: Postgres noyoblik indeksida NULL larni
+  /// BIR-BIRIDAN FARQLI deb hisoblaydi, ya'ni bitta modulga
+  /// o'nta "hamma uchun" qoida yozilib ketishi mumkin edi.
+  targetClinicId String @default("") @map("target_clinic_id")
+
+  /// `CLINIC_MODULES` dagi kalit
+  module String
+  reason ModuleBlockReason @default(SOON)
+  /// Qo'shimcha yozuv: "1-dekabrdan ochiladi" kabi
+  note   String            @default("")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([targetClinicId, module])
+  @@index([module])
+  @@map("module_restrictions")
+}
+
+/// SINOV SHARTLARI — YO'NALISH BO'YICHA.
+///
+/// O'zi ro'yxatdan o'tgan klinika uchun necha kun va qaysi
+/// bo'limlar ochiq bo'lishini platforma admini belgilaydi.
+/// Ilgari bu kodda qat'iy yozilgan edi: shartni o'zgartirish
+/// uchun dasturchi kerak bo'lardi, sotuv esa har hafta boshqacha
+/// takliflar sinab ko'rmoqchi bo'ladi.
+///
+/// `direction` — `ClinicKind` qiymati yoki `default` (qolgani
+/// uchun). Aniq yo'nalish topilmasa, `default` ishlatiladi.
+model TrialPolicy {
+  id String @id @default(uuid())
+
+  direction String @unique
+  /// Necha kun bepul
+  days Int @default(14)
+  /// Sinov davrida YOPIQ bo'limlar
+  disabledModules String[] @map("disabled_modules")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("trial_policies")
+}

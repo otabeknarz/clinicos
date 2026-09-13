@@ -10,7 +10,7 @@ import { Modal } from '@/components/ui/Modal'
 import { TextInput } from '@/components/ui/Form'
 import { CardSkeleton, ErrorState } from '@/components/ui/States'
 import { cn } from '@/lib/cn'
-import { money } from '@/lib/format'
+import { money, moneyShort } from '@/lib/format'
 import { useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useToast } from '@/store/toast-context'
@@ -129,10 +129,51 @@ function PlanCard({ plan, onEdit }: { plan: Plan; onEdit: () => void }) {
         </span>
       </p>
 
+      <p className="mt-1 text-footnote text-label-tertiary">
+        {t('platform.perMonthHint', { amount: money(Math.round(plan.basePrice / 3)) })}
+      </p>
+
       {!plan.isActive ? (
         <Badge tone="neutral" className="mt-3">
           {t('platform.planInactive')}
         </Badge>
+      ) : null}
+
+      {/*
+        TARIFDAN NIMA CHIQAYOTGANI.
+
+        Narxning o'zi adminga kam narsa aytadi: qaysi tarif
+        ishlayotgani va qancha pul keltirayotgani ko'rinib turishi
+        kerak — shu qatorsiz sahifa "narxlar ro'yxati" bo'lib
+        qolardi.
+      */}
+      {plan.usage ? (
+        <div className="mt-4 grid grid-cols-3 gap-2 rounded-[14px] bg-sunken p-3 text-center">
+          <span>
+            <span className="block text-headline font-bold tnum text-label">
+              {plan.usage.clinics}
+            </span>
+            <span className="block text-caption-2 text-label-tertiary">
+              {t('platform.planClinics')}
+            </span>
+          </span>
+          <span>
+            <span className="block text-headline font-bold tnum text-accent">
+              {plan.usage.trial}
+            </span>
+            <span className="block text-caption-2 text-label-tertiary">
+              {t('platform.planTrial')}
+            </span>
+          </span>
+          <span>
+            <span className="block text-headline font-bold tnum text-ok">
+              {moneyShort(plan.usage.mrr)}
+            </span>
+            <span className="block text-caption-2 text-label-tertiary">
+              {t('platform.planMrr')}
+            </span>
+          </span>
+        </div>
       ) : null}
 
       {/* --- Chegaralar --- */}

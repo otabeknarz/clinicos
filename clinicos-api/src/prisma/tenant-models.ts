@@ -89,9 +89,11 @@ export const GLOBAL_MODELS = new Set<string>([
   'ChatMessageRead',
   'Clinic',
   'Lead',
+  'ModuleRestriction',
   'OnlinePrescription',
   'Plan',
   'PlatformMember',
   'Session',
   'TenantInvoice',
+  'TrialPolicy',
 ])

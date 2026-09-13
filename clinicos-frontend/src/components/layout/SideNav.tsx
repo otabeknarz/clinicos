@@ -35,6 +35,14 @@ export interface SideNavLink {
   icon: LucideIcon
   /** Yangilik soni — to'liq holatda son, yig'ilganda nuqta */
   badge?: number
+  /**
+   * Bo'lim yopiq bo'lsa — sababi ("Tez kunda", "Tarifda yo'q").
+   *
+   * Bunday band BOSILMAYDI, lekin KO'RINADI: mijoz nima
+   * yo'qotayotganini bilishi kerak, aks holda savol ham bermaydi
+   * va sotuvchi bilan gap ham boshlanmaydi.
+   */
+  lockedLabel?: string
 }
 
 export interface SideNavGroup {
@@ -218,7 +226,36 @@ export function SideNav({
               </div>
 
               <ul className="space-y-0.5">
-                {group.items.map((item) => (
+                {group.items.map((item) =>
+                  item.lockedLabel ? (
+                    <li key={item.to}>
+                      {/*
+                        YOPIQ BAND. Havola emas — bosilsa ham hech
+                        qayerga olib bormaydi; sababi yonida turadi.
+                      */}
+                      <span
+                        className="group flex cursor-default items-center gap-3 rounded-[12px] px-4 py-2.5 text-subhead text-label/40"
+                        title={item.lockedLabel}
+                      >
+                        <span className="relative flex shrink-0">
+                          <item.icon size={19} strokeWidth={1.6} className="text-label-quaternary" />
+                        </span>
+                        <span
+                          className={cn(
+                            'min-w-0 flex-1 truncate whitespace-nowrap transition-opacity duration-200',
+                            collapsed && 'opacity-0',
+                          )}
+                        >
+                          {item.label}
+                        </span>
+                        {collapsed ? null : (
+                          <span className="shrink-0 rounded-full bg-fill-4 px-2 py-0.5 text-caption-2 font-medium text-label-tertiary">
+                            {item.lockedLabel}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ) : (
                   <li key={item.to}>
                     <NavLink
                       to={item.to}
@@ -277,7 +314,8 @@ export function SideNav({
                       )}
                     </NavLink>
                   </li>
-                ))}
+                  ),
+                )}
               </ul>
             </div>
           ))}

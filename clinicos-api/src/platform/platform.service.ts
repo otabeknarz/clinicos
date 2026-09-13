@@ -781,9 +781,42 @@ export class PlatformService {
 
   /* ---------------- Tariflar ---------------- */
 
+  /**
+   * Tariflar — ULARDAN NIMA CHIQAYOTGANI bilan.
+   *
+   * Admin uchun tarifning narxi emas, NATIJASI muhim: nechta
+   * klinika shu tarifda, nechtasi sinovda va oyiga qancha pul
+   * keltiradi. Ilgari sahifada faqat narx turardi va "qaysi tarif
+   * ishlayapti" degan savolga javob yo'q edi.
+   *
+   * MRR muzlatilgan `termPrice` dan hisoblanadi (`monthlyFromTerm`)
+   * — ya'ni tarifning bugungi narxidan emas, mijoz TO'LAYOTGAN
+   * summadan. Ikkalasi bir xil bo'lmasligi mumkin: narx
+   * ko'tarilganda eski mijozlar eski shartda qoladi.
+   */
   async listPlans() {
     const rows = await this.db.plan.findMany({ orderBy: { basePrice: 'asc' } })
-    return rows.map(toApiPlan)
+
+    const subs = await this.db.subscription.findMany({
+      where: { clinic: { deletedAt: null } },
+      select: { planId: true, status: true, termPrice: true, termMonths: true },
+    })
+
+    const usage = new Map<string, { clinics: number; trial: number; mrr: number }>()
+    for (const sub of subs) {
+      const current = usage.get(sub.planId) ?? { clinics: 0, trial: 0, mrr: 0 }
+      current.clinics += 1
+      if (sub.status === 'TRIAL') current.trial += 1
+      if (sub.status === 'ACTIVE' || sub.status === 'PAST_DUE') {
+        current.mrr += monthlyFromTerm(sub.termPrice, sub.termMonths)
+      }
+      usage.set(sub.planId, current)
+    }
+
+    return rows.map((row) => ({
+      ...toApiPlan(row),
+      usage: usage.get(row.id) ?? { clinics: 0, trial: 0, mrr: 0 },
+    }))
   }
 
   async updatePlan(id: string, dto: Partial<PlanInputDto>) {

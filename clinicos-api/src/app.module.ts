@@ -13,6 +13,7 @@ import { ClinicModule } from './clinic/clinic.module'
 import { DoctorsModule } from './doctors/doctors.module'
 import { AuditInterceptor } from './common/audit.interceptor'
 import { AuditModule } from './common/audit.module'
+import { RestrictionsModule } from './common/restrictions.module'
 import { ContextMiddleware } from './common/context.middleware'
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
 import { PermissionsGuard } from './common/guards/permissions.guard'
@@ -51,6 +52,7 @@ import { TelegramModule } from './telegram/telegram.module'
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     AuditModule,
+    RestrictionsModule,
     StorageModule,
     AuthModule,
     PatientsModule,

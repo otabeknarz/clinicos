@@ -5,11 +5,12 @@ import { ImpersonationController } from './impersonation.controller'
 import { PlatformController } from './platform.controller'
 import { PlatformPharmaciesController } from './platform-pharmacies.controller'
 import { PlatformPharmaciesService } from './platform-pharmacies.service'
+import { AccessService } from './access.service'
 import { PlatformService } from './platform.service'
 
 @Module({
   imports: [AuthModule],
   controllers: [PlatformController, ImpersonationController, PlatformPharmaciesController],
-  providers: [PlatformService, PlatformPharmaciesService],
+  providers: [PlatformService, AccessService, PlatformPharmaciesService],
 })
 export class PlatformModule {}

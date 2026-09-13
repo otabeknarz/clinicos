@@ -33,6 +33,8 @@ import {
   TenantQueryDto,
   TenantUpdateDto,
 } from './platform.dto'
+import { AccessService } from './access.service'
+import { RestrictionDto, TrialPolicyDto } from './access.dto'
 import { PlatformService } from './platform.service'
 
 /**
@@ -49,7 +51,10 @@ import { PlatformService } from './platform.service'
 @Controller('platform')
 @RequirePermission('platform.view')
 export class PlatformController {
-  constructor(private readonly platform: PlatformService) {}
+  constructor(
+    private readonly platform: PlatformService,
+    private readonly accessService: AccessService,
+  ) {}
 
   /*
     Aniq yo'llar `:id` dan OLDIN turishi kerak — aks holda
@@ -79,6 +84,51 @@ export class PlatformController {
   @Get('plans')
   listPlans() {
     return this.platform.listPlans()
+  }
+
+  /*
+    GET /platform/access
+
+    BO'LIM CHEKLOVLARI — sababi bilan. Bo'limni jimgina yashirish
+    (`disabledModules`) va "tez kunda" deb yozib qo'yish boshqa-
+    boshqa narsa: birinchisida mijoz uchun bo'lim yo'q,
+    ikkinchisida esa savol va sotuv imkoni bor.
+  */
+  @Get('access')
+  access() {
+    return this.accessService.list()
+  }
+
+  // POST /platform/access
+  @Post('access')
+  @RequirePermission('platform.manage')
+  setAccess(@Body() dto: RestrictionDto) {
+    return this.accessService.set(dto)
+  }
+
+  // DELETE /platform/access/:id
+  @Delete('access/:id')
+  @RequirePermission('platform.manage')
+  removeAccess(@Param('id') id: string) {
+    return this.accessService.remove(id)
+  }
+
+  /*
+    GET /platform/trial
+
+    Sinov shartlari: yo'nalish bo'yicha necha kun va qaysi
+    bo'limlar yopiq. Ilgari bu koddagi qat'iy qiymat edi.
+  */
+  @Get('trial')
+  trial() {
+    return this.accessService.trialPolicies()
+  }
+
+  // POST /platform/trial
+  @Post('trial')
+  @RequirePermission('platform.manage')
+  setTrial(@Body() dto: TrialPolicyDto) {
+    return this.accessService.setTrialPolicy(dto)
   }
 
   /*

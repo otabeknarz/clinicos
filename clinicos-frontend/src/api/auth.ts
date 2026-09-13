@@ -453,3 +453,13 @@ export async function registerStatus(
   }
   return delay({ status: 'waiting' as const, session: null })
 }
+
+/**
+ * Ruxsat qaysi bo'limga tegishli.
+ *
+ * Menyu shu orqali "bu band yopiqmi" degan savolga javob topadi.
+ * Xarita allaqachon bor edi, lekin yopiq turardi.
+ */
+export function moduleOf(permission: string): ClinicModule | undefined {
+  return MODULE_BY_PERMISSION[permission as Permission]
+}

@@ -388,7 +388,34 @@ export async function changeTenantPlan(
 // GET /platform/plans
 export async function listPlans(): Promise<Plan[]> {
   if (!USE_MOCK) return request<Plan[]>('GET', '/platform/plans')
-  return delay(getDb().plans.allAcrossTenants(), 120)
+
+  /*
+    Demo rejimda tarifning "natijasi" obunalardan sanaladi —
+    serverdagi bilan bir xil savolga javob: qaysi tarif ishlayapti.
+  */
+  const subs = getDb().tenants.allAcrossTenants()
+
+  return delay(
+    getDb()
+      .plans.allAcrossTenants()
+      .map((plan) => {
+        const mine = subs.filter((tenant) => tenant.planId === plan.id)
+        return {
+          ...plan,
+          usage: {
+            clinics: mine.length,
+            trial: mine.filter((tenant) => tenant.status === 'trial').length,
+            mrr: mine
+              .filter((tenant) => tenant.status === 'active' || tenant.status === 'past_due')
+              .reduce(
+                (sum, tenant) => sum + Math.round(tenant.termPrice / (tenant.termMonths || 3)),
+                0,
+              ),
+          },
+        }
+      }),
+    120,
+  )
 }
 
 export interface PlanInput {

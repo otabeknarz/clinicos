@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**224 ta endpoint.**
+**229 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -3448,6 +3448,46 @@ almashtirilganda qo'llanadi.
 
 ```ts
 updateBillingTerm(id: ID, patch: { discountPct?: number; isActive?: boolean }): Promise<BillingTerm>
+```
+
+## access
+
+`src/api/access.ts`
+
+> IMKONIYATLAR VA SINOV SHARTLARI — PLATFORMA TOMONI.
+> 
+> Cheklov bo'limni yopadi va SABABINI aytadi. Bu `disabledModules`
+> dan farq qiladi: u jimgina yashiradi, bu esa ko'rsatib turadi —
+> "tez kunda", "tarifingizda yo'q", "texnik ishlar".
+
+### `GET /platform/access`
+
+```ts
+listRestrictions(): Promise<AccessList>
+```
+
+### `POST /platform/access`
+
+```ts
+setRestriction(input: { module: string reason: BlockReason clinicId?: ID note?: string }): Promise<void>
+```
+
+### `DELETE /platform/access/:id`
+
+```ts
+removeRestriction(id: ID): Promise<void>
+```
+
+### `GET /platform/trial`
+
+```ts
+listTrialPolicies(): Promise<TrialList>
+```
+
+### `POST /platform/trial`
+
+```ts
+setTrialPolicy(input: { direction: string days: number disabledModules: string[] }): Promise<void>
 ```
 
 ## cabinet
