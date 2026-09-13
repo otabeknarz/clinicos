@@ -91,8 +91,14 @@ const PlatformClinicDetailPage = lazy(() =>
   uslublar faqat u ochilganda yuklanadi — kirish sahifasini
   sekinlashtirmaydi.
 */
-const AboutPage = lazy(() =>
-  import('@/pages/public/About').then((m) => ({ default: m.AboutPage })),
+const AboutGatePage = lazy(() =>
+  import('@/pages/public/AboutGate').then((m) => ({ default: m.AboutGatePage })),
+)
+const ClinicAboutPage = lazy(() =>
+  import('@/pages/public/About').then((m) => ({ default: m.ClinicAboutPage })),
+)
+const PharmacyAboutPage = lazy(() =>
+  import('@/pages/public/PharmacyAbout').then((m) => ({ default: m.PharmacyAboutPage })),
 )
 const PlatformPharmaciesPage = lazy(() =>
   import('@/pages/platform/Pharmacies').then((m) => ({ default: m.PlatformPharmaciesPage })),
@@ -205,6 +211,40 @@ const MessagesPage = lazy(() =>
 */
 const AttendanceFacePage = lazy(() =>
   import('@/pages/AttendanceFace').then((m) => ({ default: m.AttendanceFacePage })),
+)
+
+/*
+  TANISHTIRUV SAHIFALARI — kirgan va kirmagan odam uchun bir xil.
+  Bitta joyda, chunki ikki `Routes` ro'yxatida takrorlanardi va biri
+  albatta eskirib qolardi. `Fragment` — react-router uni ochib o'qiydi.
+*/
+const ABOUT_ROUTES = (
+  <>
+    <Route
+      path="/about"
+      element={
+        <Suspense fallback={<PageLoader />}>
+          <AboutGatePage />
+        </Suspense>
+      }
+    />
+    <Route
+      path="/about/klinika"
+      element={
+        <Suspense fallback={<PageLoader />}>
+          <ClinicAboutPage />
+        </Suspense>
+      }
+    />
+    <Route
+      path="/about/apteka"
+      element={
+        <Suspense fallback={<PageLoader />}>
+          <PharmacyAboutPage />
+        </Suspense>
+      }
+    />
+  </>
 )
 
 export default function App() {
@@ -448,15 +488,11 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        {/* Tanishtiruv — kirmagan odam uchun ochiq, kirish panelidan ochiladi */}
-        <Route
-          path="/about"
-          element={
-            <Suspense fallback={<PageLoader />}>
-              <AboutPage />
-            </Suspense>
-          }
-        />
+        {/*
+          Tanishtiruv — kirmagan odam uchun ochiq, kirish panelidan ochiladi.
+          `/about` — ikki eshik (klinika yoki apteka), keyin o'z taqdimoti.
+        */}
+        {ABOUT_ROUTES}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     )
@@ -466,14 +502,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Navigate to="/" replace />} />
       {/* Kirgan odam ham havola orqali tanishtiruvni ocha oladi */}
-      <Route
-        path="/about"
-        element={
-          <Suspense fallback={<PageLoader />}>
-            <AboutPage />
-          </Suspense>
-        }
-      />
+      {ABOUT_ROUTES}
 
       <Route element={<AppLayout />}>
         <Route index element={<HomePage />} />

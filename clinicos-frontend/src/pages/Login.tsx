@@ -114,7 +114,14 @@ export function LoginPage() {
     fullName: '',
     phone: '',
     position: 'owner' as (typeof LEAD_POSITIONS)[number],
-    direction: 'general' as (typeof CLINIC_DIRECTIONS)[number],
+    /*
+      Aptekalar taqdimotidan kelgan odam (`?direction=pharmacy`) — yo'nalish
+      oldindan "Apteka". U yerda "Bepul boshlash"ni bosgan odamdan yana
+      "klinikami, aptekami" deb so'rash — ortiqcha qadam va xato tanlov.
+    */
+    direction: (params.get('direction') === 'pharmacy'
+      ? 'pharmacy'
+      : 'general') as (typeof CLINIC_DIRECTIONS)[number],
     city: '',
     staffCount: '' as '' | (typeof STAFF_COUNTS)[number],
     password: '',

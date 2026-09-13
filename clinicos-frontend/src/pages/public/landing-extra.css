@@ -1,0 +1,201 @@
+/*
+ * TANISHTIRUVNING QO'SHIMCHA BLOKLARI — tanlov sahifasi, apteka
+ * taqdimoti va sotuv bo'limlari (`lx-` sinflari).
+ *
+ * `story.css` avtomatik yaratilgan va qo'lda tahrirlanmaydi, shuning
+ * uchun yangi bloklar shu yerda — o'sha o'lchamlar, o'sha ranglar va
+ * o'sha burchaklar bilan, sahifa bir qo'lda chizilgandek ko'rinsin.
+ * Qorong'i rejim `scripts/gen-public-dark.py` bilan shu fayldan ham
+ * yaratiladi.
+ */
+
+/* ---------------- Klinika / apteka almashtirgich ---------------- */
+:where(.story-page) .lx-audience{display:flex;width:fit-content;max-width:100%;gap:3px;padding:4px;margin:0 auto 22px;background:#fff;border:1px solid #dde5f4;border-radius:12px;box-shadow:0 8px 20px -16px #3e689940}
+:where(.story-page) .lx-audience a{display:flex;align-items:center;gap:7px;min-height:36px;padding:8px 16px;border-radius:9px;font-size:11px;font-weight:700;color:#7c8ba4}
+:where(.story-page) .lx-audience a .icon{width:14px;height:14px}
+:where(.story-page) .lx-audience a:not([aria-current]):hover{background:#f0f4fc;color:#2c4a78}
+:where(.story-page) .lx-audience a[aria-current=page]{background:#152b4d;color:#fff}
+
+/* ---------------- Tanlov sahifasi: ikki eshik ---------------- */
+:where(.story-page) .lx-gate{padding-bottom:10px;padding-top:42px}
+:where(.story-page) .lx-gate h1{font-size:clamp(40px,4.6vw,64px)}
+:where(.story-page) .lx-doors{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:38px}
+:where(.story-page) .lx-door{position:relative;display:flex;flex-direction:column;border:1px solid #dfe7f3;border-radius:28px;background:#fff;overflow:hidden;text-align:left;color:var(--ink);box-shadow:0 30px 60px -48px #4e659780;transition:transform .3s cubic-bezier(.34,1.4,.64,1),box-shadow .3s ease,border-color .3s ease}
+:where(.story-page) .lx-door:hover{transform:translateY(-4px);border-color:#c9d8f2;box-shadow:0 40px 70px -45px #4e6597a0}
+:where(.story-page) .lx-door:focus-visible{outline:3px solid #2864ee;outline-offset:3px}
+:where(.story-page) .lx-door-art{position:relative;height:210px;display:grid;place-items:center;overflow:hidden;background:linear-gradient(140deg,#e4ecfe,#e8e6f7)}
+:where(.story-page) .lx-door-pharmacy .lx-door-art{background:linear-gradient(140deg,#e2f3ea,#e6eff8)}
+:where(.story-page) .lx-door-art:before{content:"";position:absolute;width:300px;height:300px;border:1px solid #ffffff80;border-radius:50%;box-shadow:0 0 0 50px #ffffff26,0 0 0 100px #ffffff14}
+:where(.story-page) .lx-door-window{position:relative;width:min(330px,82%);background:#fff;border:1px solid #e2e7f4;border-radius:16px;box-shadow:0 22px 36px #637dae26;padding:14px 16px 8px;transform:rotate(-2deg)}
+:where(.story-page) .lx-door-pharmacy .lx-door-window{transform:rotate(2deg)}
+:where(.story-page) .lx-door-window-top{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:700;padding-bottom:9px}
+:where(.story-page) .lx-door-window-top small{font-size:7px;font-weight:500;color:#8c9cb5;border:1px solid #e1e8f3;border-radius:5px;padding:2px 6px}
+:where(.story-page) .lx-door-row{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:8px;padding:8px 0;border-top:1px solid #edf1f8;font-size:9px}
+:where(.story-page) .lx-door-row b{font-size:8px;color:#8a9bb4;font-weight:700}
+:where(.story-page) .lx-door-row span{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:where(.story-page) .lx-door-row i{font-style:normal;font-size:7px;padding:3px 7px;border-radius:5px;background:#edf3ff;color:#5b80bf;white-space:nowrap}
+:where(.story-page) .lx-door-row i.ok{background:#e8f5ec;color:#428667}
+:where(.story-page) .lx-door-row i.plain{background:transparent;color:var(--ink);font-size:9px;font-weight:700;padding:0}
+:where(.story-page) .lx-door-total span{color:#8a9bb4}
+:where(.story-page) .lx-door-total i.plain{color:#2864ee;font-size:11px}
+:where(.story-page) .lx-door-body{display:flex;flex-direction:column;flex:1;padding:30px 34px 32px}
+:where(.story-page) .lx-door-tag{display:flex;align-items:center;gap:7px;font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#7d90aa}
+:where(.story-page) .lx-door-tag .icon{width:14px;height:14px}
+:where(.story-page) .lx-door h2{font-size:clamp(30px,3vw,40px);margin-top:14px}
+:where(.story-page) .lx-door-body>p{font-size:12px;line-height:1.8;color:#7b89a0;margin-top:10px;max-width:390px}
+:where(.story-page) .lx-door-list{list-style:none;padding:0;margin:20px 0 0;display:grid;gap:9px}
+:where(.story-page) .lx-door-list li{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:600;color:#3b4d6c}
+:where(.story-page) .lx-door-list .icon{width:16px;height:16px;padding:3px;border-radius:50%;background:#eaf1ff;color:#2864ee;flex-shrink:0}
+:where(.story-page) .lx-door-pharmacy .lx-door-list .icon{background:#e5f4eb;color:#3f8a62}
+:where(.story-page) .lx-door-cta{display:inline-flex;align-items:center;gap:10px;align-self:flex-start;margin-top:auto;padding-top:26px;font-size:12px;font-weight:700;color:#2462ed}
+:where(.story-page) .lx-door-cta .icon{width:16px;height:16px;transition:transform .3s cubic-bezier(.34,1.4,.64,1)}
+:where(.story-page) .lx-door:hover .lx-door-cta .icon{transform:translateX(4px)}
+:where(.story-page) .lx-gate .v3-trust{border-bottom:0;padding-bottom:10px}
+:where(.story-page) .lx-gate-login{text-align:center;font-size:11px;padding-bottom:50px}
+:where(.story-page) .lx-gate-login a{color:#3c6abd;font-weight:700}
+
+/*
+  Hero ichidagi bezak doiralari chetdan chiqadi va `overflow:hidden` ularni
+  yashiradi — lekin fokus yoki `scrollIntoView` shunday blokni YON TOMONGA
+  aylantirib yuborardi (sahifa chapga siljib qolardi). `clip` aylantirishni
+  umuman taqiqlaydi; eski brauzer bu qatorni tashlab, `hidden` da qoladi.
+*/
+:where(.story-page) .v3-hero{overflow:clip}
+
+/* ---------------- Holat belgilari ---------------- */
+:where(.story-page) .v3-state.warn{color:#a86a1c;background:#fbf0de}
+
+/* ---------------- Apteka: smena, muddat, chek ---------------- */
+:where(.story-page) .lx-shift{background:#fff;border:1px solid #dfe7f2;border-radius:15px;box-shadow:0 20px 40px #3e689912;overflow:hidden}
+:where(.story-page) .lx-shift-rows{padding:6px 18px}
+:where(.story-page) .lx-shift-rows>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid #edf1f8;font-size:10px}
+:where(.story-page) .lx-shift-rows>div:first-child{border-top:0}
+:where(.story-page) .lx-shift-rows span{display:inline;color:#8999ae}
+:where(.story-page) .lx-shift-rows strong{font-variant-numeric:tabular-nums}
+:where(.story-page) .lx-shift-warn{display:flex;align-items:center;gap:11px;margin:4px 14px 30px;padding:13px 14px;border-radius:11px;background:#fbf0de;color:#8d5a17}
+:where(.story-page) .lx-shift-warn .icon{width:18px;height:18px;flex-shrink:0}
+:where(.story-page) .lx-shift-warn strong{display:block;font-size:10px}
+:where(.story-page) .lx-shift-warn small{display:block;font-size:8px;margin-top:3px;color:#a67a3f}
+
+:where(.story-page) .lx-batches{transform:rotate(4deg)}
+:where(.story-page) .lx-batch{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0 0;margin-top:11px;border-top:1px solid #edf1f8;font-size:10px;font-weight:700;color:#253b5d}
+:where(.story-page) .lx-batch small{display:block;font-size:8px;font-weight:500;color:#8fa2ba;margin-top:3px}
+:where(.story-page) .lx-batch i{font-style:normal;font-size:8px;padding:4px 8px;border-radius:6px;background:#e8f5ec;color:#428667;white-space:nowrap}
+:where(.story-page) .lx-batch i.warn{background:#fbf0de;color:#a86a1c}
+:where(.story-page) .lx-batch i.bad{background:#fbe6e6;color:#b5474b}
+
+:where(.story-page) .v3-record-head .v3-avatar .icon{width:15px;height:15px}
+
+:where(.story-page) .lx-receipt-line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #edf1f8;font-size:9px;font-weight:700}
+:where(.story-page) .lx-receipt-line:first-of-type{border-top:0}
+:where(.story-page) .lx-receipt-line small{display:block;font-size:7px;font-weight:500;color:#8798b0;margin-top:2px}
+:where(.story-page) .lx-receipt-line b{font-variant-numeric:tabular-nums}
+:where(.story-page) .lx-receipt-total{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0 4px;border-top:1px dashed #d6dfed;font-size:9px;color:#8a9bb4}
+:where(.story-page) .lx-receipt-total strong{font-size:16px;color:var(--ink);letter-spacing:-.03em}
+:where(.story-page) .lx-pay{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+:where(.story-page) .lx-pay span{text-align:center;font-size:8px;font-weight:700;padding:7px;border-radius:7px;border:1px solid #e1e8f3;color:#7c8ba4}
+:where(.story-page) .lx-pay span.active{background:#2864ee;border-color:#2864ee;color:#fff}
+:where(.story-page) .lx-scan{display:flex;align-items:center;gap:9px;padding:11px 12px;border-radius:9px;background:#eaf5ee;color:#3f7f5c;font-size:10px}
+:where(.story-page) .lx-scan .icon{width:18px;height:18px}
+:where(.story-page) .v3-chart-panel .v3-flow-dl{margin-top:8px}
+:where(.story-page) .v3-chart-panel .v3-flow-dl>div{font-size:8px;padding:10px 0}
+
+:where(.story-page) .lx-rx-lines{margin-top:14px;border:1px solid #385577;border-radius:12px;padding:4px 14px}
+:where(.story-page) .lx-rx-lines>div{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #2f4b6c;font-size:10px;color:#c9d7ea}
+:where(.story-page) .lx-rx-lines>div:first-child{border-top:0}
+:where(.story-page) .lx-rx-lines b{color:#fff}
+:where(.story-page) .v3-money-panel .v3-reconcile strong{font-size:13px}
+
+/* ---------------- Ro'yxat nuqtalari ---------------- */
+:where(.story-page) .lx-points{list-style:none;padding:0;margin:26px 0 0;display:grid;gap:12px;max-width:420px}
+:where(.story-page) .lx-points li{display:flex;align-items:center;gap:11px;font-size:11px;line-height:1.55;color:#b4c8e3}
+:where(.story-page) .lx-points .icon{width:30px;height:30px;padding:7px;border-radius:9px;background:#213e62;color:#9cbbec;flex-shrink:0}
+:where(.story-page) .lx-points.light li{color:#4c5d7a}
+:where(.story-page) .lx-points.light .icon{background:#eaf1ff;color:#2864ee}
+
+/* ---------------- Bemor uchun: ikki ustun ---------------- */
+:where(.story-page) .lx-split{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:center}
+:where(.story-page) .lx-split-copy h2{margin-top:16px}
+:where(.story-page) .lx-split-copy>p{font-size:13px;line-height:1.85;color:#7b89a0;margin-top:20px;max-width:430px}
+:where(.story-page) .lx-split-art{position:relative;border-radius:28px;padding:50px 40px;min-height:430px;display:grid;place-items:center;overflow:hidden;background:linear-gradient(140deg,#2864ee,#3d58d8)}
+:where(.story-page) .lx-split-art:before{content:"";position:absolute;width:380px;height:380px;border:1px solid #ffffff1f;border-radius:50%;right:-110px;top:-80px;box-shadow:0 0 0 55px #ffffff09,0 0 0 110px #ffffff06}
+:where(.story-page) .lx-phone-stack{position:relative;display:grid;gap:18px;width:min(340px,100%)}
+:where(.story-page) .lx-phone-stack .v3-phone-msg{transform:rotate(-3deg)}
+:where(.story-page) .lx-phone-stack .lx-phone-second{transform:rotate(3deg) translateX(24px)}
+:where(.story-page) .lx-phone-second .v3-msg-head .icon{background:#e8f5ec;color:#428667}
+:where(.story-page) .lx-phone-second .v3-mini-row{margin-top:10px;border-top:1px solid #edf1f8}
+
+/* ---------------- Imkoniyatlar to'ri ---------------- */
+:where(.story-page) .lx-features{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+:where(.story-page) .lx-feature{position:relative;padding:24px 22px 26px;border:1px solid #e3eaf3;border-radius:22px;background:#fff;min-width:0}
+:where(.story-page) .lx-feature-icon{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:#eef3fc}
+:where(.story-page) .lx-feature-icon .icon{width:22px;height:22px;color:#4f7fd0}
+:where(.story-page) .lx-feature:nth-child(4n+2) .lx-feature-icon{background:#eaf5ee}
+:where(.story-page) .lx-feature:nth-child(4n+2) .lx-feature-icon .icon{color:#4f9470}
+:where(.story-page) .lx-feature:nth-child(4n+3) .lx-feature-icon{background:#f5edf7}
+:where(.story-page) .lx-feature:nth-child(4n+3) .lx-feature-icon .icon{color:#9a73a0}
+:where(.story-page) .lx-feature:nth-child(4n) .lx-feature-icon{background:#faf3e6}
+:where(.story-page) .lx-feature:nth-child(4n) .lx-feature-icon .icon{color:#b0823e}
+:where(.story-page) .lx-feature h3{font-size:17px;margin-top:18px;line-height:1.25}
+:where(.story-page) .lx-feature p{font-size:11px;line-height:1.75;color:#8391a7;margin-top:8px}
+:where(.story-page) .v3-section:not(.v3-process) .lx-features:has(> :nth-child(6):last-child){grid-template-columns:repeat(3,1fr)}
+
+/* ---------------- Qanday boshlaymiz ---------------- */
+:where(.story-page) .lx-start{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;counter-reset:start}
+:where(.story-page) .lx-start-card{position:relative;padding:26px 22px 28px;border:1px solid #dae5f6;border-radius:22px;background:#fff;box-shadow:0 4px 15px #345d9810;min-width:0}
+:where(.story-page) .lx-start-number{position:absolute;top:22px;right:22px;font-size:11px;font-weight:700;color:#a9b7cc}
+:where(.story-page) .lx-start-card>.icon{width:40px;height:40px;padding:9px;border-radius:12px;background:#2864ee;color:#fff}
+:where(.story-page) .lx-start-card h3{font-size:17px;margin-top:18px}
+:where(.story-page) .lx-start-card p{font-size:11px;line-height:1.75;color:#7b89a0;margin-top:8px}
+:where(.story-page) .lx-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:28px}
+:where(.story-page) .lx-chips span{padding:8px 15px;border-radius:40px;border:1px solid #dae5f6;background:#fff;font-size:11px;font-weight:600;color:#4c5d7a}
+
+/* ---------------- Matn o'qilishi ---------------- */
+/*
+  `story.css` dagi "MATN O'QILISHI" bloki karta matnini to'q kulrangga
+  bo'yaydi — oq kartada to'g'ri, lekin ko'k va to'q ko'k kartalarda matn
+  fonga singib, deyarli ko'rinmay qolardi. To'q fonlilar qaytadan och.
+*/
+:where(.story-page) .v3-telegram-card .v3-card-copy p{color:#dce7ff}
+:where(.story-page) .v3-permissions-card .v3-card-copy p{color:#b4c6de}
+:where(.story-page) .v3-money .v3-money-copy>p{color:#b4c8e3}
+/* Yangi bloklar — o'sha o'qiladigan o'lchamda */
+:where(.story-page) .lx-door-body>p,:where(.story-page) .lx-split-copy>p{font-size:14px;line-height:1.75;color:#56678a}
+:where(.story-page) .lx-door-list li,:where(.story-page) .lx-points li{font-size:13px}
+:where(.story-page) .lx-feature p,:where(.story-page) .lx-start-card p{font-size:13px;line-height:1.7;color:#56678a}
+:where(.story-page) .lx-feature h3,:where(.story-page) .lx-start-card h3{font-size:18px}
+:where(.story-page) .lx-chips span{font-size:13px}
+:where(.story-page) .lx-audience a{font-size:12px}
+:where(.story-page) .lx-gate-login{font-size:13px}
+
+@media(max-width:1050px){
+:where(.story-page) .lx-features,:where(.story-page) .v3-section:not(.v3-process) .lx-features:has(> :nth-child(6):last-child){grid-template-columns:repeat(2,1fr)}
+:where(.story-page) .lx-start{grid-template-columns:repeat(2,1fr)}
+:where(.story-page) .lx-split{gap:40px}
+:where(.story-page) .lx-door-body{padding:26px 26px 28px}
+}
+@media(max-width:800px){
+:where(.story-page) .lx-doors{grid-template-columns:1fr;max-width:560px;margin-inline:auto;margin-top:36px}
+:where(.story-page) .lx-split{grid-template-columns:1fr}
+:where(.story-page) .lx-split-art{min-height:0;padding:40px 28px}
+:where(.story-page) .lx-audience a{font-size:12px;padding:8px 12px}
+}
+@media(max-width:520px){
+/* Telefonda tepa panel sig'masdi (menyu tugmasi ekrandan chiqib ketardi) — "Kirish" faqat belgi bilan */
+.story-page .header .login-button{font-size:0;gap:0;padding:9px 12px}
+.story-page .header .login-button .icon{width:18px;height:18px}
+:where(.story-page) .lx-features,:where(.story-page) .v3-section:not(.v3-process) .lx-features:has(> :nth-child(6):last-child),:where(.story-page) .lx-start{grid-template-columns:1fr}
+:where(.story-page) .lx-door-art{height:180px}
+:where(.story-page) .lx-door h2{font-size:28px}
+:where(.story-page) .lx-phone-stack .lx-phone-second{transform:rotate(2deg) translateX(8px)}
+:where(.story-page) .lx-audience{width:100%;margin-bottom:18px}
+:where(.story-page) .lx-audience a{flex:1;justify-content:center;font-size:11px;padding:8px 6px}
+}
+@media(prefers-reduced-motion:reduce){
+:where(.story-page) .lx-door,:where(.story-page) .lx-door-cta .icon{transition:none}
+:where(.story-page) .lx-door:hover{transform:none}
+}
+@media (prefers-reduced-motion:no-preference){
+:where(.story-page) .lx-feature,:where(.story-page) .lx-start-card{background-image:radial-gradient(300px circle at var(--mx,-500px) var(--my,-500px),color-mix(in srgb,rgb(40 100 240 / .08) calc(var(--spot) * 100%),transparent),transparent 62%);transition:--spot .4s var(--ease-apple),transform .3s var(--ease-spring),box-shadow .3s var(--ease-apple)}
+:where(.story-page) .lx-feature:hover,:where(.story-page) .lx-start-card:hover{--spot:1;transform:translateY(-3px)}
+}

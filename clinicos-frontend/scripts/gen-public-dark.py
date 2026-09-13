@@ -23,6 +23,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SOURCES = [
     ROOT / "src/pages/public/public-base.css",
     ROOT / "src/pages/public/story.css",
+    ROOT / "src/pages/public/landing-extra.css",
 ]
 OUT = ROOT / "src/pages/public/public-dark.css"
 
@@ -203,7 +204,7 @@ def main():
     lines = [
         "/*",
         "  AVTOMATIK YARATILGAN — qo'lda o'zgartirmang.",
-        "  Manba: public-base.css va story.css. Qayta yaratish:",
+        "  Manba: public-base.css, story.css va landing-extra.css. Qayta yaratish:",
         "  python scripts/gen-public-dark.py",
         "*/",
         "html.dark .story-page,html.dark .auth-page{color-scheme:dark}",

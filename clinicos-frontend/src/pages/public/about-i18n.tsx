@@ -2,6 +2,7 @@ import { cloneElement, Fragment, isValidElement } from 'react'
 import type { ReactElement, ReactNode } from 'react'
 
 import { useI18n } from '@/i18n'
+import { EN_SALES, RU_SALES } from './about-i18n-sales'
 
 /**
  * TANISHTIRUV SAHIFASINING TARJIMASI.
@@ -459,6 +460,10 @@ const EN: Record<string, string> = {
   'Menyuni yopish': 'Close the menu',
   'Menyuni ochish': 'Open the menu',
 }
+
+/* Sotuv bo'limlari (tanlov sahifasi, apteka, klinikaning yangi bloklari) */
+Object.assign(RU, RU_SALES)
+Object.assign(EN, EN_SALES)
 
 /** Tarjima qilinadigan xossalar. Ro'yxat YOPIQ: sinf nomi yoki id tegmasin. */
 const TEXT_PROPS = ['label', 'title', 'text', 'note', 'unit', 'hint', 'caption', 'aria-label', 'placeholder', 'alt']

@@ -1,6 +1,6 @@
 /*
   AVTOMATIK YARATILGAN — qo'lda o'zgartirmang.
-  Manba: public-base.css va story.css. Qayta yaratish:
+  Manba: public-base.css, story.css va landing-extra.css. Qayta yaratish:
   python scripts/gen-public-dark.py
 */
 html.dark .story-page,html.dark .auth-page{color-scheme:dark}
@@ -189,6 +189,51 @@ html.dark :where(.story-page) .v3-process-copy p{color:#abb0b9}
 html.dark .story-page details p{color:#abb0b9}
 html.dark :where(.story-page) .v3-hero-heading p{color:#b0b5be}
 html.dark :where(.story-page) .v3-workspace-note{color:#acb1b8}
+html.dark :where(.story-page) .lx-audience{background:#121419;border:1px solid #303845}
+html.dark :where(.story-page) .lx-audience a:not([aria-current]):hover{background:#131823;color:#b7c0ce}
+html.dark :where(.story-page) .lx-door{border:1px solid #313944;background:#121419}
+html.dark :where(.story-page) .lx-door:hover{border-color:#313b4c}
+html.dark :where(.story-page) .lx-door-art{background:linear-gradient(140deg,#11192a,#191826)}
+html.dark :where(.story-page) .lx-door-pharmacy .lx-door-art{background:linear-gradient(140deg,#1b2721,#171e26)}
+html.dark :where(.story-page) .lx-door-art:before{border:1px solid rgb(43 47 59 / 0.50)}
+html.dark :where(.story-page) .lx-door-window{background:#121419;border:1px solid #313643}
+html.dark :where(.story-page) .lx-door-window-top small{border:1px solid #323843}
+html.dark :where(.story-page) .lx-door-row{border-top:1px solid #2f3540}
+html.dark :where(.story-page) .lx-door-row i{background:#0f1727}
+html.dark :where(.story-page) .lx-door-row i.ok{background:#19241d;color:#afc2ba}
+html.dark :where(.story-page) .lx-door-list li{color:#bbc0c9}
+html.dark :where(.story-page) .lx-door-list .icon{background:#0f1728}
+html.dark :where(.story-page) .lx-door-pharmacy .lx-door-list .icon{background:#1a261f;color:#aec3b8}
+html.dark :where(.story-page) .lx-gate-login a{color:#9aa6bd}
+html.dark :where(.story-page) .v3-state.warn{color:#cebca6;background:#2b2315}
+html.dark :where(.story-page) .lx-shift{background:#121419;border:1px solid #323a44}
+html.dark :where(.story-page) .lx-shift-rows>div{border-top:1px solid #2f3540}
+html.dark :where(.story-page) .lx-shift-warn{background:#2b2315;color:#d4c5b1}
+html.dark :where(.story-page) .lx-shift-warn small{color:#bfb3a3}
+html.dark :where(.story-page) .lx-batch{border-top:1px solid #2f3540;color:#c3cad5}
+html.dark :where(.story-page) .lx-batch i{background:#19241d;color:#afc2ba}
+html.dark :where(.story-page) .lx-batch i.warn{background:#2b2315;color:#cebca6}
+html.dark :where(.story-page) .lx-batch i.bad{background:#271414;color:#b99c9d}
+html.dark :where(.story-page) .lx-receipt-line{border-top:1px solid #2f3540}
+html.dark :where(.story-page) .lx-receipt-total{border-top:1px dashed #353c46}
+html.dark :where(.story-page) .lx-pay span{border:1px solid #323843}
+html.dark :where(.story-page) .lx-scan{background:#19231d;color:#b2c5bb}
+html.dark :where(.story-page) .lx-points.light li{color:#b3b8c0}
+html.dark :where(.story-page) .lx-points.light .icon{background:#0f1728}
+html.dark :where(.story-page) .lx-split-art:before{border:1px solid rgb(43 47 59 / 0.12)}
+html.dark :where(.story-page) .lx-phone-second .v3-msg-head .icon{background:#19241d;color:#afc2ba}
+html.dark :where(.story-page) .lx-phone-second .v3-mini-row{border-top:1px solid #2f3540}
+html.dark :where(.story-page) .lx-feature{border:1px solid #323942;background:#121419}
+html.dark :where(.story-page) .lx-feature-icon{background:#131924}
+html.dark :where(.story-page) .lx-feature:nth-child(4n+2) .lx-feature-icon{background:#19231d}
+html.dark :where(.story-page) .lx-feature:nth-child(4n+2) .lx-feature-icon .icon{color:#a8bbb1}
+html.dark :where(.story-page) .lx-feature:nth-child(4n+3) .lx-feature-icon{background:#201822}
+html.dark :where(.story-page) .lx-feature:nth-child(4n) .lx-feature-icon{background:#272115}
+html.dark :where(.story-page) .lx-feature:nth-child(4n) .lx-feature-icon .icon{color:#beb19f}
+html.dark :where(.story-page) .lx-start-card{border:1px solid #2e3848;background:#121419}
+html.dark :where(.story-page) .lx-chips span{border:1px solid #2e3848;background:#121419;color:#b3b8c0}
+html.dark :where(.story-page) .lx-door-body>p,html.dark :where(.story-page) .lx-split-copy>p{color:#abb0b9}
+html.dark :where(.story-page) .lx-feature p,html.dark :where(.story-page) .lx-start-card p{color:#abb0b9}
 @media(max-width:800px){
 html.dark :where(.auth-page,.story-page) .nav{background:#121419}
 }

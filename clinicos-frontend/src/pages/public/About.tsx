@@ -1,20 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
-import type { ReactNode, RefObject } from 'react'
+import { useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import { cn } from '@/lib/cn'
-import { useI18n } from '@/i18n'
-import { Lang, translateText } from '@/pages/public/about-i18n'
-import { Icon, IconSprite } from './PublicIcons'
+import { Lang } from '@/pages/public/about-i18n'
+import { Icon } from './PublicIcons'
 import type { PublicIconName } from './PublicIcons'
-import { PublicControls } from './PublicControls'
-import './public-base.css'
-import './story.css'
-/* Qorong'i rejim — asl uslublardan KEYIN yuklanishi shart */
-import './public-dark.css'
+import { AudienceSwitch, FaqList, FeatureGrid, StartSteps, StoryShell } from './StoryShell'
+import { useDemoChange } from './story-motion'
 
 /**
- * TANISHTIRUV SAHIFASI — `/about`.
+ * KLINIKALAR UCHUN TAQDIMOT — `/about/klinika`.
+ *
+ * SOTUV TAQDIMOTI: mijoz o'zi kirib, uchrashuvda beriladigan savollarga
+ * javobni shu yerdan o'qiydi, sotuvchi esa yangi mijozga shu sahifa
+ * bilan tushuntiradi. Shuning uchun faqat tizimda HAQIQATDA bor
+ * narsa yoziladi — va'da ertasiga mijozning savoliga aylanadi.
  *
  * Foydalanuvchi tasdiqlagan yakuniy dizayn (3-variant), prototipdan
  * aynan ko'chirilgan: kompozitsiya, o'lchamlar, animatsiyalar.
@@ -24,7 +25,7 @@ import './public-dark.css'
  * nima qilishini ko'rsatish uchun, haqiqiy mijoz yoki natija emas;
  * har bir blokda buni aytuvchi "Demo" yozuvi bor va olib tashlanmasin.
  *
- * Matn faqat o'zbekcha — dizayn shunday tasdiqlangan.
+ * Uch tilda: matn JSX da o'zbekcha turadi, tarjimasi `about-i18n.tsx` da.
  */
 
 type Scene = 'owner' | 'reception' | 'doctor'
@@ -36,6 +37,8 @@ const SCENES: Record<Scene, { name: string; initials: string; nav: number }> = {
   doctor: { name: 'Shifokor', initials: 'SH', nav: 3 },
 }
 
+const REGISTER = '/login?mode=register'
+
 const SIDE_NAV: { icon: PublicIconName; label: string }[] = [
   { icon: 'grid', label: 'Bosh sahifa' },
   { icon: 'calendar', label: 'Qabullar' },
@@ -45,126 +48,36 @@ const SIDE_NAV: { icon: PublicIconName; label: string }[] = [
   { icon: 'chart', label: 'Hisobotlar' },
 ]
 
-const DEMO_CHANGE = 'clinicos:demo-change'
-
-export function AboutPage() {
-  const { lang } = useI18n()
-  const root = useRef<HTMLDivElement>(null)
+export function ClinicAboutPage() {
   const dashboard = useRef<HTMLDivElement>(null)
   const flow = useRef<HTMLDivElement>(null)
-  const menuButton = useRef<HTMLButtonElement>(null)
 
   const [scene, setScene] = useState<Scene>('owner')
   const [step, setStep] = useState<Step>('appointment')
-  const [menuOpen, setMenuOpen] = useState(false)
 
-  useStoryMotion(root)
-  useStorySpotlight(root)
   useDemoChange(scene, dashboard)
   useDemoChange(step, flow)
-
-  useEffect(() => {
-    const previous = document.title
-    /* Sarlavha ham tilga ergashadi — u qidiruvda va tabda ko'rinadi */
-    document.title = `ClinicOS — ${translateText(lang, 'Klinikangizga tartib.')} ${translateText(
-      lang,
-      'Sizga',
-    )} ${translateText(lang, 'xotirjamlik.')}`
-    return () => {
-      document.title = previous
-    }
-  }, [lang])
-
-  /* --- Mobil menyu: Escape, tashqariga bosish, ekran o'lchami --- */
-  useEffect(() => {
-    const mobile = window.matchMedia('(max-width:800px)')
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && menuOpen) {
-        setMenuOpen(false)
-        menuButton.current?.focus()
-      }
-    }
-    function onClick(event: MouseEvent) {
-      if (!(event.target as Element).closest('.header')) setMenuOpen(false)
-    }
-    const onChange = () => setMenuOpen(false)
-    document.addEventListener('keydown', onKey)
-    document.addEventListener('click', onClick)
-    mobile.addEventListener('change', onChange)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.removeEventListener('click', onClick)
-      mobile.removeEventListener('change', onChange)
-    }
-  }, [menuOpen])
-
-  function onNavClick(event: React.MouseEvent) {
-    if ((event.target as Element).closest('a')) {
-      if (window.matchMedia('(max-width:800px)').matches) menuButton.current?.focus()
-      setMenuOpen(false)
-    }
-  }
 
   const current = SCENES[scene]
 
   return (
-    <Lang>
-      <div className="story-page" ref={root}>
-        <IconSprite />
-        <a href="#main" className="skip">
-          Asosiy mazmunga o‘tish
-        </a>
-
-        <header className="header">
-          <div className="wrap header-inner">
-            <Link className="logo" to="/login" aria-label="ClinicOS bosh sahifa">
-              <span className="logo-mark">
-                <Icon name="pulse" />
-              </span>
-              <span>
-                Clinic<em>OS</em>
-              </span>
-            </Link>
-            <nav
-              className={cn('nav', menuOpen && 'open')}
-              id="navigation"
-              aria-label="Asosiy navigatsiya"
-              onClick={onNavClick}
-            >
-              <a href="#imkoniyatlar">Imkoniyatlar</a>
-              <a href="#jarayon">Qanday ishlaydi</a>
-              <a href="#nazorat">Moliya nazorati</a>
-              <a href="#savollar">Savollar</a>
-            </nav>
-            <div className="header-actions">
-              {/* Til va rejim — har sahifada tepada, bir joyda */}
-              <PublicControls />
-              <Link className="login-button" to="/login">
-                <Icon name="login" /> Kirish
-              </Link>
-              <Link className="button" to="/login?mode=register">
-                Ro‘yxatdan o‘tish <Icon name="arrow" />
-              </Link>
-              <button
-                ref={menuButton}
-                type="button"
-                className="menu-button"
-                aria-label={menuOpen ? 'Menyuni yopish' : 'Menyuni ochish'}
-                aria-controls="navigation"
-                aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((open) => !open)}
-              >
-                <Icon name="menu" />
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <main id="main">
+    <StoryShell
+      title="Klinikangizga tartib. Sizga xotirjamlik."
+      registerTo={REGISTER}
+      nav={[
+        { href: '#imkoniyatlar', label: 'Imkoniyatlar' },
+        { href: '#bemor', label: 'Bemorlar uchun' },
+        { href: '#nazorat', label: 'Moliya nazorati' },
+        { href: '#savollar', label: 'Savollar' },
+      ]}
+    >
+      <Lang>
+        <>
           {/* ================= HERO ================= */}
           <section className="v3-hero" aria-labelledby="v3-title">
             <div className="v3-wrap">
               <div className="v3-hero-heading">
+                <AudienceSwitch current="clinic" />
                 <span className="v3-label">Xususiy klinikalar uchun yaratilgan</span>
                 <h1 id="v3-title">
                   Klinikangizga tartib.
@@ -177,11 +90,11 @@ export function AboutPage() {
                   Klinikangizdagi har bir jarayonni aniq ko‘rib boring.
                 </p>
                 <div className="v3-hero-actions">
-                  <a className="button" href="#demo">
-                    Tizimni ko‘rib chiqish <Icon name="arrow" />
-                  </a>
-                  <a className="button light" href="#jarayon">
-                    Qanday ishlaydi?
+                  <Link className="button" to={REGISTER}>
+                    14 kun bepul sinash <Icon name="arrow" />
+                  </Link>
+                  <a className="button light" href="#demo">
+                    Tizimni ko‘rib chiqish
                   </a>
                 </div>
                 <span className="v3-hero-annotation">
@@ -323,7 +236,10 @@ export function AboutPage() {
                       <br />
                       Kerakli odamga.
                     </h3>
-                    <p>Yangi qabul haqida shifokor o‘z telefonidan xabar topadi.</p>
+                    <p>
+                      Yangi qabul haqida shifokor telefonidan xabar oladi. Tugmani bossa — ko‘rik
+                      formasi ochiladi.
+                    </p>
                   </div>
                   <div className="v3-telegram-art">
                     <div className="v3-phone-msg">
@@ -356,8 +272,8 @@ export function AboutPage() {
                       Tasavvur to‘liq.
                     </h3>
                     <p>
-                      Avvalgi tashriflar, ko‘rik qaydlari va to‘lovlar — bemorning yagona
-                      profilida.
+                      Avvalgi tashriflar, tashxis, rentgen suratlari va to‘lovlar — bemorning
+                      yagona profilida.
                     </p>
                   </div>
                   <div className="v3-record">
@@ -389,7 +305,10 @@ export function AboutPage() {
                       <br />
                       ishini ko‘radi.
                     </h3>
-                    <p>Vazifalar taqsimlangan. Har bir rolga kerakli imkoniyatlar ochilgan.</p>
+                    <p>
+                      Shifokor ko‘rik yozadi, registrator to‘lov oladi, siz nazorat qilasiz. Hech
+                      kim o‘z ishini o‘zi tekshirmaydi.
+                    </p>
                   </div>
                   <div className="v3-permissions">
                     <div className="v3-role-chip">
@@ -458,6 +377,71 @@ export function AboutPage() {
             </div>
           </section>
 
+          {/* ================= BEMOR UCHUN ================= */}
+          <section className="v3-section" id="bemor" aria-labelledby="lx-patient-title">
+            <div className="v3-wrap lx-split">
+              <div className="lx-split-copy">
+                <span className="v3-label">Bemor kelmay qolmasin</span>
+                <h2 id="lx-patient-title">
+                  Eslatma o‘zi boradi.
+                  <br />
+                  Bemor o‘zi tasdiqlaydi.
+                </h2>
+                <p>
+                  Qabuldan 3 kun va 1 kun oldin bemorga Telegram orqali eslatma yuboriladi.
+                  «Qabul qildim» tugmasini bossa, registraturada qabul tasdiqlangan bo‘lib
+                  ko‘rinadi.
+                </p>
+                <ul className="lx-points light">
+                  <li>
+                    <Icon name="phone" /> Bemor kabineti: tashriflar tarixi va qarzi — telefonida
+                  </li>
+                  <li>
+                    <Icon name="star" /> Tashrifdan keyin anonim izoh — shifokor reytingiga qo‘shiladi
+                  </li>
+                  <li>
+                    <Icon name="shield" /> Raqam Telegram orqali tasdiqlanadi — begona odam kira olmaydi
+                  </li>
+                </ul>
+              </div>
+              <div className="lx-split-art" aria-hidden="true">
+                <div className="lx-phone-stack">
+                  <div className="v3-phone-msg">
+                    <div className="v3-msg-head">
+                      <Icon name="telegram" />
+                      <div>
+                        Bemor kabineti<small>Eslatma · Namuna</small>
+                      </div>
+                    </div>
+                    <p>
+                      Assalomu alaykum, Madina! 3 kundan keyin — seshanba, soat 10:00 da qabulingiz
+                      bor.
+                    </p>
+                    <div className="v3-msg-action">Qabul qildim</div>
+                  </div>
+                  <div className="v3-phone-msg lx-phone-second">
+                    <div className="v3-msg-head">
+                      <Icon name="check" />
+                      <div>
+                        Registratura<small>Bugungi qabullar · Namuna</small>
+                      </div>
+                    </div>
+                    <div className="v3-mini-row">
+                      <div className="v3-mini-person">
+                        <span className="v3-avatar">MR</span>
+                        <div>
+                          <strong>Madina Rasulova</strong>
+                          <small>Seshanba · 10:00</small>
+                        </div>
+                      </div>
+                      <span className="v3-state">Tasdiqlangan</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* ================= MOLIYA NAZORATI ================= */}
           <section className="v3-section v3-money" id="nazorat" aria-labelledby="v3-money-title">
             <div className="v3-wrap v3-money-grid">
@@ -472,9 +456,17 @@ export function AboutPage() {
                   Tizimdagi tushum va kassadagi naqd pulni solishtiring. Tafovut bo‘lsa, qayerdan
                   kelganini tekshiring.
                 </p>
-                <div className="v3-money-proof">
-                  <Icon name="shield" /> To‘lov qaydi va nazorat — alohida vazifalar.
-                </div>
+                <ul className="lx-points">
+                  <li>
+                    <Icon name="lock" /> Yozilgan to‘lov o‘chirilmaydi — xato faqat qaytarish yozuvi bilan tuzatiladi
+                  </li>
+                  <li>
+                    <Icon name="wallet" /> Qarzdorlar ro‘yxati to‘lovlardan o‘zi hisoblanadi
+                  </li>
+                  <li>
+                    <Icon name="bell" /> Ko‘rikdan keyin registratorga to‘lov haqida xabar boradi
+                  </li>
+                </ul>
               </div>
               <div className="v3-money-panel">
                 <div className="v3-money-top">
@@ -515,30 +507,98 @@ export function AboutPage() {
                     boshqa ishlari ham.
                   </h2>
                 </div>
-                <p>
-                  Kundalik qabullardan tashqari, statsionar va dorixona uchun ham alohida
-                  bo‘limlar.
-                </p>
+                <p>Kundalik qabuldan tashqari — rahbarga kerak bo‘ladigan ishlar ham bir joyda.</p>
               </div>
-              <div className="v3-extras">
-                <article className="v3-extra">
-                  <div className="v3-extra-visual">
-                    <Icon name="bed" />
-                  </div>
-                  <div>
-                    <h3>Statsionar</h3>
-                    <p>Palatalar, bo‘sh yotoqlar va yotqizilgan bemorlarni kuzatib boring.</p>
-                  </div>
-                </article>
-                <article className="v3-extra">
-                  <div className="v3-extra-visual">
-                    <Icon name="grid" />
-                  </div>
-                  <div>
-                    <h3>Dorixona</h3>
-                    <p>Dori zaxirasi, xarid va savdolarni alohida ish joyida boshqaring.</p>
-                  </div>
-                </article>
+              <FeatureGrid
+                items={[
+                  {
+                    icon: 'bed',
+                    title: 'Statsionar',
+                    text: 'Palatalar, bo‘sh yotoqlar va yotqizilgan bemorlar. Yotgan kunlar bo‘yicha hisob o‘zi chiqadi.',
+                  },
+                  {
+                    icon: 'face',
+                    title: 'Yuz bilan davomat',
+                    text: 'Xodim ishga kelganini planshet kamerasi orqali belgilaydi. Har bir belgilash jurnalga yoziladi.',
+                  },
+                  {
+                    icon: 'star',
+                    title: 'Izohlar va reyting',
+                    text: 'Bemor tashrifdan keyin anonim baho qoldiradi. Har bir shifokorning reytingi ko‘rinadi.',
+                  },
+                  {
+                    icon: 'pill',
+                    title: 'Onlayn retsept',
+                    text: 'Shifokor retseptni tizimda yozadi — bemorga uchta apteka narxi bilan taklif qilinadi.',
+                  },
+                  {
+                    icon: 'image',
+                    title: 'Rentgen va suratlar',
+                    text: 'Rentgen yoki tish surati tashrifga biriktiriladi va keyingi shifokorga ham ko‘rinadi.',
+                  },
+                  {
+                    icon: 'wallet',
+                    title: 'Shifokor qo‘yadigan narx',
+                    text: 'Operatsiya kabi xizmatlarga oraliq narx qo‘yiladi — aniq summani shifokor ko‘rikdan keyin yozadi.',
+                  },
+                  {
+                    icon: 'trend',
+                    title: 'Tahlil va prognoz',
+                    text: 'Tushum, shifokorlar ishi, kelmay qolganlar ulushi va keyingi oylar prognozi.',
+                  },
+                  {
+                    icon: 'file',
+                    title: 'Excel va Google Sheets',
+                    text: 'Bemorlar va xizmatlar jadvaldan ko‘chiriladi. Hisobotlar Excel’da ochiladigan faylga yoki Google Sheets’ga.',
+                  },
+                ]}
+              />
+            </div>
+          </section>
+
+          {/* ================= QANDAY BOSHLAYMIZ ================= */}
+          <section className="v3-section v3-process" id="boshlash" aria-labelledby="lx-start-title">
+            <div className="v3-wrap">
+              <div className="v3-section-heading">
+                <div>
+                  <span className="v3-label">Qanday boshlaymiz?</span>
+                  <h2 id="lx-start-title">
+                    Bugun ro‘yxatdan o‘ting,
+                    <br />
+                    ertaga ishlang.
+                  </h2>
+                </div>
+                <p>Dastur o‘rnatilmaydi — kompyuter, planshet yoki telefonda brauzer orqali ishlaydi.</p>
+              </div>
+              <StartSteps
+                steps={[
+                  {
+                    icon: 'phone',
+                    title: 'Ro‘yxatdan o‘ting',
+                    text: 'Raqamingiz Telegram orqali tasdiqlanadi. Yo‘nalishni tanlaysiz — bo‘limlar shunga moslab ochiladi.',
+                  },
+                  {
+                    icon: 'file',
+                    title: 'Ma’lumotlarni ko‘chiring',
+                    text: 'Bemorlar va xizmatlar ro‘yxatini Excel jadvalidan (CSV) yuklang.',
+                  },
+                  {
+                    icon: 'users',
+                    title: 'Jamoani qo‘shing',
+                    text: 'Shifokor va registratorga o‘z logini. Shifokor Telegram’ga bir tugma bilan ulanadi.',
+                  },
+                  {
+                    icon: 'rocket',
+                    title: '14 kun bepul ishlang',
+                    text: 'Karta ma’lumoti so‘ralmaydi. Sinov davomida menejerimiz siz bilan bog‘lanadi.',
+                  },
+                ]}
+              />
+              <div className="lx-chips">
+                <span>Umumiy klinika</span>
+                <span>Stomatologiya</span>
+                <span>Ko‘z klinikasi</span>
+                <span>Laboratoriya</span>
               </div>
             </div>
           </section>
@@ -553,45 +613,64 @@ export function AboutPage() {
                   <br />
                   oldin.
                 </h2>
-                <p>Mahsulot bilan tanishishda kerak bo‘ladigan asosiy javoblar.</p>
+                <p>Klinika egalari uchrashuvda eng ko‘p so‘raydigan savollar.</p>
               </div>
-              <div>
-                <details open>
-                  <summary>ClinicOS kimlar uchun mo‘ljallangan?</summary>
-                  <p>
-                    O‘zbekistondagi xususiy klinikalar uchun. Klinika egasi, registrator va
-                    shifokor o‘z vazifasiga mos ish joyidan foydalanadi.
-                  </p>
-                </details>
-                <details>
-                  <summary>Qaysi tillarda ishlash mumkin?</summary>
-                  <p>Mahsulot interfeysida o‘zbek, rus va ingliz tillari mavjud.</p>
-                </details>
-                <details>
-                  <summary>Xodimlar barcha ma’lumotlarni ko‘radimi?</summary>
-                  <p>
-                    Kirish huquqlari rolga bog‘liq. Shifokor ko‘rikni qayd etadi, registrator
-                    to‘lovni qabul qiladi, klinika egasi esa natijalarni nazorat qiladi.
-                  </p>
-                </details>
-                <details>
-                  <summary>Hisobim bor. Qayerdan kiraman?</summary>
-                  <p>
-                    Yuqoridagi «Kirish» tugmasini bosing. U sizni{' '}
-                    <Link className="text-button" to="/login">
-                      hisobga kirish sahifasiga
-                    </Link>{' '}
-                    olib o‘tadi.
-                  </p>
-                </details>
-                <details>
-                  <summary>Demodagi raqamlar haqiqiy ma’lumotlarmi?</summary>
-                  <p>
-                    Yo‘q. Sahifadagi ismlar, grafik va summalar imkoniyatlarni ko‘rsatish uchun
-                    tayyorlangan namunalardir.
-                  </p>
-                </details>
-              </div>
+              <FaqList
+                items={[
+                  {
+                    q: 'Narxi qancha? Bepul sinab ko‘rsa bo‘ladimi?',
+                    a: 'Birinchi 14 kun — bepul, karta ma’lumoti so‘ralmaydi. Keyin tarif 3, 6 yoki 12 oyga olinadi. Aniq narxni menejerimiz klinikangiz hajmiga qarab aytadi.',
+                  },
+                  {
+                    q: 'Qancha vaqtda ishga tushiramiz?',
+                    a: 'Ro‘yxatdan o‘tish bir necha daqiqa. Bemorlar va xizmatlarni Excel jadvalidan yuklab, xodimlarga login bersangiz — o‘sha kuniyoq qabul yozishni boshlaysiz.',
+                  },
+                  {
+                    q: 'Bemorlar ro‘yxatini qaytadan kiritib chiqamizmi?',
+                    a: 'Yo‘q. Bemorlar va xizmatlar ro‘yxati Excel jadvalidan (CSV fayl) yuklanadi. Tizim avval nima qo‘shilishini ko‘rsatadi, bor yozuvlar esa takrorlanmaydi.',
+                  },
+                  {
+                    q: 'Shifokor kompyuterdan uzoqda bo‘lsa-chi?',
+                    a: 'Shifokor ClinicOS’ni Telegram ichida, telefonidan ochadi. Yangi qabul haqida xabar keladi, tugmani bossa ko‘rik formasi ochiladi.',
+                  },
+                  {
+                    q: 'Registrator pulni yashirsa, bilamanmi?',
+                    a: 'To‘lovni registrator yozadi, nazoratni siz qilasiz. Yozilgan to‘lov o‘chirilmaydi — xato faqat qaytarish yozuvi bilan tuzatiladi. Kun oxirida tizimdagi naqd tushum kassadagi pul bilan solishtiriladi.',
+                  },
+                  {
+                    q: 'Bemorlar qabulga kelmay qolsa-chi?',
+                    a: 'Qabuldan 3 kun va 1 kun oldin bemorga Telegram orqali eslatma boradi va u qabulni tasdiqlaydi. Kelmay qolganlar alohida belgilanadi — ularning ulushini hisobotda ko‘rasiz.',
+                  },
+                  {
+                    q: 'Xodimlar barcha ma’lumotlarni ko‘radimi?',
+                    a: 'Kirish huquqlari rolga bog‘liq. Shifokor ko‘rikni qayd etadi, registrator to‘lovni qabul qiladi, klinika egasi esa natijalarni nazorat qiladi.',
+                  },
+                  {
+                    q: 'Ma’lumotlarimiz xavfsizmi?',
+                    a: 'Har bir klinikaning ma’lumoti alohida — boshqa klinika sizning bemorlaringizni ko‘rmaydi. Fayllar yopiq omborda saqlanadi, ishdan ketgan xodimning kirishi esa o‘sha zahoti yopiladi.',
+                  },
+                  {
+                    q: 'Qaysi tillarda ishlash mumkin?',
+                    a: 'Mahsulot interfeysida o‘zbek, rus va ingliz tillari mavjud.',
+                  },
+                  {
+                    q: 'Hisobim bor. Qayerdan kiraman?',
+                    a: (
+                      <>
+                        Yuqoridagi «Kirish» tugmasini bosing. U sizni{' '}
+                        <Link className="text-button" to="/login">
+                          hisobga kirish sahifasiga
+                        </Link>{' '}
+                        olib o‘tadi.
+                      </>
+                    ),
+                  },
+                  {
+                    q: 'Demodagi raqamlar haqiqiy ma’lumotlarmi?',
+                    a: 'Yo‘q. Sahifadagi ismlar, grafik va summalar imkoniyatlarni ko‘rsatish uchun tayyorlangan namunalardir.',
+                  },
+                ]}
+              />
             </div>
           </section>
 
@@ -599,51 +678,23 @@ export function AboutPage() {
             <div className="v3-wrap v3-final">
               <div>
                 <h2>
-                  Klinikangizga
+                  Klinikangizni
                   <br />
-                  bir nazar yetarli.
+                  14 kun bepul sinang.
                 </h2>
-                <p>ClinicOS ish joylari bilan tanishishni boshlang.</p>
+                <p>Ro‘yxatdan o‘tish bir necha daqiqa. Karta ma’lumoti so‘ralmaydi.</p>
               </div>
               <div className="v3-final-actions">
-                <a className="button" href="#demo">
-                  Demoni ko‘rish <Icon name="arrow" />
-                </a>
+                <Link className="button" to={REGISTER}>
+                  Bepul boshlash <Icon name="arrow" />
+                </Link>
                 <Link to="/login">Allaqachon hisobingiz bormi? Kirish ↗</Link>
               </div>
             </div>
           </section>
-        </main>
-
-        <footer className="v3-footer">
-          <div className="v3-wrap">
-            <div className="v3-footer-top">
-              <div>
-                <Link className="logo" to="/login" aria-label="ClinicOS bosh sahifa">
-                  <span className="logo-mark">
-                    <Icon name="pulse" />
-                  </span>
-                  <span>
-                    Clinic<em>OS</em>
-                  </span>
-                </Link>
-                <p>Qabuldan kassagacha — bitta tizimda.</p>
-              </div>
-              <nav className="v3-footer-nav" aria-label="Pastki navigatsiya">
-                <a href="#imkoniyatlar">Imkoniyatlar</a>
-                <a href="#jarayon">Qanday ishlaydi</a>
-                <a href="#savollar">Savollar</a>
-                <Link to="/login">Kirish</Link>
-              </nav>
-            </div>
-            <div className="v3-footer-bottom">
-              <span>© {new Date().getFullYear()} ClinicOS</span>
-              <span>Xususiy klinikalar uchun boshqaruv tizimi.</span>
-            </div>
-          </div>
-        </footer>
-      </div>
-    </Lang>
+        </>
+      </Lang>
+    </StoryShell>
   )
 }
 
@@ -1079,275 +1130,4 @@ function Flow({ step }: { step: Step }) {
       </>
     </Lang>
   )
-}
-
-/* ------------------------------------------------------------------ */
-/* Harakat                                                             */
-/* ------------------------------------------------------------------ */
-
-/**
- * Rol yoki bosqich almashganda — yangi mazmun chizilgach — harakat
- * qatlamiga xabar beradi. Birinchi chizishda xabar yo'q: prototipda
- * ham boshlang'ich holat animatsiyasiz turadi.
- */
-function useDemoChange(value: string, target: RefObject<HTMLElement | null>) {
-  const previous = useRef(value)
-  useEffect(() => {
-    if (previous.current === value) return
-    previous.current = value
-    if (target.current) {
-      document.dispatchEvent(new CustomEvent(DEMO_CHANGE, { detail: { target: target.current } }))
-    }
-  }, [value, target])
-}
-
-/**
- * HARAKAT QATLAMI — TIZIM ICHIDAGI HARAKAT TILI.
- *
- * Ilgari bu yerda prototipdagi `about-v3.js` ning o'z egri chizig'i
- * va o'z masofasi bor edi. Endi ish panellaridagi bilan BIR XIL:
- * tanishuv sahifasidan ichkariga kirgan odam boshqa mahsulotga
- * tushgandek bo'lmasligi kerak.
- *
- * Ya'ni (`index.css` dagi `admin-enter`, `admin-pop`, `count-in`):
- *
- * - kirish: 22px pastdan, 0.97 masshtab va yengil xiralik bilan;
- * - ikonkalar sakrab joyiga tushadi (prujinali egri);
- * - raqamlar pastdan chiqib o'tiradi;
- * - chiziq chapdan o'ngga to'ladi;
- * - cheksiz takrorlanadigan harakat yo'q (fondagi sekin dog'lardan
- *   boshqa — u ham `transform`, sahifani qayta chizmaydi).
- *
- * "Harakatni kamaytirish" yoqilgan bo'lsa hech narsa o'ynamaydi, ish
- * paytida yoqilsa esa davom etayotganlari o'sha zahoti to'xtatiladi.
- * CSS o'tishlari `story.css` dagi media so'rov bilan o'chadi.
- */
-function useStoryMotion(rootRef: RefObject<HTMLElement | null>) {
-  useEffect(() => {
-    const root = rootRef.current
-    if (!root) return
-
-    const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const active = new Set<Animation>()
-    const chartSeen = new WeakSet<Element>()
-    /* Ish panellaridagi egri chiziqlar (`--ease-out-soft`, `--ease-spring`) */
-    const ease = 'cubic-bezier(0.16, 1, 0.3, 1)'
-    const spring = 'cubic-bezier(0.34, 1.4, 0.64, 1)'
-
-    function play(
-      element: Element | null | undefined,
-      frames: Keyframe[],
-      options: KeyframeAnimationOptions = {},
-    ) {
-      if (preference.matches || !element || !('animate' in element)) return
-      const animation = element.animate(frames, {
-        duration: 700,
-        easing: ease,
-        fill: 'backwards',
-        ...options,
-      })
-      active.add(animation)
-      animation.finished.catch(() => {}).finally(() => active.delete(animation))
-      return animation
-    }
-
-    /**
-     * Kirish — `admin-enter` ning aynan o'zi.
-     *
-     * Xiralik (`blur`) ataylab: karta "chizilib" emas, fokusga
-     * kelgandek chiqadi. Panellarda shu ish qilingan.
-     */
-    function enter(element: Element | null | undefined, delay = 0, distance = 14) {
-      play(
-        element,
-        [
-          { opacity: 0, translate: `0 ${distance}px`, scale: '0.97', filter: 'blur(5px)' },
-          { offset: 0.6, filter: 'blur(0px)' },
-          { opacity: 1, translate: '0 0', scale: '1', filter: 'blur(0px)' },
-        ],
-        { duration: 760, delay },
-      )
-
-      /* Ikonka sakrab tushadi — `admin-pop` */
-      element
-        ?.querySelectorAll?.('.v3-card-tag .icon, .v3-extra-visual .icon')
-        .forEach((icon, index) =>
-          play(
-            icon,
-            [
-              { opacity: 0, scale: '0.4', rotate: '-14deg' },
-              { opacity: 1, scale: '1', rotate: '0deg' },
-            ],
-            { duration: 640, delay: delay + 160 + index * 80, easing: spring },
-          ),
-        )
-
-      /* Raqamlar — `count-in` */
-      element
-        ?.querySelectorAll?.('.v3-metric strong, .v3-money-panel strong')
-        .forEach((value, index) =>
-          play(
-            value,
-            [
-              { opacity: 0, translate: '0 6px', scale: '0.96' },
-              { opacity: 1, translate: '0 0', scale: '1' },
-            ],
-            { duration: 620, delay: delay + 220 + index * 90, easing: spring },
-          ),
-        )
-    }
-
-    function drawChart(svg: Element) {
-      if (chartSeen.has(svg)) return
-      chartSeen.add(svg)
-      const line = svg.querySelector<SVGPathElement>('path[stroke="#5387f5"]')
-      if (!line) return
-      const length = line.getTotalLength()
-      play(
-        line,
-        [
-          { strokeDasharray: String(length), strokeDashoffset: String(length) },
-          { strokeDasharray: String(length), strokeDashoffset: '0' },
-        ],
-        /* Panellardagi `draw-line` bilan bir xil vaqt */
-        { duration: 900 },
-      )
-    }
-
-    const observer =
-      'IntersectionObserver' in window
-        ? new IntersectionObserver(
-            (entries) => {
-              for (const entry of entries) {
-                if (!entry.isIntersecting) continue
-                const element = entry.target as HTMLElement
-                observer?.unobserve(element)
-                if (element.matches('.v3-chart-svg')) drawChart(element)
-                else enter(element, Number(element.dataset.motionDelay || 0))
-              }
-            },
-            { threshold: 0.12 },
-          )
-        : null
-
-    const hero = root.querySelector('.v3-hero-heading')
-    if (hero) {
-      Array.from(hero.children)
-        .filter((element) => !element.matches('.v3-hero-annotation'))
-        .forEach((element, index) => enter(element, index * 90, 12))
-    }
-
-    root
-      .querySelectorAll<HTMLElement>(
-        '.v3-workspace,.v3-section-heading,.v3-card,.v3-process-copy,.v3-process-stage,.v3-money-copy,.v3-money-panel,.v3-extra,.v3-faq-copy,.v3-final',
-      )
-      .forEach((element, index) => {
-        if (element.matches('.v3-card,.v3-extra')) {
-          /* Panellardagi kartalar navbati bilan chiqqanidek */
-          element.dataset.motionDelay = String((index % 2) * 90)
-        }
-        observer?.observe(element)
-      })
-    root.querySelectorAll('.v3-chart-svg').forEach((svg) => observer?.observe(svg))
-
-    function onDemoChange(event: Event) {
-      const target = (event as CustomEvent<{ target: HTMLElement }>).detail.target
-      target.getAnimations().forEach((animation) => animation.cancel())
-      play(
-        target,
-        [
-          { opacity: 0.45, translate: '0 8px' },
-          { opacity: 1, translate: '0 0' },
-        ],
-        { duration: 300 },
-      )
-      target.querySelectorAll('.v3-metric').forEach((item, index) => {
-        play(
-          item,
-          [
-            { opacity: 0.35, translate: '0 5px' },
-            { opacity: 1, translate: '0 0' },
-          ],
-          { duration: 280, delay: index * 35 },
-        )
-      })
-      target.querySelectorAll('.v3-chart-svg').forEach((svg) => observer?.observe(svg))
-      const confirmation = target.querySelector('.v3-flow-confirm')
-      if (confirmation) {
-        play(
-          confirmation,
-          [
-            { opacity: 0, translate: '0 6px' },
-            { opacity: 1, translate: '0 0' },
-          ],
-          { duration: 280, delay: 90 },
-        )
-      }
-    }
-
-    const details = Array.from(root.querySelectorAll('details'))
-    const onToggle = (event: Event) => {
-      const element = event.currentTarget as HTMLDetailsElement
-      if (element.open) enter(element.querySelector('p'), 0, 5)
-    }
-
-    function onPreference(event: MediaQueryListEvent) {
-      if (event.matches) active.forEach((animation) => animation.cancel())
-    }
-
-    document.addEventListener(DEMO_CHANGE, onDemoChange)
-    details.forEach((element) => element.addEventListener('toggle', onToggle))
-    preference.addEventListener('change', onPreference)
-
-    return () => {
-      observer?.disconnect()
-      document.removeEventListener(DEMO_CHANGE, onDemoChange)
-      details.forEach((element) => element.removeEventListener('toggle', onToggle))
-      preference.removeEventListener('change', onPreference)
-      active.forEach((animation) => animation.cancel())
-    }
-  }, [rootRef])
-}
-
-/**
- * SICHQONCHA ORTIDAN YURADIGAN YORUG'LIK — kartalar ustida.
- *
- * Ish panellarida shu effekt bor (`useCardSpotlight`) va tanishuv
- * sahifasi undan farq qilib turmasligi kerak: odam ichkariga
- * kirganda bir xil "his" bo'lishi kerak.
- *
- * Bitta tinglovchi ildizda turadi — har bir kartaga alohida
- * qo'yilsa, o'nlab tinglovchi paydo bo'lardi. Kadrga bir martadan
- * ko'p yozilmaydi, barmoqli ekranda esa umuman ishlamaydi: u
- * yerda "sichqoncha ortidan" degan narsaning ma'nosi yo'q.
- */
-function useStorySpotlight(rootRef: RefObject<HTMLElement | null>) {
-  useEffect(() => {
-    const root = rootRef.current
-    if (!root) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-
-    let frame = 0
-
-    const onMove = (event: PointerEvent) => {
-      if (event.pointerType !== 'mouse') return
-      const target = event.target as Element | null
-      const { clientX, clientY } = event
-
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        const card = target?.closest<HTMLElement>('.v3-card, .v3-extra, .v3-final')
-        if (!card) return
-        const rect = card.getBoundingClientRect()
-        card.style.setProperty('--mx', `${clientX - rect.left}px`)
-        card.style.setProperty('--my', `${clientY - rect.top}px`)
-      })
-    }
-
-    root.addEventListener('pointermove', onMove, { passive: true })
-    return () => {
-      root.removeEventListener('pointermove', onMove)
-      cancelAnimationFrame(frame)
-    }
-  }, [rootRef])
 }

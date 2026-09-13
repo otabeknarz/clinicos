@@ -27,6 +27,18 @@ export type PublicIconName =
   | 'menu'
   | 'eye'
   | 'chevron'
+  | 'pill'
+  | 'box'
+  | 'file'
+  | 'scan'
+  | 'clock'
+  | 'star'
+  | 'face'
+  | 'trend'
+  | 'image'
+  | 'bell'
+  | 'phone'
+  | 'rocket'
 
 export function Icon({ name }: { name: PublicIconName }) {
   return (
@@ -119,6 +131,56 @@ export function IconSprite() {
         <symbol id="i-eye" viewBox="0 0 24 24">
           <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" />
           <circle cx="12" cy="12" r="3" />
+        </symbol>
+        {/* Apteka va sotuv bo'limlari uchun — xuddi shu chiziq uslubida */}
+        <symbol id="i-pill" viewBox="0 0 24 24">
+          <rect x="2.5" y="8.5" width="19" height="7" rx="3.5" transform="rotate(-45 12 12)" />
+          <path d="m8.6 8.6 6.8 6.8" />
+        </symbol>
+        <symbol id="i-box" viewBox="0 0 24 24">
+          <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
+          <path d="m4 7.5 8 4.5 8-4.5M12 12v9" />
+        </symbol>
+        <symbol id="i-file" viewBox="0 0 24 24">
+          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+          <path d="M14 3v5h5M9 13h6m-6 4h4" />
+        </symbol>
+        <symbol id="i-scan" viewBox="0 0 24 24">
+          <path d="M4 8V5a1 1 0 0 1 1-1h3m8 0h3a1 1 0 0 1 1 1v3m0 8v3a1 1 0 0 1-1 1h-3m-8 0H5a1 1 0 0 1-1-1v-3" />
+          <path d="M8 9v6m3-6v6m3-6v6m3-6v6" />
+        </symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3 2" />
+        </symbol>
+        <symbol id="i-star" viewBox="0 0 24 24">
+          <path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" />
+        </symbol>
+        <symbol id="i-face" viewBox="0 0 24 24">
+          <path d="M4 8V5a1 1 0 0 1 1-1h3m8 0h3a1 1 0 0 1 1 1v3m0 8v3a1 1 0 0 1-1 1h-3m-8 0H5a1 1 0 0 1-1-1v-3" />
+          <path d="M9 10h.01M15 10h.01M9 15a4 4 0 0 0 6 0" />
+        </symbol>
+        <symbol id="i-trend" viewBox="0 0 24 24">
+          <path d="m3 17 6-6 4 4 8-8" />
+          <path d="M15 7h6v6" />
+        </symbol>
+        <symbol id="i-image" viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="16" rx="3" />
+          <circle cx="9" cy="10" r="2" />
+          <path d="m21 16-5-5-9 9" />
+        </symbol>
+        <symbol id="i-bell" viewBox="0 0 24 24">
+          <path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z" />
+          <path d="M10 21h4" />
+        </symbol>
+        <symbol id="i-phone" viewBox="0 0 24 24">
+          <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
+          <path d="M11 18h2" />
+        </symbol>
+        <symbol id="i-rocket" viewBox="0 0 24 24">
+          <path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2" />
+          <path d="M9 15 6 12c2-5 6-9 14-9 0 8-4 12-9 14z" />
+          <circle cx="14.5" cy="9.5" r="1.5" />
         </symbol>
       </defs>
     </svg>
