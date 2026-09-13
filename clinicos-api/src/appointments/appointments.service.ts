@@ -268,6 +268,14 @@ export class AppointmentsService {
         `<b>Qachon:</b> ${escapeHtml(whenInWords(row.startsAt))}`,
       ].join('\n'),
       {
+        /*
+          IKKINCHI QATORDA "TANISHIB CHIQDIM".
+
+          Xabarlar YIG'ILIB QOLMASLIGI kerak: shifokor kunlik
+          qabullarni o'qib chiqadi va tugmani bosadi — xabar
+          o'chadi. Aks holda bir haftada suhbat eslatmalarga
+          to'lib, keraklisi ko'rinmay qolardi.
+        */
         inline_keyboard: [
           [
             {
@@ -275,6 +283,7 @@ export class AppointmentsService {
               web_app: { url: this.telegram.appLink(`/tashrif/${row.id}`) },
             },
           ],
+          [{ text: 'Tanishib chiqdim', callback_data: 'ack' }],
         ],
       },
     )

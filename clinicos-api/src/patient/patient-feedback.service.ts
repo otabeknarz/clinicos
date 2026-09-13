@@ -4,6 +4,8 @@ import { toApiDateTime } from '../common/api-enum'
 import { RequestContext } from '../common/request-context'
 import { feedbackRevealDate } from '../feedback/feedback.service'
 import { PrismaService } from '../prisma/prisma.service'
+import { escapeHtml } from '../common/telegram-text'
+import { OwnerAlertsService } from '../telegram/owner-alerts.service'
 import { StorageService } from '../storage/storage.service'
 import { CabinetFeedbackDto } from './patient.dto'
 
@@ -29,6 +31,7 @@ export class PatientFeedbackService {
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
     private readonly storage: StorageService,
+    private readonly alerts: OwnerAlertsService,
   ) {}
 
   private get db() {
@@ -163,6 +166,28 @@ export class PatientFeedbackService {
       },
       select: { id: true, rating: true, createdAt: true },
     })
+
+    /*
+      PAST BAHO EGAGA DARHOL BORADI — klinika ichidagi izoh bilan
+      bir xil qoida (`feedback.service.ts`). Matnda BEMOR ISMI
+      YO'Q: kabinetdan kelgan fikr doim anonim, va xabar uni
+      ochib qo'ymasligi kerak.
+    */
+    if (dto.rating <= 2) {
+      void this.alerts.send(
+        clinicId,
+        [
+          '<b>Past baholangan izoh</b>',
+          '',
+          `<b>Baho:</b> ${dto.rating} / 5`,
+          dto.text.trim() ? `<b>Izoh:</b> ${escapeHtml(dto.text.trim())}` : '',
+          '',
+          'Izohlar bo‘limida ochib ko‘ring.',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      )
+    }
 
     return { id: row.id, rating: row.rating, createdAt: toApiDateTime(row.createdAt)! }
   }

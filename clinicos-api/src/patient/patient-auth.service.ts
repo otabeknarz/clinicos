@@ -140,4 +140,32 @@ export class PatientAuthService {
     this.log.log(`Bemor kabineti: raqam bo‘yicha ${count} ta karta bog‘landi`)
     return count
   }
+
+  /**
+   * BEMOR QABULNI TASDIQLADI (botdagi tugma).
+   *
+   * Qabul `CONFIRMED` ga o'tadi va registratura ertalab kim
+   * tasdiqlaganini ko'radi — qo'ng'iroq faqat qolganlariga
+   * qilinadi.
+   *
+   * QABUL AYNAN SHU ODAMNIKI EKANI TEKSHIRILADI: `telegramUserId`
+   * qabulning bemoriga to'g'ri kelmasa, hech narsa o'zgarmaydi.
+   * Aks holda birovning qabulini tasdiqlab qo'yish mumkin bo'lardi
+   * — tugmadagi id ko'rinib turadi.
+   *
+   * FAQAT OLDINGA: `SCHEDULED` dan `CONFIRMED` ga. Bekor qilingan
+   * yoki allaqachon yakunlangan qabul tugma bilan tirilmaydi.
+   */
+  async confirmAppointment(appointmentId: string, telegramUserId: string): Promise<boolean> {
+    const { count } = await this.prisma.acrossAllClinics().appointment.updateMany({
+      where: {
+        id: appointmentId,
+        status: 'SCHEDULED',
+        patient: { telegramUserId },
+      },
+      data: { status: 'CONFIRMED' },
+    })
+
+    return count > 0
+  }
 }

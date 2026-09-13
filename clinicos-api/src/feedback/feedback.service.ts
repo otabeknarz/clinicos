@@ -4,6 +4,8 @@ import { Feedback, Prisma } from '@prisma/client'
 import { toApi, toApiDate, toApiDateTime, toDb } from '../common/api-enum'
 import { paginated } from '../common/pagination'
 import { RequestContext } from '../common/request-context'
+import { OwnerAlertsService } from '../telegram/owner-alerts.service'
+import { escapeHtml } from '../common/telegram-text'
 import { PrismaService } from '../prisma/prisma.service'
 import {
   FeedbackInputDto,
@@ -46,6 +48,7 @@ export class FeedbackService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
+    private readonly alerts: OwnerAlertsService,
   ) {}
 
   private get db() {
@@ -187,6 +190,31 @@ export class FeedbackService {
         revealAt,
       },
     })
+
+    /*
+      PAST BAHO EGAGA DARHOL BORADI.
+
+      Yomon izoh eng tez sovuydigan narsa: ertasiga qo'ng'iroq
+      qilingan bemor qaytadi, bir hafta o'tib qilingani esa
+      qaytmaydi. Ega panelga har kuni kirmaydi, shuning uchun
+      xabar o'zi boradi. SHIFOKORGA emas — u izohni 1-14 kundan
+      keyin, anonim ko'rinishda oladi (anonimlikning texnik asosi).
+    */
+    if (dto.rating <= 2) {
+      void this.alerts.send(
+        clinicId,
+        [
+          '<b>Past baholangan izoh</b>',
+          '',
+          `<b>Baho:</b> ${dto.rating} / 5`,
+          dto.text ? `<b>Izoh:</b> ${escapeHtml(dto.text)}` : '',
+          '',
+          'Bemor bilan bugun bog‘lansangiz, u qaytadi.',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      )
+    }
 
     return toApiFeedback(row)
   }

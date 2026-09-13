@@ -270,6 +270,84 @@ export class TelegramService {
     return { chatId: String(chatId), text: (message.text ?? '').trim(), ownPhone }
   }
 
+  /**
+   * TUGMA BOSILGANDA KELADIGAN YANGILIK (`callback_query`).
+   *
+   * Bot xabarlari YIG'ILIB QOLMASLIGI kerak: o'qigan odam tugmani
+   * bosadi va xabar yo'qoladi. Aks holda ishchining suhbati bir
+   * haftada yuzta eslatmaga to'lib, keraklisi ko'rinmay qoladi.
+   */
+  parseCallback(
+    update: unknown,
+  ): { id: string; chatId: string; messageId: number; data: string } | null {
+    const query = (
+      update as {
+        callback_query?: {
+          id?: string
+          data?: string
+          message?: { message_id?: number; chat?: { id?: number } }
+        }
+      }
+    )?.callback_query
+
+    const id = query?.id
+    const data = query?.data
+    const chatId = query?.message?.chat?.id
+    const messageId = query?.message?.message_id
+
+    if (!id || !data || !chatId || !messageId) return null
+    return { id, chatId: String(chatId), messageId, data }
+  }
+
+  /**
+   * Tugmaga javob va xabarni o'chirish.
+   *
+   * Telegram `answerCallbackQuery` ni KUTADI: javob bo'lmasa
+   * tugmada aylanuvchi belgi osilib qoladi va odam "ishlamadi"
+   * deb o'ylaydi.
+   */
+  async closeMessage(
+    callbackId: string,
+    chatId: string,
+    messageId: number,
+    note: string,
+    bot: BotKind = 'staff',
+  ): Promise<void> {
+    const token = this.tokenOf(bot)
+    if (!token) return
+
+    await this.call(token, 'answerCallbackQuery', {
+      callback_query_id: callbackId,
+      text: note,
+    })
+    await this.call(token, 'deleteMessage', { chat_id: chatId, message_id: messageId })
+  }
+
+  /** Telegram API chaqiruvi — xato faqat jurnalga tushadi */
+  private async call(token: string, method: string, body: unknown): Promise<void> {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(5000),
+      })
+      if (!res.ok) this.log.warn(`Telegram ${method} ${res.status}: ${await res.text()}`)
+    } catch (error) {
+      this.log.warn(`Telegram ${method} yuborilmadi: ${String(error)}`)
+    }
+  }
+
+  /**
+   * "Tanishib chiqdim" tugmasi.
+   *
+   * Bosilganda xabar o'chadi — boshqa hech narsa qilmaydi.
+   * Xabarning o'zi ma'lumot: o'qildi, demak vazifasini bajardi.
+   */
+  ackButton(label = 'Tanishib chiqdim') {
+    return { inline_keyboard: [[{ text: label, callback_data: 'ack' }]] }
+  }
+
   /** `/start KOD` dan kodni ajratadi */
   startPayload(text: string): string {
     const [command, payload] = text.split(/\s+/)

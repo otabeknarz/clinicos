@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 
 import { toApi, toApiDate, toApiDateTime, toDb } from '../common/api-enum'
 import { RequestContext } from '../common/request-context'
+import { OwnerAlertsService } from '../telegram/owner-alerts.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { AttendanceInputDto, AttendanceRangeDto } from './attendance.dto'
 
@@ -18,6 +19,7 @@ export class AttendanceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
+    private readonly alerts: OwnerAlertsService,
   ) {}
 
   private get db() {
@@ -221,6 +223,28 @@ export class AttendanceService {
         flagReason: reason,
       },
     })
+
+    /*
+      SHUBHALI YOZUV EGAGA DARHOL BORADI.
+
+      Bayroq panelda ham ko'rinadi, lekin ega u yerga har kuni
+      kirmaydi — kechikishni "to'g'rilab qo'yish" esa aynan shu
+      e'tiborsizlikka tayanadi. Xabar fon ishida ketadi: davomat
+      belgilash uni kutib turmaydi.
+    */
+    if (flagged) {
+      void this.alerts.send(
+        clinicId,
+        [
+          '<b>Davomat vaqti orqaga surib yozildi</b>',
+          '',
+          `<b>Xodim:</b> ${staff.fullName}`,
+          `<b>Kun:</b> ${dto.date}`,
+          `<b>Kelgan vaqti:</b> ${dto.arrivedAt ?? '—'}`,
+          `<b>Kim yozdi:</b> ${user?.fullName ?? ''}`,
+        ].join('\n'),
+      )
+    }
 
     return {
       id: row.id,

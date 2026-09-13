@@ -276,6 +276,8 @@ export class VisitsService {
             web_app: { url: this.telegram.appLink(`/tolov/${appointmentId}`) },
           },
         ],
+        /* O'qilgan xabar suhbatda qolib ketmasin */
+        [{ text: 'Tanishib chiqdim', callback_data: 'ack' }],
       ],
     }
 

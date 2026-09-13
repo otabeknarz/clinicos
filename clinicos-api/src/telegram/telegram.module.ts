@@ -2,6 +2,7 @@ import { forwardRef, Global, Module } from '@nestjs/common'
 
 import { AuthModule } from '../auth/auth.module'
 
+import { OwnerAlertsService } from './owner-alerts.service'
 import { TelegramController } from './telegram.controller'
 import { TelegramService } from './telegram.service'
 
@@ -20,7 +21,7 @@ import { TelegramService } from './telegram.service'
   */
   imports: [forwardRef(() => AuthModule)],
   controllers: [TelegramController],
-  providers: [TelegramService],
-  exports: [TelegramService],
+  providers: [TelegramService, OwnerAlertsService],
+  exports: [TelegramService, OwnerAlertsService],
 })
 export class TelegramModule {}

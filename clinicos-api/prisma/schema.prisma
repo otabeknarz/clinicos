@@ -1954,7 +1954,10 @@ model ExportLink {
 /// ko'radi. Telegram — yetkazish yo'li, xabarning o'zi emas.
 enum PatientNoticeKind {
   BROADCAST
+  /// Uch kun oldingi birinchi eslatma
   REMINDER
+  /// Bir kun qolganda — oxirgi eslatma
+  REMINDER_SOON
 }
 
 model PatientNotice {

@@ -6,11 +6,18 @@ import { PrismaService } from '../prisma/prisma.service'
 import { TelegramService } from '../telegram/telegram.service'
 
 /**
- * QABULDAN IKKI KUN OLDIN ESLATMA.
+ * QABUL ESLATMASI — UCH KUN OLDIN BOSHLANADI.
  *
- * NEGA IKKI KUN: bir kun oldin aytilsa, bemor ishini qayta
- * rejalashtira olmaydi; bir hafta oldin aytilgani esa unutiladi.
- * Ikki kun — ham eslashga, ham rejani o'zgartirishga yetadi.
+ * IKKI XABAR: uch kun qolganda birinchisi, bir kun qolganda
+ * oxirgisi. Nega ikkitasi — uch kun oldin aytilgani rejani
+ * o'zgartirishga ulguradi, lekin unutilishi ham mumkin; bir kun
+ * qolgandagi eslatma esa aynan "ertaga" degan xotirani qo'zg'aydi.
+ * Uchtasi ko'p bo'lardi: uchinchi xabardan keyin bot bloklanadi.
+ *
+ * BEMOR TASDIQLAY OLADI: xabarda "Qabul qildim" tugmasi bor.
+ * Bosilganda qabul CONFIRMED ga o'tadi va xabar suhbatdan
+ * o'chadi. Registratura ertalab kim tasdiqlaganini ko'radi va
+ * qolganlariga qo'ng'iroq qiladi — ilgari hammasiga qilardi.
  *
  * NEGA SOAT 9 DAN 20 GACHA: eslatma foydali bo'lishi uchun odam
  * uyg'oq bo'lishi kerak. Yarim tunda jiringlagan telefon —
@@ -54,7 +61,10 @@ export class RemindersService implements OnModuleInit, OnModuleDestroy {
 
     this.running = true
     try {
-      await this.send()
+      /* Uch kun qolganda — birinchi eslatma */
+      await this.send(3, 'REMINDER')
+      /* Bir kun qolganda — oxirgisi */
+      await this.send(1, 'REMINDER_SOON')
     } catch (error) {
       /* Fon vazifasi ilovani yiqitmaydi */
       this.log.warn(`Eslatma yuborilmadi: ${String(error)}`)
@@ -63,7 +73,7 @@ export class RemindersService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async send(): Promise<void> {
+  private async send(inDays: number, kind: 'REMINDER' | 'REMINDER_SOON'): Promise<void> {
     /*
       Fon vazifasida so'rov konteksti yo'q, shuning uchun filtrsiz
       mijoz ishlatiladi. Bu — `platform/`, `auth/` va Telegram
@@ -74,7 +84,7 @@ export class RemindersService implements OnModuleInit, OnModuleDestroy {
     const db = this.prisma.acrossAllClinics()
 
     const start = new Date()
-    start.setDate(start.getDate() + 2)
+    start.setDate(start.getDate() + inDays)
     start.setHours(0, 0, 0, 0)
     const end = new Date(start)
     end.setHours(23, 59, 59, 999)
@@ -83,8 +93,8 @@ export class RemindersService implements OnModuleInit, OnModuleDestroy {
       where: {
         startsAt: { gte: start, lte: end },
         status: { in: ['SCHEDULED', 'CONFIRMED'] },
-        /* Eslatma allaqachon yuborilgan bo'lsa — qayta emas */
-        notices: { none: { kind: 'REMINDER' } },
+        /* Shu turdagi eslatma allaqachon yuborilgan bo'lsa — qayta emas */
+        notices: { none: { kind } },
         clinic: { isActive: true, deletedAt: null },
       },
       select: {
@@ -112,7 +122,21 @@ export class RemindersService implements OnModuleInit, OnModuleDestroy {
 
       let delivered = false
       if (appointment.patient.telegramUserId) {
-        await this.telegram.send(appointment.patient.telegramUserId, text, undefined, 'patient')
+        await this.telegram.send(
+          appointment.patient.telegramUserId,
+          text,
+          {
+            /*
+              TASDIQLASH TUGMASI. Bosilganda qabul CONFIRMED ga
+              o'tadi va xabar o'chadi — bemorning suhbati
+              eslatmalarga to'lib qolmaydi.
+            */
+            inline_keyboard: [
+              [{ text: 'Qabul qildim', callback_data: `appt:${appointment.id}` }],
+            ],
+          },
+          'patient',
+        )
         delivered = true
       }
 
@@ -122,7 +146,7 @@ export class RemindersService implements OnModuleInit, OnModuleDestroy {
             clinicId: appointment.clinicId,
             patientId: appointment.patient.id,
             appointmentId: appointment.id,
-            kind: 'REMINDER',
+            kind,
             /* Kabinetda HTML emas, oddiy matn ko'rinadi */
             text: plain(text),
             createdByName: 'Tizim',

@@ -119,6 +119,34 @@ export class PatientController {
   ) {
     if (!this.telegram.webhookAllowed(secret, 'patient')) return { ok: true }
 
+    /*
+      "QABUL QILDIM" TUGMASI.
+
+      Bemor eslatmani o'qib tugmani bosadi: qabul CONFIRMED ga
+      o'tadi va xabar suhbatdan o'chadi. Registratura ertalab kim
+      tasdiqlaganini ko'radi va faqat qolganlariga qo'ng'iroq
+      qiladi — ilgari hammasiga qilinardi.
+    */
+    const pressed = this.telegram.parseCallback(update)
+    if (pressed) {
+      const [action, id] = pressed.data.split(':')
+      let note = 'Yopildi'
+
+      if (action === 'appt' && id) {
+        const confirmed = await this.auth.confirmAppointment(id, pressed.chatId)
+        note = confirmed ? 'Rahmat, tasdiqlandi' : 'Yopildi'
+      }
+
+      await this.telegram.closeMessage(
+        pressed.id,
+        pressed.chatId,
+        pressed.messageId,
+        note,
+        'patient',
+      )
+      return { ok: true }
+    }
+
     const message = this.telegram.parsePatientMessage(update)
     if (!message) return { ok: true }
 

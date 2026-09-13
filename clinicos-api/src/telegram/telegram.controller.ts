@@ -129,6 +129,25 @@ export class TelegramController {
   ) {
     if (!this.telegram.webhookAllowed(secret)) return { ok: true }
 
+    /*
+      TUGMA BOSILDI — XABARNI O'CHIRAMIZ.
+
+      "Tanishib chiqdim" hech qanday ish qilmaydi va qilmasligi
+      kerak: xabarning vazifasi xabar berish edi, u bajarildi.
+      Bosilgach suhbatdan yo'qoladi — eslatmalar to'planib,
+      keyingisini ko'mib yubormasligi uchun.
+    */
+    const pressed = this.telegram.parseCallback(update)
+    if (pressed) {
+      await this.telegram.closeMessage(
+        pressed.id,
+        pressed.chatId,
+        pressed.messageId,
+        'Yopildi',
+      )
+      return { ok: true }
+    }
+
     const message = this.telegram.parseMessage(update)
     if (!message) return { ok: true }
 
