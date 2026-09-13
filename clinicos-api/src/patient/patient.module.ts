@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { PrescriptionsModule } from '../prescriptions/prescriptions.module'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { JwtModule } from '@nestjs/jwt'
 import { ThrottlerModule } from '@nestjs/throttler'
@@ -52,6 +53,8 @@ import { PatientService } from './patient.service'
       }),
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 30 }]),
+    /* Kabinet retseptlarni ko'rsatadi — mantiq o'sha modulda qoladi */
+    PrescriptionsModule,
   ],
   controllers: [PatientController],
   providers: [PatientAuthService, PatientFeedbackService, PatientService, PatientGuard],

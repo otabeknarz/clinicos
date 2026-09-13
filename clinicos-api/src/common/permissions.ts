@@ -63,6 +63,11 @@ export type Permission =
   | 'data.export'
   | 'data.import'
   | 'patients.message'
+  /* Onlayn retsept: dorilarni yozib, aptekaga yuborish.
+     Aptekani TIZIM taklif qiladi, yozuvchi tanlaydi.
+     IZOHDA BO'SH QATOR BO'LMASIN: `check:permissions` ro'yxatni
+     birinchi bo'sh qatorgacha o'qiydi. */
+  | 'prescriptions.manage'
   | 'visits.view'
   | 'visits.create'
   | 'settings.view'
@@ -145,6 +150,7 @@ export const OWNER_PERMISSIONS: readonly Permission[] = [
     kim va qachon qilgani ko'rinadi.
   */
   'debts.waive',
+  'prescriptions.manage',
   'visits.view',
   'ward.view',
   'ward.manage',
@@ -173,6 +179,7 @@ export const OWNER_PERMISSIONS: readonly Permission[] = [
 
 export const RECEPTIONIST_PERMISSIONS: readonly Permission[] = [
   'dashboard.view',
+  'prescriptions.manage',
   'patients.view',
   'patients.create',
   'patients.edit',
@@ -244,6 +251,7 @@ export const PHARMACY_OWNER_PERMISSIONS: readonly Permission[] = [
 
 export const DOCTOR_PERMISSIONS: readonly Permission[] = [
   'patients.message',
+  'prescriptions.manage',
   'dashboard.view',
   'patients.view',
   'patients.viewMedical',

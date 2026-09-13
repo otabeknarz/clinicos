@@ -99,6 +99,7 @@ export type Permission =
   | 'data.export'
   | 'data.import'
   | 'patients.message'
+  | 'prescriptions.manage'
   | 'visits.view'
   | 'visits.create'
   | 'settings.view'
@@ -342,6 +343,7 @@ export interface Tenant {
  */
 export const CLINIC_MODULES = [
   'ward',
+  'prescriptions',
   'chat',
   'feedback',
   'analytics',

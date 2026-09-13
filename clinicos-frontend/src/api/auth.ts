@@ -294,6 +294,7 @@ function allowedPermissions(
  * Serverdagi `src/common/modules.ts` bilan bir xil bo'lishi shart.
  */
 const MODULE_BY_PERMISSION: Partial<Record<Permission, ClinicModule>> = {
+  'prescriptions.manage': 'prescriptions',
   'ward.view': 'ward',
   'ward.manage': 'ward',
   'chat.use': 'chat',

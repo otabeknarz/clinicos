@@ -21,6 +21,7 @@ import { DebtsModule } from './debts/debts.module'
 import { ExportModule } from './export/export.module'
 import { ImportModule } from './import/import.module'
 import { FaceModule } from './face/face.module'
+import { PrescriptionsModule } from './prescriptions/prescriptions.module'
 import { GoogleModule } from './google/google.module'
 import { NoticesModule } from './notices/notices.module'
 import { NotificationsModule } from './notifications/notifications.module'
@@ -62,6 +63,7 @@ import { TelegramModule } from './telegram/telegram.module'
     NoticesModule,
     GoogleModule,
     FaceModule,
+    PrescriptionsModule,
     ReceptionModule,
     SearchModule,
     VisitsModule,

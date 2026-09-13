@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**217 ta endpoint.**
+**224 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -3487,6 +3487,7 @@ yerga uzatiladi — bu FAQAT demo uchun, shuning uchun parametr
 import { delay, request, upload, USE_MOCK } from './client'
 import { getDb } from '@/mock/db'
 import { MAIN_CLINIC_ID } from '@/mock/seed'
+import type { Prescription } from './prescriptions'
 import type {
 CabinetDebt,
 CabinetProfile,
@@ -3550,6 +3551,17 @@ Fikrga biriktiriladigan rasm — javobda KALIT qaytadi, havola emas
 
 ```ts
 uploadCabinetImage(file: Blob): Promise<{ key: string }>
+```
+
+### `GET /patient/prescriptions`
+
+BEMORNING ONLAYN RETSEPTLARI.
+
+Kod va narx shu yerdan ko'rinadi: aptekaga borgan odam nima
+deyishini va qancha pul kerakligini oldindan biladi.
+
+```ts
+cabinetPrescriptions(): Promise<Prescription[]>
 ```
 
 ## debts
@@ -4570,4 +4582,50 @@ Sotuvchilarning parolini esa rahbar o'zi tiklaydi.
 
 ```ts
 resetPharmacyOwnerPassword(id: ID): Promise<OwnerPasswordReset>
+```
+
+## prescriptions
+
+`src/api/prescriptions.ts`
+
+> ONLAYN RETSEPT.
+> 
+> Shifokor dorilarni yozadi, tizim aptekalar ro'yxatini taklif
+> qiladi (har safar yangi va tasodifiy tartibda), tanlanganiga
+> yuboriladi. Bemor aptekada qisqa kodni aytadi.
+
+### `POST /prescriptions/offers`
+
+```ts
+rxOffers(items: RxItem[]): Promise<RxOffer[]>
+```
+
+### `POST /prescriptions`
+
+```ts
+createPrescription(input: { items: RxItem[] pharmacyId: ID offeredIds: ID[] patientId?: ID patientName?: string patientPhone?: string note?: string }): Promise<Prescription>
+```
+
+### `GET /prescriptions?status=`
+
+```ts
+listPrescriptions(status: RxStatus | 'all' = 'all'): Promise<Prescription[]>
+```
+
+### `POST /prescriptions/:id/cancel`
+
+```ts
+cancelPrescription(id: ID): Promise<void>
+```
+
+### `GET /pharmacy/inbox?status=`
+
+```ts
+pharmacyInbox(status: RxStatus | 'all' = 'all'): Promise<Prescription[]>
+```
+
+### `POST /pharmacy/inbox/:id/status`
+
+```ts
+setInboxStatus(id: ID, status: 'ready' | 'dispensed' | 'cancelled'): Promise<void>
 ```

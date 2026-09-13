@@ -62,6 +62,14 @@ export class PatientController {
     return this.patient.debt()
   }
 
+  // GET /patient/prescriptions
+  @Get('prescriptions')
+  @Public()
+  @UseGuards(PatientGuard)
+  prescriptions() {
+    return this.patient.prescriptions()
+  }
+
   // GET /patient/feedback
   @Get('feedback')
   @Public()

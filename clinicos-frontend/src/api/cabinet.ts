@@ -16,6 +16,7 @@
 import { delay, request, upload, USE_MOCK } from './client'
 import { getDb } from '@/mock/db'
 import { MAIN_CLINIC_ID } from '@/mock/seed'
+import type { Prescription } from './prescriptions'
 import type {
   CabinetDebt,
   CabinetProfile,
@@ -296,4 +297,18 @@ export async function uploadCabinetImage(file: Blob): Promise<{ key: string }> {
     return upload<{ key: string }>('/patient/uploads', file, 'rasm.jpg', 'patient')
   }
   return delay({ key: 'demo' }, 200)
+}
+
+/**
+ * BEMORNING ONLAYN RETSEPTLARI.
+ *
+ * Kod va narx shu yerdan ko'rinadi: aptekaga borgan odam nima
+ * deyishini va qancha pul kerakligini oldindan biladi.
+ */
+// GET /patient/prescriptions
+export async function cabinetPrescriptions(): Promise<Prescription[]> {
+  if (!USE_MOCK) {
+    return request<Prescription[]>('GET', '/patient/prescriptions', { session: 'patient' })
+  }
+  return delay([] as Prescription[])
 }

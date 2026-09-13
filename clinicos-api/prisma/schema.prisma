@@ -2134,3 +2134,72 @@ model Lead {
   @@index([status, createdAt])
   @@map("leads")
 }
+
+/// Onlayn retsept holati
+enum OnlineRxStatus {
+  /// Aptekaga yuborildi, kutilmoqda
+  SENT
+  /// Apteka tayyorladi — bemor borib olishi mumkin
+  READY
+  /// Berildi
+  DISPENSED
+  /// Bekor qilindi (shifokor yoki apteka)
+  CANCELLED
+}
+
+/// ONLAYN RETSEPT — KLINIKADAN APTEKAGA.
+///
+/// Shifokor dorilarni yozadi, tizim aptekalar ro'yxatini TAKLIF
+/// QILADI va shifokor bittasini tanlaydi. Bemor aptekaga borib,
+/// qisqa kodni aytadi.
+///
+/// NEGA `clinicId` USTUNI YO'Q: yozuv IKKI klinikaga tegishli —
+/// yozgan klinikaga va qabul qilgan aptekaga. Ustun `clinicId`
+/// deb atalsa, `gen:tenant-models` uni oddiy klinika jadvali deb
+/// hisoblab, aptekaning o'z retseptlarini ko'rishini to'sib
+/// qo'yardi. Shuning uchun ikkala tomon ham ALOHIDA ustunda va
+/// tekshiruv xizmat qatlamida qo'lda yoziladi
+/// (`prescriptions.service.ts` dagi izohga qarang).
+model OnlinePrescription {
+  id String @id @default(uuid())
+
+  /// Retsept yozgan klinika
+  issuerClinicId String @map("issuer_clinic_id")
+  /// Qabul qilgan apteka (`Clinic.kind = PHARMACY`)
+  pharmacyClinicId String @map("pharmacy_clinic_id")
+
+  patientId    String? @map("patient_id")
+  patientName  String  @map("patient_name")
+  patientPhone String  @default("") @map("patient_phone")
+  doctorId     String? @map("doctor_id")
+  doctorName   String  @default("") @map("doctor_name")
+
+  /// [{ name, qty, note }]
+  items Json
+
+  /// Bemor aptekada aytadigan kod. Qisqa va noyob.
+  code String @unique
+
+  /// Yuborish paytida hisoblangan taxminiy narx (so'm).
+  ///
+  /// MUZLATILADI: apteka ertaga narxni ko'tarsa, bemorga aytilgan
+  /// summa o'zgarib ketmasligi kerak — u shu raqamga ishonib
+  /// yo'lga chiqqan.
+  estimatedTotal Int @default(0) @map("estimated_total")
+
+  /// Tanlash uchun ko'rsatilgan aptekalar (monopoliyaga qarshi
+  /// aylanma qanday ishlaganini keyin tekshirish uchun saqlanadi)
+  offeredIds String[] @map("offered_ids")
+
+  status OnlineRxStatus @default(SENT)
+  note   String         @default("")
+
+  readyAt     DateTime? @map("ready_at")
+  dispensedAt DateTime? @map("dispensed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([issuerClinicId, status])
+  @@index([pharmacyClinicId, status])
+  @@map("online_prescriptions")
+}

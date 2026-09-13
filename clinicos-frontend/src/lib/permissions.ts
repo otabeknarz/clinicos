@@ -103,6 +103,7 @@ const OWNER_PERMISSIONS: Permission[] = [
  */
 const RECEPTIONIST_PERMISSIONS: Permission[] = [
   'dashboard.view',
+  'prescriptions.manage',
   'patients.view',
   'patients.create',
   'patients.edit',
@@ -137,6 +138,7 @@ const RECEPTIONIST_PERMISSIONS: Permission[] = [
  */
 const DOCTOR_PERMISSIONS: Permission[] = [
   'patients.message',
+  'prescriptions.manage',
   'dashboard.view',
   'patients.view',
   'patients.viewMedical',

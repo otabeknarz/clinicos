@@ -209,6 +209,16 @@ export const NAVIGATION: NavGroup[] = [
         icon: MessagesSquare,
         permission: 'patients.message',
       },
+      /*
+        ONLAYN RETSEPT — bemorlar guruhida: u bemorga yoziladi va
+        bemor uni aptekadan oladi.
+      */
+      {
+        to: '/prescriptions',
+        labelKey: 'rx.title',
+        icon: Pill,
+        permission: 'prescriptions.manage',
+      },
     ],
   },
   {

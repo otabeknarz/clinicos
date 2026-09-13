@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 
 import { toApi, toApiDate, toApiDateTime } from '../common/api-enum'
 import { RequestContext } from '../common/request-context'
+import { PrescriptionsService } from '../prescriptions/prescriptions.service'
 import { PrismaService } from '../prisma/prisma.service'
 
 /**
@@ -23,6 +24,7 @@ export class PatientService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
+    private readonly rx: PrescriptionsService,
   ) {}
 
   private get db() {
@@ -33,6 +35,18 @@ export class PatientService {
     const { patientId } = this.ctx.require()
     if (!patientId) throw new NotFoundException('Bemor topilmadi')
     return patientId
+  }
+
+  /**
+   * BEMORNING ONLAYN RETSEPTLARI.
+   *
+   * Kodni ham, narxni ham bemor shu yerdan ko'radi: aptekaga
+   * borgan odam nima deyishini va qancha pul kerakligini oldindan
+   * biladi.
+   */
+  async prescriptions() {
+    const { clinicId } = this.ctx.require()
+    return this.rx.forPatient(this.patientId, clinicId)
   }
 
   /** Kabinet bosh sahifasi */

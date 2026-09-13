@@ -7,6 +7,7 @@ import { Hero, StatStrip } from '@/components/ui/Hero'
 import { EmptyState, Skeleton } from '@/components/ui/States'
 import { compactNumber, currencyLabel, dateLong, dateShort, time } from '@/lib/format'
 import { CabinetNoticesCard } from './CabinetNotices'
+import { CabinetPrescriptionsCard } from './CabinetPrescriptions'
 import { useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { usePatient } from '@/store/patient-context'
@@ -33,6 +34,7 @@ export function CabinetHomePage() {
     <div className="space-y-4">
       {/* Xabar va eslatma — eng tepada: bemor kabinetga kamdan-kam kiradi */}
       <CabinetNoticesCard />
+      <CabinetPrescriptionsCard />
 
       {hasDebt ? (
         <Hero

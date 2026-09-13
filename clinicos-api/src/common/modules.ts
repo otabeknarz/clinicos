@@ -19,6 +19,7 @@
  */
 export const CLINIC_MODULES = [
   'ward',
+  'prescriptions',
   'chat',
   'feedback',
   'analytics',
@@ -59,6 +60,7 @@ export type ClinicModule = (typeof CLINIC_MODULES)[number]
  * klinika umuman yo'q).
  */
 const MODULE_BY_PERMISSION: Record<string, ClinicModule> = {
+  'prescriptions.manage': 'prescriptions',
   'ward.view': 'ward',
   'ward.manage': 'ward',
   'chat.use': 'chat',

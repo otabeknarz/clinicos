@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   BarChart3,
   Boxes,
+  Inbox,
   FileSpreadsheet,
   FileText,
   KeyRound,
@@ -79,6 +80,17 @@ const NAV: PharmacyNavItem[] = [
     to: '/pharmacy/stock',
     labelKey: 'nav.pharmacyStock',
     icon: Boxes,
+    permission: 'pharmacy.view',
+  },
+  /*
+    KLINIKALARDAN KELGAN RETSEPTLAR — ichkaridagi retseptlardan
+    ALOHIDA band: u yerda o'z kassasidagi qog'oz retseptlar,
+    bu yerda esa boshqa klinikadan onlayn kelgani.
+  */
+  {
+    to: '/pharmacy/inbox',
+    labelKey: 'rxInbox.title',
+    icon: Inbox,
     permission: 'pharmacy.view',
   },
   {
