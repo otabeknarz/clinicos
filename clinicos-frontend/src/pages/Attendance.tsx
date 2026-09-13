@@ -107,16 +107,22 @@ export function AttendancePage() {
 
   async function mark(row: DailyAttendanceRow, status: AttendanceStatus) {
     /*
-      "KELDI" — KAMERA TASDIG'I BILAN.
+      "KELDI" — HAR DOIM KAMERA TASDIG'I BILAN.
 
       Nazorat shu yerda tizim tomoniga o'tadi: yozuv uchun
       xodimning o'zi kamera oldida turishi kerak, registratorning
-      so'zi yetarli emas. Ikki holatda eski yo'l qoladi —
-      xodimning yuzi ro'yxatdan o'tmagan bo'lsa va o'tgan kun
-      to'ldirilayotgan bo'lsa (kechagi kun uchun kamera oldida
-      turib bo'lmaydi).
+      so'zi yetarli emas.
+
+      Yuzi hali olinmagan xodim ham shu yerdan o'tadi — oyna avval
+      uchta kadr yig'ib ro'yxatdan o'tkazadi, keyin tasdiqlaydi.
+      Alohida "yuzni ro'yxatdan o'tkazish" qadami kutilmaydi: odam
+      allaqachon kamera oldida turibdi.
+
+      ESKI YO'L FAQAT IKKI HOLATDA: o'tgan kun to'ldirilayotganda
+      (kechagi kun uchun kamera oldida turib bo'lmaydi) va kamera
+      umuman ochilmaganda.
     */
-    if (status === 'present' && isToday(day) && enrolled.has(row.staffId)) {
+    if (status === 'present' && isToday(day)) {
       setFaceFor(row)
       return
     }
@@ -452,10 +458,12 @@ export function AttendancePage() {
       <FaceConfirmModal
         open={faceFor !== null}
         staff={faceFor ? { id: faceFor.staffId, fullName: faceFor.fullName } : null}
+        enrolled={faceFor ? enrolled.has(faceFor.staffId) : false}
         onClose={() => setFaceFor(null)}
         onManual={() => faceFor && void markManually(faceFor)}
         onConfirmed={(result) => {
           setFaceFor(null)
+          faces.reload()
           /* Kechikkan bo'lsa server o'zi shunday yozadi — aytib qo'yamiz */
           if (result.status === 'late') {
             toast.info(t('face.late', { time: result.arrivedAt ?? '' }))

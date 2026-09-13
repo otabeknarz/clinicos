@@ -356,7 +356,7 @@ export const dict: Dict = {
   'login.tabLogin': 'Вход',
   'login.tabRegister': 'Регистрация',
   'login.email': 'Телефон или email',
-  'login.emailPlaceholder': '+998 90 123 45 67',
+  'login.emailPlaceholder': 'ism.familiya',
   'login.password': 'Пароль',
   'login.passwordPlaceholder': 'Введите пароль',
   'login.showPassword': 'Показать пароль',
@@ -1831,4 +1831,7 @@ export const dict: Dict = {
   'leads.usage': '{patients} пациентов · {users} сотрудников',
   'leads.openClinic': 'Открыть клинику',
   'leads.freshCount': '{count} новых',
+  'face.hold': 'Держитесь так…',
+  'face.firstTime': 'Первый раз — сохраняем ваше лицо',
+  'face.confirmed': 'Подтверждено',
 }

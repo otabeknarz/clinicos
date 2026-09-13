@@ -312,6 +312,22 @@ export function LoginPage() {
     reg.city !== '' &&
     reg.password.length >= MIN_PASSWORD
 
+  /*
+    DOMEN MAYDONNING O'ZIDA KO'RINIB TURADI.
+
+    Xodimning logini `ism.familiya@clinic-os.uz` ko'rinishida
+    ochiladi va domen hamma uchun bir xil — uni har safar qo'lda
+    terish ortiqcha ish. Endi u maydon ichida kulrang yozuv bo'lib
+    turadi: odam faqat o'z nomini yozadi.
+
+    Telefon terilsa yoki manzil to'liq yozilsa (eski klinikalar
+    boshqa domenda) yozuv YO'QOLADI — aks holda u yolg'on
+    ko'rsatma bo'lib qolardi.
+  */
+  const typedLogin = email.trim()
+  const showDomain =
+    typedLogin.length > 0 && !typedLogin.includes('@') && !/\d{3}/.test(typedLogin)
+
   const language = LANGS.find((one) => one.code === lang) ?? LANGS[0]
 
   return (
@@ -375,6 +391,7 @@ export function LoginPage() {
             <form id="loginForm" hidden={registering} onSubmit={submit}>
               <div className="form-field">
                 <label htmlFor="loginEmail">{t('login.email')}</label>
+                <div className="login-field">
                 <input
                   id="loginEmail"
                   /*
@@ -393,6 +410,13 @@ export function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
+                {showDomain ? (
+                  <span className="login-domain" aria-hidden="true">
+                    <i>{typedLogin}</i>
+                    {`@${PLATFORM_EMAIL_DOMAIN}`}
+                  </span>
+                ) : null}
+                </div>
               </div>
 
               <div className="form-field">

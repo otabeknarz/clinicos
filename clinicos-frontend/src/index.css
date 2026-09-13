@@ -437,6 +437,34 @@
   }
 }
 
+/*
+  YUZ SKANERI.
+
+  `face-pop` — natija belgisi prujina bilan chiqadi (Face ID dagi
+  kabi "bo'ldi" hissi). `face-sweep` — qidirayotgan paytda halqa
+  ustida yumshoq nur aylanadi: kamera ishlayotgani ko'rinib tursin,
+  aks holda qotib qolgan rasmdek tuyulardi.
+*/
+@keyframes face-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes face-sweep {
+  to {
+    rotate: 360deg;
+  }
+}
+
 @keyframes shimmer {
   from {
     background-position: -180% 0;
@@ -1316,5 +1344,30 @@
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* YUZ SKANERI                                                         */
+/* ------------------------------------------------------------------ */
+.face-pop {
+  animation: face-pop 0.5s var(--ease-spring) both;
+}
+
+.face-sweep {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    color-mix(in srgb, var(--color-accent) 28%, transparent) 40deg,
+    transparent 90deg
+  );
+  -webkit-mask: radial-gradient(circle, transparent 45%, #000 47%, #000 50%, transparent 52%);
+  mask: radial-gradient(circle, transparent 45%, #000 47%, #000 50%, transparent 52%);
+  animation: face-sweep 2.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .face-sweep {
+    animation: none;
   }
 }

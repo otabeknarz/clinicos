@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import { Camera, Check, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Trash2 } from 'lucide-react'
 
 import { deleteFace, enrollFace } from '@/api/face'
+import { FaceScanner } from '@/components/face/FaceScanner'
+import type { ScanState } from '@/components/face/FaceScanner'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { cn } from '@/lib/cn'
 import { loadFace, readFace, startCamera, stopCamera } from '@/lib/face'
 import { useAction } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
@@ -13,14 +14,19 @@ import { useToast } from '@/store/toast-context'
 /**
  * XODIMNING YUZINI RO'YXATDAN O'TKAZISH.
  *
- * UCHTA NAMUNA olinadi va har birida bosh holati boshqacha
- * bo'lishi so'raladi. Bitta suratda olingan iz yorug'lik
- * o'zgarganda yoki odam boshini burganda tanilmay qolardi.
+ * HECH NARSA BOSILMAYDI: odam kameraga qaraydi, halqa to'ladi va
+ * saqlanadi. Ilgari har bir namuna uchun "Suratga olish" tugmasi
+ * bosilardi — kamera oldidagi odam bilan tugma orasida turgan
+ * qo'l bu ishni uzaytirardi va kadrlar qimirlab chiqardi.
+ *
+ * UCHTA NAMUNA olinadi. Bittasi yetmaydi: yorug'lik o'zgarganda
+ * yoki odam boshini burganda bitta namunali iz tanilmay qolardi.
  *
  * RASM SAQLANMAYDI: kadr shu yerda 128 ta songa aylanadi va
  * serverga faqat o'sha sonlar ketadi.
  */
-const STEPS = 3
+const TICK_MS = 350
+const SAMPLES = 3
 
 export function FaceEnrollModal({
   open,
@@ -41,30 +47,70 @@ export function FaceEnrollModal({
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const samples = useRef<number[][]>([])
+  const busy = useRef(false)
 
-  const [ready, setReady] = useState(false)
-  const [samples, setSamples] = useState<number[][]>([])
-  const [hint, setHint] = useState('')
-  const [capturing, setCapturing] = useState(false)
+  const [state, setState] = useState<ScanState>('loading')
+  const [progress, setProgress] = useState(0)
+  const [message, setMessage] = useState('')
 
-  const save = useAction(async () => {
-    if (!staff) return null
-    await enrollFace({ staffId: staff.id, fullName: staff.fullName, descriptors: samples })
-    return true
-  })
+  const staffId = staff?.id ?? null
+  const staffName = staff?.fullName ?? ''
+
   const remove = useAction(async () => {
-    if (!staff) return null
-    await deleteFace(staff.id)
+    if (!staffId) return null
+    await deleteFace(staffId)
     return true
   })
+
+  const tick = useCallback(async () => {
+    const video = videoRef.current
+    if (!video || !staffId || busy.current) return
+
+    const reading = await readFace(video)
+    if (!reading || reading.size < 0.02) {
+      samples.current = []
+      setProgress(0)
+      setState('scanning')
+      return
+    }
+
+    samples.current.push(reading.descriptor)
+    setProgress(samples.current.length / SAMPLES)
+    setState('holding')
+    if (samples.current.length < SAMPLES) return
+
+    busy.current = true
+    try {
+      await enrollFace({ staffId, fullName: staffName, descriptors: samples.current })
+      setState('success')
+      setTimeout(() => {
+        toast.success(t('face.saved'))
+        onSaved()
+        onClose()
+      }, 900)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : t('toast.error'))
+      setState('error')
+      samples.current = []
+      setTimeout(() => {
+        busy.current = false
+        setProgress(0)
+        setState('scanning')
+      }, 2000)
+    }
+  }, [onClose, onSaved, staffId, staffName, t, toast])
 
   useEffect(() => {
     if (!open) return
+    let timer: ReturnType<typeof setInterval> | null = null
     let cancelled = false
 
-    setSamples([])
-    setHint('')
-    setReady(false)
+    setState('loading')
+    setMessage('')
+    setProgress(0)
+    samples.current = []
+    busy.current = false
 
     async function begin() {
       try {
@@ -75,10 +121,11 @@ export function FaceEnrollModal({
           stopCamera(streamRef.current)
           return
         }
-        setReady(true)
+        setState('scanning')
+        timer = setInterval(() => void tick(), TICK_MS)
       } catch {
-        /* Brauzer xatosi ingliz tilida keladi — o'z matnimizni ko'rsatamiz */
-        setHint(t('face.cameraError'))
+        setState('error')
+        setMessage(t('face.cameraError'))
       }
     }
 
@@ -86,41 +133,11 @@ export function FaceEnrollModal({
 
     return () => {
       cancelled = true
+      if (timer) clearInterval(timer)
       stopCamera(streamRef.current)
       streamRef.current = null
     }
-  }, [open, t])
-
-  async function capture() {
-    if (!videoRef.current) return
-    setCapturing(true)
-    setHint('')
-    try {
-      const reading = await readFace(videoRef.current)
-      if (!reading) {
-        setHint(t('face.notFound'))
-        return
-      }
-      if (reading.size < 0.02) {
-        setHint(t('face.tooFar'))
-        return
-      }
-      setSamples((current) => [...current, reading.descriptor])
-    } finally {
-      setCapturing(false)
-    }
-  }
-
-  async function submit() {
-    const done = await save.run()
-    if (!done) {
-      toast.error(save.lastError()?.message ?? t('toast.error'))
-      return
-    }
-    toast.success(t('face.saved'))
-    onSaved()
-    onClose()
-  }
+  }, [open, tick, t])
 
   async function drop() {
     const done = await remove.run()
@@ -133,8 +150,16 @@ export function FaceEnrollModal({
     onClose()
   }
 
-  const step = Math.min(samples.length, STEPS - 1)
-  const stepHints = [t('face.step1'), t('face.step2'), t('face.step3')]
+  const hint =
+    state === 'success'
+      ? t('face.saved')
+      : state === 'loading'
+        ? t('face.loading')
+        : state === 'error'
+          ? message
+          : state === 'holding'
+            ? t('face.hold')
+            : t('face.look')
 
   return (
     <Modal
@@ -142,67 +167,33 @@ export function FaceEnrollModal({
       onClose={onClose}
       size="sm"
       title={t('face.enrollTitle')}
-      description={staff?.fullName}
+      description={staffName}
       footer={
         <>
+          <Button variant="gray" onClick={onClose}>
+            {t('action.cancel')}
+          </Button>
           {enrolled ? (
             <Button variant="danger" loading={remove.pending} onClick={() => void drop()}>
               <Trash2 size={15} />
               {t('face.remove')}
             </Button>
-          ) : (
-            <Button variant="gray" onClick={onClose}>
-              {t('action.cancel')}
-            </Button>
-          )}
-          <Button
-            loading={save.pending}
-            disabled={samples.length < STEPS}
-            onClick={() => void submit()}
-          >
-            {t('action.save')}
-          </Button>
+          ) : null}
         </>
       }
     >
       <div className="pb-2">
-        <div className="aspect-[4/3] overflow-hidden rounded-[16px] bg-black">
-          <video ref={videoRef} playsInline muted className="h-full w-full -scale-x-100 object-cover" />
-        </div>
+        <FaceScanner
+          videoRef={videoRef}
+          state={state}
+          progress={progress}
+          title={state === 'success' ? staffName : undefined}
+          hint={hint}
+        />
 
-        {/* Namunalar */}
-        <div className="mt-3 flex items-center gap-2">
-          {Array.from({ length: STEPS }, (_, index) => (
-            <span
-              key={index}
-              className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-full text-caption font-semibold',
-                index < samples.length
-                  ? 'bg-ok text-white'
-                  : 'bg-fill-4 text-label-tertiary',
-              )}
-            >
-              {index < samples.length ? <Check size={14} /> : index + 1}
-            </span>
-          ))}
-          <p className="ml-1 text-footnote text-label-secondary">
-            {samples.length < STEPS ? stepHints[step] : t('face.allDone')}
-          </p>
-        </div>
-
-        <Button
-          className="mt-3 w-full"
-          variant="gray"
-          icon={<Camera size={16} />}
-          disabled={!ready || samples.length >= STEPS}
-          loading={capturing}
-          onClick={() => void capture()}
-        >
-          {t('face.capture')}
-        </Button>
-
-        {hint ? <p className="mt-2 text-footnote text-bad">{hint}</p> : null}
-        <p className="mt-3 text-caption text-label-tertiary">{t('face.privacy')}</p>
+        <p className="mt-4 text-center text-caption text-label-tertiary">
+          {t('face.privacy')}
+        </p>
       </div>
     </Modal>
   )

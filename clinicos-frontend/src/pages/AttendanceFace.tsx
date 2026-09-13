@@ -1,92 +1,101 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CameraOff, CheckCircle2, Clock, ScanFace } from 'lucide-react'
+import { CameraOff, ShieldCheck } from 'lucide-react'
 
 import { faceCheckIn } from '@/api/face'
 import type { FaceCheckInResult } from '@/api/face'
+import { FaceScanner } from '@/components/face/FaceScanner'
+import type { ScanState } from '@/components/face/FaceScanner'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/Card'
-import { cn } from '@/lib/cn'
 import { loadFace, readFace, snapshot, startCamera, stopCamera } from '@/lib/face'
 import { useI18n } from '@/i18n'
 
 /**
  * YUZ BILAN DAVOMAT — KAMERA SAHIFASI.
  *
- * Klinikaning planshetida ochiq turadi: xodim kelib qaraydi va
- * davomat o'zi belgilanadi. Hech narsa bosilmaydi — qo'li band
- * odam tugma qidirib o'tirmasligi kerak.
+ * Registraturaning planshetida ochiq turadi. Xodim kelib qaraydi,
+ * bir-ikki soniyada ismi chiqadi va davomat yoziladi. HECH NARSA
+ * BOSILMAYDI: qo'li band odam tugma qidirib o'tirmasligi kerak,
+ * aks holda tizimdan foydalanishning o'zi ishga aylanadi.
  *
- * JONLILIK TEKSHIRUVI: yuz topilgach "ko'zingizni qisib qo'ying"
- * deyiladi. Bosma surat ko'z qismaydi. Bu mutlaq himoya emas
- * (telefondagi video aldashi mumkin), lekin eng oddiy aldashni
- * to'sadi — shuning uchun har bir belgilash jurnalga tushadi.
+ * TEZLIK — ASOSIY TALAB. Kadr har 350 ms da o'qiladi va KETMA-KET
+ * uchta kadrda yuz ko'rinsa, qaror qabul qilinadi: ~1 soniya.
+ * Bitta kadrga ishonmaslikning sababi oddiy — yonidan o'tib
+ * ketayotgan odam ham bir kadrga tushib qoladi.
  *
- * KAMERA TASVIRI HECH QAYERGA YUBORILMAYDI: barcha hisob-kitob
- * shu qurilmada bajariladi, serverga faqat 128 ta son ketadi.
+ * KO'Z QISISH TALABI OLIB TASHLANDI. U bosma suratdan himoya
+ * qilardi, lekin har bir xodimdan har kuni ortiqcha harakat
+ * so'rardi va sahifa "qiyin" bo'lib qolardi. O'rniga: har bir
+ * belgilashning KADRI SAQLANADI va egasi uni ko'radi — suratni
+ * ko'tarib turgan odam o'sha kadrda ko'rinib qoladi, ya'ni
+ * qasddan aldash izsiz qolmaydi.
+ *
+ * KAMERA TASVIRI QAYTA ISHLANMAYDI: yuz shu qurilmada 128 ta
+ * songa aylanadi, serverga o'sha sonlar va bitta kadr ketadi.
  */
 
-/** Ko'z shu qiymatdan pastga tushsa — qisilgan deb hisoblanadi */
-const BLINK_LEVEL = 0.19
-/** Ko'z qisilgandan keyin shuncha vaqt "jonli" deb hisoblanadi */
-const BLINK_WINDOW = 5000
+/** Kadrlar orasidagi vaqt. Qisqartirilsa brauzer ulgurmaydi. */
+const TICK_MS = 350
+/** Qaror uchun ketma-ket shuncha kadr kerak */
+const STREAK = 3
 /** Natijadan keyin qancha kutiladi — keyingi odam uchun */
-const RESET_AFTER = 5000
-
-type Stage = 'loading' | 'searching' | 'blink' | 'checking' | 'done' | 'error'
+const RESET_AFTER = 3500
 
 export function AttendanceFacePage() {
   const { t } = useI18n()
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const blinkedAt = useRef(0)
   const busy = useRef(false)
+  /* Ketma-ket nechta kadrda yuz ko'rindi */
+  const streak = useRef(0)
 
-  const [stage, setStage] = useState<Stage>('loading')
+  const [state, setState] = useState<ScanState>('loading')
+  const [progress, setProgress] = useState(0)
   const [result, setResult] = useState<FaceCheckInResult | null>(null)
   const [message, setMessage] = useState('')
 
-  /* Bitta o'qish: yuz bormi, ko'z qisildimi, tanilsinmi */
   const tick = useCallback(async () => {
     const video = videoRef.current
     if (!video || busy.current) return
 
     const reading = await readFace(video)
-    if (!reading) {
-      setStage((current) => (current === 'done' ? current : 'searching'))
+
+    /* Juda uzoqda turgan odam hali "kelgan" deb hisoblanmaydi */
+    if (!reading || reading.size < 0.015) {
+      streak.current = 0
+      setProgress(0)
+      setState('scanning')
       return
     }
 
-    if (reading.eyeOpenness < BLINK_LEVEL) blinkedAt.current = Date.now()
-    const alive = Date.now() - blinkedAt.current < BLINK_WINDOW
-
-    if (!alive) {
-      setStage((current) => (current === 'done' ? current : 'blink'))
+    streak.current += 1
+    setProgress(streak.current / STREAK)
+    if (streak.current < STREAK) {
+      setState('holding')
       return
     }
 
     busy.current = true
-    setStage('checking')
     try {
       const checked = await faceCheckIn(reading.descriptor, snapshot(video))
       setResult(checked)
       setMessage('')
-      setStage('done')
+      setState('success')
+    } catch (error) {
+      setResult(null)
+      setMessage(error instanceof Error ? error.message : t('toast.error'))
+      setState('error')
+    } finally {
       /* Keyingi odam uchun bo'shatamiz */
       setTimeout(() => {
+        streak.current = 0
+        busy.current = false
+        setProgress(0)
         setResult(null)
-        blinkedAt.current = 0
-        busy.current = false
-        setStage('searching')
+        setMessage('')
+        setState('scanning')
       }, RESET_AFTER)
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('toast.error'))
-      setStage('searching')
-      blinkedAt.current = 0
-      /* Xatodan keyin qisqa pauza — bir xil yuzni qayta-qayta yubormaslik uchun */
-      setTimeout(() => {
-        busy.current = false
-      }, 2000)
     }
   }, [t])
 
@@ -103,12 +112,12 @@ export function AttendanceFacePage() {
           stopCamera(streamRef.current)
           return
         }
-        setStage('searching')
-        timer = setInterval(() => void tick(), 700)
+        setState('scanning')
+        timer = setInterval(() => void tick(), TICK_MS)
       } catch {
-        /* Sabab holat qatorida o'zbekcha yoziladi */
-        setMessage('')
-        setStage('error')
+        /* Brauzer xatosi ingliz tilida keladi — o'z matnimizni ko'rsatamiz */
+        setState('error')
+        setMessage(t('face.cameraError'))
       }
     }
 
@@ -120,65 +129,45 @@ export function AttendanceFacePage() {
       stopCamera(streamRef.current)
       streamRef.current = null
     }
-  }, [tick])
+  }, [tick, t])
+
+  const hint = result
+    ? result.alreadyMarked
+      ? t('face.already', { time: result.arrivedAt ?? '' })
+      : t(result.status === 'late' ? 'face.late' : 'face.present', {
+          time: result.arrivedAt ?? '',
+        })
+    : state === 'loading'
+      ? t('face.loading')
+      : state === 'holding'
+        ? t('face.hold')
+        : state === 'error'
+          ? message || t('face.cameraError')
+          : t('face.look')
 
   return (
     <>
       <PageHeader title={t('face.title')} subtitle={t('face.subtitle')} />
 
-      <Card className="mx-auto max-w-2xl">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-[18px] bg-black">
-          {/* Ko'zgu ko'rinishi: odam o'zini oynadagidek ko'radi */}
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            className="h-full w-full -scale-x-100 object-cover"
-            aria-label={t('face.title')}
-          />
+      <Card className="mx-auto max-w-xl py-8">
+        {/* Tanilgan odamning ismi — eng katta yozuv */}
+        <FaceScanner
+          videoRef={videoRef}
+          state={state}
+          progress={progress}
+          size="lg"
+          title={result?.fullName}
+          hint={hint}
+        />
 
-          {stage === 'done' && result ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 p-6 text-center">
-              <CheckCircle2 size={44} className="text-ok" />
-              <p className="text-title-3 font-bold text-white">{result.fullName}</p>
-              <p className="text-subhead text-white/80">
-                {result.alreadyMarked
-                  ? t('face.already', { time: result.arrivedAt ?? '' })
-                  : t(result.status === 'late' ? 'face.late' : 'face.present', {
-                      time: result.arrivedAt ?? '',
-                    })}
-              </p>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Holat qatori */}
-        <div
-          className={cn(
-            'mt-4 flex items-center gap-3 rounded-[14px] px-4 py-3',
-            stage === 'error' ? 'bg-bad-soft' : 'bg-sunken',
-          )}
-        >
-          {stage === 'error' ? (
-            <CameraOff size={18} className="shrink-0 text-bad" />
-          ) : stage === 'checking' ? (
-            <Clock size={18} className="shrink-0 text-accent" />
+        <div className="mt-6 flex items-start justify-center gap-2 px-4 text-center">
+          {state === 'error' && !result ? (
+            <CameraOff size={14} className="mt-0.5 shrink-0 text-bad" />
           ) : (
-            <ScanFace size={18} className="shrink-0 text-accent" />
+            <ShieldCheck size={14} className="mt-0.5 shrink-0 text-label-quaternary" />
           )}
-          <p className="text-subhead text-label">
-            {stage === 'loading' ? t('face.loading') : null}
-            {stage === 'searching' ? t('face.look') : null}
-            {stage === 'blink' ? t('face.blink') : null}
-            {stage === 'checking' ? t('face.checking') : null}
-            {stage === 'done' ? t('face.next') : null}
-            {stage === 'error' ? t('face.cameraError') : null}
-          </p>
+          <p className="text-caption text-label-tertiary">{t('face.privacy')}</p>
         </div>
-
-        {message ? <p className="mt-2 text-footnote text-bad">{message}</p> : null}
-
-        <p className="mt-4 text-caption text-label-tertiary">{t('face.privacy')}</p>
       </Card>
     </>
   )

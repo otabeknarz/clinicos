@@ -1,46 +1,55 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CameraOff, ScanFace, ShieldCheck } from 'lucide-react'
 
-import { faceVerify } from '@/api/face'
+import { enrollFace, faceVerify } from '@/api/face'
 import type { FaceCheckInResult } from '@/api/face'
+import { FaceScanner } from '@/components/face/FaceScanner'
+import type { ScanState } from '@/components/face/FaceScanner'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { cn } from '@/lib/cn'
 import { loadFace, readFace, snapshot, startCamera, stopCamera } from '@/lib/face'
 import { useI18n } from '@/i18n'
 
 /**
  * "KELDI" TUGMASINING YUZ TASDIG'I.
  *
- * NEGA: kelish vaqtini registrator yozganda, nazorat odamda
- * qoladi — kelmagan hamkasbini "keldi" deb belgilab qo'yish
- * hech kimga qiyin emas. Kamera bu ishni tizim tomoniga oladi:
- * yozuv uchun xodimning O'ZI kamera oldida turishi kerak.
+ * NEGA: kelish vaqtini registrator yozganda nazorat odamda
+ * qoladi — kelmagan hamkasbini "keldi" deb belgilab qo'yish hech
+ * kimga qiyin emas. Kamera bu ishni tizim tomoniga oladi: yozuv
+ * uchun xodimning O'ZI kamera oldida turishi kerak.
+ *
+ * BIRINCHI MARTA — SHU YERDA RO'YXATDAN O'TADI. Yuzi hali
+ * olinmagan xodimda oyna avval uchta kadr yig'adi, keyin darhol
+ * tasdiqlaydi. Alohida "yuzni ro'yxatdan o'tkazish" qadamini
+ * kutib o'tirish kerak emas: odam allaqachon kamera oldida
+ * turibdi, eng qulay payt shu.
  *
  * SERVER HAM ISHONMAYDI: yuz bu yerda emas, serverda
  * solishtiriladi va butun jamoaga qarab tekshiriladi — kamera
  * oldidagi odam boshqa xodim bo'lsa, yozuv rad etiladi.
  *
- * KAMERA ISHLAMASA — ish to'xtamaydi: qo'lda belgilash yo'li
- * ochiq qoladi (u yozuv suratsiz bo'ladi va egasi buni ko'radi).
+ * KAMERA ISHLAMASA ish to'xtamaydi: qo'lda belgilash yo'li ochiq
+ * qoladi (u yozuv suratsiz bo'ladi va egasi buni ko'radi).
  */
 
-/** Ko'z shu qiymatdan pastga tushsa — qisilgan deb hisoblanadi */
-const BLINK_LEVEL = 0.19
-/** Ko'z qisilgandan keyin shuncha vaqt "jonli" deb hisoblanadi */
-const BLINK_WINDOW = 5000
-
-type Stage = 'loading' | 'searching' | 'blink' | 'checking' | 'error'
+/** Kadrlar orasidagi vaqt */
+const TICK_MS = 350
+/** Tasdiqlash uchun ketma-ket shuncha kadr */
+const STREAK = 3
+/** Ro'yxatdan o'tkazishda shuncha namuna olinadi */
+const SAMPLES = 3
 
 export function FaceConfirmModal({
   open,
   staff,
+  enrolled,
   onClose,
   onConfirmed,
   onManual,
 }: {
   open: boolean
   staff: { id: string; fullName: string } | null
+  /** Yuzi allaqachon olinganmi — yo'q bo'lsa shu yerda olinadi */
+  enrolled: boolean
   onClose: () => void
   onConfirmed: (result: FaceCheckInResult) => void
   /** Kamera ochilmaganda — eski yo'l bilan belgilash */
@@ -50,54 +59,96 @@ export function FaceConfirmModal({
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const blinkedAt = useRef(0)
   const busy = useRef(false)
+  const streak = useRef(0)
+  /* Ro'yxatdan o'tkazishda yig'ilayotgan namunalar */
+  const samples = useRef<number[][]>([])
 
-  const [stage, setStage] = useState<Stage>('loading')
+  const [state, setState] = useState<ScanState>('loading')
+  const [progress, setProgress] = useState(0)
   const [message, setMessage] = useState('')
 
   const staffId = staff?.id ?? null
+  const staffName = staff?.fullName ?? ''
+  /* Yuzi yo'q bo'lsa avval uni olamiz, keyin tasdiqlaymiz */
+  const needsEnroll = !enrolled
 
   const tick = useCallback(async () => {
     const video = videoRef.current
     if (!video || !staffId || busy.current) return
 
     const reading = await readFace(video)
-    if (!reading) {
-      setStage('searching')
+    if (!reading || reading.size < 0.02) {
+      streak.current = 0
+      samples.current = []
+      setProgress(0)
+      setState('scanning')
       return
     }
 
-    if (reading.eyeOpenness < BLINK_LEVEL) blinkedAt.current = Date.now()
-    if (Date.now() - blinkedAt.current > BLINK_WINDOW) {
-      setStage('blink')
+    /* --- Birinchi marta: namunalar yig'iladi --- */
+    if (needsEnroll && samples.current.length < SAMPLES) {
+      samples.current.push(reading.descriptor)
+      setProgress(samples.current.length / SAMPLES)
+      setState('holding')
+      if (samples.current.length < SAMPLES) return
+
+      busy.current = true
+      try {
+        await enrollFace({ staffId, fullName: staffName, descriptors: samples.current })
+        busy.current = false
+        streak.current = STREAK
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : t('toast.error'))
+        setState('error')
+        samples.current = []
+        setTimeout(() => {
+          busy.current = false
+          setProgress(0)
+          setState('scanning')
+        }, 2000)
+        return
+      }
+    }
+
+    /* --- Tasdiqlash --- */
+    streak.current += 1
+    setProgress(Math.min(streak.current / STREAK, 1))
+    if (streak.current < STREAK) {
+      setState('holding')
       return
     }
 
     busy.current = true
-    setStage('checking')
+    setState('holding')
     try {
       const result = await faceVerify(staffId, reading.descriptor, snapshot(video))
-      onConfirmed(result)
+      setState('success')
+      /* Yashil belgi ko'rinib ulgursin */
+      setTimeout(() => onConfirmed(result), 900)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : t('toast.error'))
-      setStage('searching')
-      blinkedAt.current = 0
+      setState('error')
+      streak.current = 0
+      setProgress(0)
       /* Qisqa pauza — bir xil kadrni qayta-qayta yubormaslik uchun */
       setTimeout(() => {
         busy.current = false
+        setState('scanning')
       }, 2000)
     }
-  }, [onConfirmed, staffId, t])
+  }, [needsEnroll, onConfirmed, staffId, staffName, t])
 
   useEffect(() => {
     if (!open) return
     let timer: ReturnType<typeof setInterval> | null = null
     let cancelled = false
 
-    setStage('loading')
+    setState('loading')
     setMessage('')
-    blinkedAt.current = 0
+    setProgress(0)
+    streak.current = 0
+    samples.current = []
     busy.current = false
 
     async function begin() {
@@ -109,11 +160,11 @@ export function FaceConfirmModal({
           stopCamera(streamRef.current)
           return
         }
-        setStage('searching')
-        timer = setInterval(() => void tick(), 700)
+        setState('scanning')
+        timer = setInterval(() => void tick(), TICK_MS)
       } catch {
-        /* Brauzer xatosi ingliz tilida keladi — o'z matnimizni ko'rsatamiz */
-        setStage('error')
+        setState('error')
+        setMessage(t('face.cameraError'))
       }
     }
 
@@ -125,7 +176,22 @@ export function FaceConfirmModal({
       stopCamera(streamRef.current)
       streamRef.current = null
     }
-  }, [open, tick])
+  }, [open, tick, t])
+
+  const cameraBroken = state === 'error' && message === t('face.cameraError')
+
+  const hint =
+    state === 'success'
+      ? t('face.confirmed')
+      : state === 'loading'
+        ? t('face.loading')
+        : state === 'error'
+          ? message
+          : needsEnroll && samples.current.length < SAMPLES
+            ? t('face.firstTime')
+            : state === 'holding'
+              ? t('face.hold')
+              : t('face.look')
 
   return (
     <Modal
@@ -133,7 +199,7 @@ export function FaceConfirmModal({
       onClose={onClose}
       size="sm"
       title={t('face.confirmTitle')}
-      description={staff?.fullName}
+      description={staffName}
       footer={
         <>
           <Button variant="gray" onClick={onClose}>
@@ -144,7 +210,7 @@ export function FaceConfirmModal({
             Doim ko'rinib tursa, tasdiqlashning ma'nosi qolmasdi —
             har safar shu tugma bosilardi.
           */}
-          {stage === 'error' ? (
+          {cameraBroken ? (
             <Button variant="tinted" onClick={onManual}>
               {t('face.manual')}
             </Button>
@@ -153,40 +219,17 @@ export function FaceConfirmModal({
       }
     >
       <div className="pb-2">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-[16px] bg-black">
-          {/* Ko'zgu ko'rinishi: odam o'zini oynadagidek ko'radi */}
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            className="h-full w-full -scale-x-100 object-cover"
-          />
-        </div>
+        <FaceScanner
+          videoRef={videoRef}
+          state={state}
+          progress={progress}
+          title={state === 'success' ? staffName : undefined}
+          hint={hint}
+        />
 
-        <div
-          className={cn(
-            'mt-3 flex items-center gap-3 rounded-[14px] px-4 py-3',
-            stage === 'error' ? 'bg-bad-soft' : 'bg-sunken',
-          )}
-        >
-          {stage === 'error' ? (
-            <CameraOff size={18} className="shrink-0 text-bad" />
-          ) : stage === 'checking' ? (
-            <ShieldCheck size={18} className="shrink-0 text-accent" />
-          ) : (
-            <ScanFace size={18} className="shrink-0 text-accent" />
-          )}
-          <p className="text-footnote text-label">
-            {stage === 'loading' ? t('face.loading') : null}
-            {stage === 'searching' ? t('face.look') : null}
-            {stage === 'blink' ? t('face.blink') : null}
-            {stage === 'checking' ? t('face.checking') : null}
-            {stage === 'error' ? t('face.cameraError') : null}
-          </p>
-        </div>
-
-        {message ? <p className="mt-2 text-footnote text-bad">{message}</p> : null}
-        <p className="mt-3 text-caption text-label-tertiary">{t('face.privacy')}</p>
+        <p className="mt-4 text-center text-caption text-label-tertiary">
+          {t('face.privacy')}
+        </p>
       </div>
     </Modal>
   )

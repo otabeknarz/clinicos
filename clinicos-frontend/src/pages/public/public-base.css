@@ -567,3 +567,19 @@ html:has(.story-page){scroll-behavior:auto}
 @media(prefers-reduced-motion:reduce){
 :where(.auth-page,.story-page) .ui-select-list{animation:none}
 }
+
+/*
+  KIRISH MAYDONIDAGI DOMEN.
+
+  Yozuv maydonning USTIDA turadi: terilgan matn ko'rinmas nusxa
+  bilan o'lchanadi va domen aynan uning oxiridan boshlanadi.
+  Shu sababli u kursor bilan qo'shilib ketmaydi va bosilmaydi ham
+  (`pointer-events:none`).
+*/
+:where(.auth-page,.story-page) .login-field{position:relative}
+:where(.auth-page,.story-page) .login-domain{position:absolute;left:15px;right:15px;top:0;height:53px;display:flex;align-items:center;font-size:13px;color:#9aa7ba;pointer-events:none;white-space:nowrap;overflow:hidden}
+:where(.auth-page,.story-page) .login-domain i{visibility:hidden;font-style:normal}
+
+@media(min-width:1500px){
+:where(.auth-page,.story-page) .login-domain{height:58px}
+}

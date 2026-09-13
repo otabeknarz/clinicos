@@ -363,7 +363,7 @@ export const dict: Dict = {
   'login.tabLogin': 'Tizimga kirish',
   'login.tabRegister': 'Ro‘yxatdan o‘tish',
   'login.email': 'Telefon yoki email',
-  'login.emailPlaceholder': '+998 90 123 45 67',
+  'login.emailPlaceholder': 'ism.familiya',
   'login.password': 'Parol',
   'login.passwordPlaceholder': 'Parolingizni kiriting',
   'login.showPassword': 'Parolni ko‘rsatish',
@@ -1880,4 +1880,7 @@ export const dict: Dict = {
   'leads.usage': '{patients} bemor · {users} xodim',
   'leads.openClinic': 'Klinikani ochish',
   'leads.freshCount': '{count} ta yangi',
+  'face.hold': 'Shu holatda turing…',
+  'face.firstTime': 'Birinchi marta — yuzingiz saqlanmoqda',
+  'face.confirmed': 'Tasdiqlandi',
 }

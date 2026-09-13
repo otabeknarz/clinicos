@@ -27,9 +27,23 @@ export class FaceController {
     return this.faces.list()
   }
 
-  // POST /attendance/face
+  /*
+    POST /attendance/face
+
+    RUXSAT `attendance.manage`, `staff.manage` EMAS.
+
+    Yuz aynan davomat belgilash paytida olinadi: xodim kamera
+    oldida turganda registrator "Keldi" ni bosadi va oyna uchta
+    kadr yig'ib qo'ya qoladi. Kadrlar `staff.manage` talab qilsa,
+    registrator hech kimni ro'yxatdan o'tkaza olmasdi va bu
+    imkoniyat amalda ishlamay qolardi — davomat esa to'liq
+    registraturada.
+
+    Yozuv AUDITGA tushadi: biometrik ma'lumot olish jimgina
+    bo'lmasligi kerak.
+  */
   @Post()
-  @RequirePermission('staff.manage')
+  @RequirePermission('attendance.manage')
   @Audit('create', 'staff-face')
   enroll(@Body() dto: EnrollFaceDto) {
     return this.faces.enroll(dto)
