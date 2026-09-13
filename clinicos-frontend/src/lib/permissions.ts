@@ -83,6 +83,10 @@ const OWNER_PERMISSIONS: Permission[] = [
   'feedback.manage',
   'chat.use',
   'cashcontrol.view',
+  // Kirim-chiqim: bekor qilish (`finance.void`) faqat egasida
+  'finance.view',
+  'finance.create',
+  'finance.void',
   'settings.view',
   'settings.manage',
   'users.manage',
@@ -198,6 +202,14 @@ const PHARMACY_OWNER_PERMISSIONS: Permission[] = [
   'settings.view',
 ]
 
+/**
+ * XODIM — buxgalter, kassir, omborchi, qorovul...
+ *
+ * O'zi faqat profil, jadval va chatni ko'radi. Ishiga kerak bo'lganini
+ * egasi qo'shimcha ruxsat bilan beradi (buxgalterga kirim-chiqim).
+ */
+const STAFF_PERMISSIONS: Permission[] = ['dashboard.view', 'chat.use', 'settings.view']
+
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   superadmin: SUPERADMIN_PERMISSIONS,
   owner: OWNER_PERMISSIONS,
@@ -205,6 +217,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   doctor: DOCTOR_PERMISSIONS,
   pharmacist: PHARMACIST_PERMISSIONS,
   pharmacy_owner: PHARMACY_OWNER_PERMISSIONS,
+  staff: STAFF_PERMISSIONS,
 }
 
 /** Rol standarti + qo'shimcha berilgan ruxsatlar */

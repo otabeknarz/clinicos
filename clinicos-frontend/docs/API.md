@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**229 ta endpoint.**
+**234 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -3756,6 +3756,58 @@ faceVerify(staffId: ID, descriptor: number[], photo?: string | null): Promise<Fa
 
 ```ts
 faceCheckIn(descriptor: number[], /** Kamera kadri — yozuvning dalili bo'lib saqlanadi */ photo?: string | null): Promise<FaceCheckInResult>
+```
+
+## finance
+
+`src/api/finance.ts`
+
+> ============================================================
+>  KIRIM-CHIQIM
+> ============================================================
+> 
+> Bemor to'lovidan TASHQARI pul: xarid, ijara, maosh, kommunal va
+> bemordan boshqa kirim. Bemor to'lovlari `payments` da qoladi —
+> hisobot ikkalasini qo'shib o'qiydi.
+> 
+> Ruxsatlar:
+>   `finance.view`   — butun hisobot (egasi, buxgalter)
+>   `finance.create` — yozish va O'Z yozuvlari (kassadan pul beradigan xodim)
+>   `finance.void`   — bekor qilish, faqat egasi
+> 
+> Yozuv O'ZGARMAYDI: tahrir va o'chirish yo'q, faqat bekor qilish.
+
+### `GET /finance/summary?from=&to=`
+
+```ts
+getFinanceSummary(range: DateRange): Promise<FinanceSummary>
+```
+
+### `GET /finance/entries?from=&to=&type=`
+
+```ts
+listFinanceEntries(range: DateRange, type: TypeFilter = 'all'): Promise<FinanceEntry[]>
+```
+
+### `GET /finance/my-entries?from=&to=&type=`
+
+Faqat O'ZI yozganlari — `finance.create` bor, `finance.view` yo'q xodim
+uchun (kassadan xaridga pul beradigan registrator).
+
+```ts
+listMyFinanceEntries(range: DateRange, type: TypeFilter = 'all'): Promise<FinanceEntry[]>
+```
+
+### `POST /finance/entries`
+
+```ts
+createFinanceEntry(input: FinanceEntryInput): Promise<FinanceEntry>
+```
+
+### `POST /finance/entries/:id/void`
+
+```ts
+voidFinanceEntry(id: ID, reason: string): Promise<FinanceEntry>
 ```
 
 ## google

@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarPlus, Check, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 
 import { getDoctorLoad, listAppointmentsRange } from '@/api/appointments'
 import { listDoctorsShort } from '@/api/doctors'
 import { LoadView } from './calendar/LoadView'
+import { doctorColors, STATUS_DOT, STATUS_ORDER, tint } from './calendar/colors'
 import { AppointmentFormModal } from '@/components/modals/AppointmentFormModal'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
@@ -28,7 +29,7 @@ import { APPOINTMENT_LABEL, APPOINTMENT_TONE } from '@/lib/status'
 import { useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
-import type { AppointmentExpanded, AppointmentStatus } from '@/types/models'
+import type { AppointmentExpanded } from '@/types/models'
 
 type View = 'day' | 'week' | 'load'
 
@@ -72,6 +73,9 @@ export function CalendarPage() {
   )
 
   const rows = (data ?? []).filter((a) => a.status !== 'cancelled')
+
+  /* Rang shifokorlar ro'yxatidagi tartibdan — izoh va kartalar mos kelsin */
+  const colorOf = useMemo(() => doctorColors((doctors ?? []).map((d) => d.id)), [doctors])
 
   // Yuklama ko'rinishi uchun 14 kunlik oyna
   const loadFrom = startOfWeek(anchor)
@@ -182,11 +186,20 @@ export function CalendarPage() {
           </div>
         ) : (
           <>
+            <Legend
+              appointments={rows}
+              colorOf={colorOf}
+              showDoctors={doctorId === 'all'}
+              onPickDoctor={setDoctorId}
+            />
             {/* Telefonda vaqt to'ri sig'maydi — ro'yxat ko'rinishi qulayroq */}
-            <CalendarAgenda days={days} appointments={rows} className="md:hidden" />
+            <CalendarAgenda days={days} appointments={rows} colorOf={colorOf} className="md:hidden" />
             <CalendarGrid
               days={days}
               appointments={rows}
+              colorOf={colorOf}
+              showDoctor={doctorId === 'all'}
+              canCreate={can('appointments.create')}
               onSlotClick={openSlot}
               className="hidden md:block"
             />
@@ -213,15 +226,22 @@ export function CalendarPage() {
 function CalendarGrid({
   days,
   appointments,
+  colorOf,
+  showDoctor,
+  canCreate,
   onSlotClick,
   className,
 }: {
   days: Date[]
   appointments: AppointmentExpanded[]
+  colorOf: (doctorId: string) => string
+  /** Hamma shifokor ko'rinayotganda kartada shifokor ismi ham yoziladi */
+  showDoctor: boolean
+  canCreate: boolean
   onSlotClick: (day: Date, time: string) => void
   className?: string
 }) {
-  const { t } = useI18n()
+  const { t, tService } = useI18n()
   const navigate = useNavigate()
 
   const slots = useMemo(() => {
@@ -266,6 +286,18 @@ function CalendarGrid({
           className="relative grid"
           style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0,1fr))` }}
         >
+          {/*
+            BO'SH DAVR — bitta umumiy xabar. Ilgari har bir bo'sh ustunda
+            "Qabul yo'q" yozilardi va u 08:00 katagida qabulning o'zidek
+            ko'rinardi.
+          */}
+          {appointments.length === 0 ? (
+            <div className="pointer-events-none absolute inset-x-0 top-24 z-10 flex justify-center">
+              <span className="rounded-full bg-raised px-4 py-2 text-footnote text-label-secondary shadow-sm ring-1 ring-separator">
+                {canCreate ? t('calendar.emptyCreate') : t('calendar.noAppointments')}
+              </span>
+            </div>
+          ) : null}
           {/* Vaqt ustuni */}
           <div className="relative" style={{ height: totalHeight }}>
             {slots.map((slot, index) =>
@@ -290,7 +322,11 @@ function CalendarGrid({
             return (
               <div
                 key={day.toISOString()}
-                className="relative border-l border-separator"
+                className={cn(
+                  'relative border-l border-separator',
+                  /* Bugungi ustun — ko'z qayerdan boshlashni darhol topsin */
+                  isToday(day) && 'bg-accent/[0.035]',
+                )}
                 style={{ height: totalHeight }}
               >
                 {/* Bo'sh slotlar — bosilsa yangi qabul */}
@@ -301,11 +337,22 @@ function CalendarGrid({
                     onClick={() => onSlotClick(day, slot)}
                     aria-label={`${slot}`}
                     className={cn(
-                      'absolute inset-x-0 transition-colors duration-150 hover:bg-fill-4',
-                      index % 2 === 0 ? 'border-t border-separator' : 'border-t border-separator/40',
+                      'group absolute inset-x-0 transition-colors duration-150',
+                      canCreate ? 'hover:bg-accent/[0.07]' : 'cursor-default',
+                      index % 2 === 0 ? 'border-t border-separator' : 'border-t border-dashed border-separator/50',
                     )}
                     style={{ top: TOP_PAD + index * SLOT_HEIGHT, height: SLOT_HEIGHT }}
-                  />
+                  >
+                    {/*
+                      Bo'sh vaqt ustiga kelganda "+ 09:30" — bosilsa shu vaqtga
+                      qabul ochilishini bilmagan odam uchun.
+                    */}
+                    {canCreate ? (
+                      <span className="pointer-events-none flex items-center gap-1 px-2 text-caption-2 font-medium text-accent opacity-0 transition-opacity group-hover:opacity-100">
+                        <Plus size={11} /> {slot}
+                      </span>
+                    ) : null}
+                  </button>
                 ))}
 
                 {/* Hozirgi vaqt chizig'i */}
@@ -320,48 +367,96 @@ function CalendarGrid({
                     ((event.endMin - event.startMin) / STEP) * SLOT_HEIGHT - 3,
                   )
                   const narrow = event.width < 20
+                  const color = colorOf(appointment.doctor.id)
+                  const status = appointment.status
+                  const done = status === 'completed'
+                  const missed = status === 'no_show'
+                  const end = new Date(
+                    new Date(appointment.startsAt).getTime() + appointment.durationMinutes * 60_000,
+                  )
+                  /*
+                    Karta balandligiga qarab nima sig'adi:
+                      < 50px — bitta qator: vaqt va bemor
+                      < 70px — vaqt, bemor
+                      katta  — vaqt, bemor, xizmat, shifokor
+                  */
+                  const compact = height < 50
+                  const roomy = height >= 70
 
                   return (
                     <button
                       key={appointment.id}
                       type="button"
                       onClick={() => navigate(`/patients/${appointment.patient.id}`)}
-                      title={`${time(appointment.startsAt)} · ${appointment.patient.fullName} · ${appointment.doctor.fullName}`}
+                      title={[
+                        `${time(appointment.startsAt)}–${time(end)}`,
+                        appointment.patient.fullName,
+                        tService(appointment.service.name),
+                        appointment.doctor.fullName,
+                        t(APPOINTMENT_LABEL[status]),
+                      ].join(' · ')}
                       className={cn(
-                        'absolute overflow-hidden rounded-[7px] px-1.5 py-0.5 text-left',
-                        'ring-1 ring-[var(--surface-raised)]',
-                        'transition-[transform,box-shadow] duration-150 hover:z-20 hover:shadow-md',
-                        EVENT_STYLE[appointment.status],
+                        'absolute overflow-hidden rounded-[8px] py-1 pl-2 pr-1.5 text-left',
+                        'shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-[var(--surface-raised)]',
+                        'transition-[transform,box-shadow] duration-150 hover:z-20 hover:-translate-y-px hover:shadow-md',
+                        missed && 'opacity-70',
                       )}
                       style={{
                         top: TOP_PAD + top + 1,
                         height,
                         left: `calc(${event.left}% + 2px)`,
                         width: `calc(${event.width}% - 4px)`,
+                        background: tint(color, done ? 10 : 18),
+                        borderLeft: `3px solid ${color}`,
                       }}
                     >
-                      {narrow ? null : (
-                        <span className="block truncate text-caption-2 font-semibold tnum opacity-80">
-                          {time(appointment.startsAt)}
+                      <span className="flex items-center gap-1.5">
+                        {narrow ? null : (
+                          <span
+                            className="shrink-0 text-caption-2 font-semibold tnum"
+                            style={{ color }}
+                          >
+                            {compact ? time(appointment.startsAt) : `${time(appointment.startsAt)}–${time(end)}`}
+                          </span>
+                        )}
+                        {compact ? (
+                          <span
+                            className={cn(
+                              'min-w-0 truncate text-caption font-semibold leading-tight text-label',
+                              missed && 'line-through',
+                            )}
+                          >
+                            {appointment.patient.fullName}
+                          </span>
+                        ) : null}
+                        {/* Holat — rang emas, belgi: rang shifokorga band */}
+                        <span className="ml-auto flex shrink-0 items-center">
+                          {done ? (
+                            <Check size={12} className="text-ok" strokeWidth={3} />
+                          ) : (
+                            <span className={cn('h-2 w-2 rounded-full ring-2 ring-[var(--surface-raised)]', STATUS_DOT[status])} />
+                          )}
+                        </span>
+                      </span>
+                      {compact ? null : (
+                        <span
+                          className={cn(
+                            'mt-0.5 block truncate text-footnote font-semibold leading-tight text-label',
+                            missed && 'line-through',
+                          )}
+                        >
+                          {appointment.patient.fullName}
                         </span>
                       )}
-                      <span className="block truncate text-caption font-medium leading-tight">
-                        {appointment.patient.fullName}
-                      </span>
-                      {height > 58 && !narrow ? (
-                        <span className="block truncate text-caption-2 opacity-70">
-                          {appointment.doctor.fullName}
+                      {roomy && !narrow ? (
+                        <span className="mt-0.5 block truncate text-caption-2 text-label-secondary">
+                          {tService(appointment.service.name)}
+                          {showDoctor ? ` · ${appointment.doctor.fullName}` : ''}
                         </span>
                       ) : null}
                     </button>
                   )
                 })}
-
-                {dayAppointments.length === 0 ? (
-                  <p className="pointer-events-none absolute inset-x-0 top-8 text-center text-caption text-label-quaternary">
-                    {t('calendar.noAppointments')}
-                  </p>
-                ) : null}
               </div>
             )
           })}
@@ -387,10 +482,12 @@ function CalendarGrid({
 function CalendarAgenda({
   days,
   appointments,
+  colorOf,
   className,
 }: {
   days: Date[]
   appointments: AppointmentExpanded[]
+  colorOf: (doctorId: string) => string
   className?: string
 }) {
   const { t, tService } = useI18n()
@@ -447,12 +544,10 @@ function CalendarAgenda({
                         </span>
                       </span>
 
-                      {/* Holatni bildiruvchi rangli chiziq */}
+                      {/* Shifokor rangi — kattalar to'ridagi bilan bir xil */}
                       <span
-                        className={cn(
-                          'h-9 w-1 shrink-0 rounded-full',
-                          STATUS_STRIPE[appointment.status],
-                        )}
+                        className="h-9 w-1 shrink-0 rounded-full"
+                        style={{ background: colorOf(appointment.doctor.id) }}
                       />
 
                       <span className="min-w-0 flex-1">
@@ -479,14 +574,6 @@ function CalendarAgenda({
   )
 }
 
-const STATUS_STRIPE: Record<AppointmentStatus, string> = {
-  scheduled: 'bg-neutral',
-  confirmed: 'bg-accent',
-  checked_in: 'bg-warn',
-  completed: 'bg-ok',
-  cancelled: 'bg-fill-2',
-  no_show: 'bg-bad',
-}
 
 /* ------------------------------------------------------------------ */
 /* Ustma-ust tushgan qabullarni joylashtirish                          */
@@ -569,17 +656,75 @@ function placeEvents(appointments: AppointmentExpanded[]): PlacedEvent[] {
   return placed
 }
 
+/* ------------------------------------------------------------------ */
+/* Izoh                                                                */
+/* ------------------------------------------------------------------ */
+
 /**
- * Holat ranglari — ataylab kuchsiz. Kalendar rang-barang bo'lib
- * ketmasligi kerak, chunki asosiy ma'lumot — vaqt va ism.
+ * RANG VA BELGI IZOHI — to'r ustida.
+ *
+ * Rang nimani bildirishi yozilmasa, rangli kalendar kulrangidan ham
+ * tushunarsizroq: odam har bir rangga o'zicha ma'no qo'yadi. Shifokor
+ * nomi bosilsa, kalendar faqat o'sha shifokorga o'tadi.
+ *
+ * Faqat shu davrda qabuli BOR shifokorlar ko'rsatiladi — 20 kishilik
+ * ro'yxat izoh emas, devor bo'lib qolardi.
  */
-const EVENT_STYLE: Record<AppointmentStatus, string> = {
-  scheduled: 'bg-fill-3 text-label',
-  confirmed: 'bg-accent-soft text-accent',
-  checked_in: 'bg-warn-soft text-warn',
-  completed: 'bg-ok-soft text-ok',
-  cancelled: 'bg-fill-4 text-label-tertiary line-through',
-  no_show: 'bg-bad-soft text-bad',
+function Legend({
+  appointments,
+  colorOf,
+  showDoctors,
+  onPickDoctor,
+}: {
+  appointments: AppointmentExpanded[]
+  colorOf: (doctorId: string) => string
+  showDoctors: boolean
+  onPickDoctor: (doctorId: string) => void
+}) {
+  const { t } = useI18n()
+
+  const doctors = new Map<string, { id: string; name: string; count: number }>()
+  for (const a of appointments) {
+    const row = doctors.get(a.doctor.id) ?? { id: a.doctor.id, name: a.doctor.fullName, count: 0 }
+    row.count += 1
+    doctors.set(a.doctor.id, row)
+  }
+  const doctorList = [...doctors.values()].sort((a, b) => b.count - a.count)
+
+  return (
+    <div className="hairline flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5 sm:px-5">
+      {showDoctors && doctorList.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {doctorList.map((doctor) => (
+            <button
+              key={doctor.id}
+              type="button"
+              onClick={() => onPickDoctor(doctor.id)}
+              className="flex items-center gap-1.5 rounded-full py-1 pl-1.5 pr-2.5 text-caption font-medium text-label transition-colors hover:brightness-95"
+              style={{ background: tint(colorOf(doctor.id), 14) }}
+            >
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: colorOf(doctor.id) }} />
+              {doctor.name}
+              <span className="tnum text-label-tertiary">{doctor.count}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="ml-auto hidden flex-wrap items-center gap-3 text-caption text-label-secondary md:flex">
+        {STATUS_ORDER.map((status) => (
+          <span key={status} className="flex items-center gap-1.5">
+            {status === 'completed' ? (
+              <Check size={12} className="text-ok" strokeWidth={3} />
+            ) : (
+              <span className={cn('h-2 w-2 rounded-full', STATUS_DOT[status])} />
+            )}
+            {t(APPOINTMENT_LABEL[status])}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function NowLine() {

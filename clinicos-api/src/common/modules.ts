@@ -32,6 +32,8 @@ export const CLINIC_MODULES = [
   'calendar',
   'debts',
   'revenue',
+  /* Kirim-chiqim: xarajatlar va bemor to'lovidan tashqari kirim */
+  'finance',
 ] as const
 
 /*
@@ -116,6 +118,9 @@ const MODULE_BY_PERMISSION: Record<string, string> = {
   'debts.view': 'debts',
   'debts.waive': 'debts',
   'revenue.view': 'revenue',
+  'finance.view': 'finance',
+  'finance.create': 'finance',
+  'finance.void': 'finance',
 }
 
 /**

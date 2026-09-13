@@ -6,20 +6,22 @@ datasource db {
   provider = "postgresql"
 }
 
-/* ================================================================
-   KLINIKA (tenant)
-   ================================================================ */
+/**
+ * ================================================================
+ * KLINIKA (tenant)
+ * ================================================================
+ */
 
 model Clinic {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   name        String
-  logoUrl     String?  @map("logo_url")
+  logoUrl     String? @map("logo_url")
   phone       String
   address     String
-  slotMinutes Int      @default(30) @map("slot_minutes")
-  currency    String   @default("UZS")
-  timezone    String   @default("Asia/Tashkent")
-  isActive    Boolean  @default(true) @map("is_active")
+  slotMinutes Int     @default(30) @map("slot_minutes")
+  currency    String  @default("UZS")
+  timezone    String  @default("Asia/Tashkent")
+  isActive    Boolean @default(true) @map("is_active")
 
   /// Klinika o'chirilgan payt. `null` — o'chirilmagan.
   ///
@@ -86,13 +88,16 @@ model Clinic {
   rooms             Room[]
   admissions        Admission[]
   shiftClosures     ShiftClosure[]
+  financeEntries    FinanceEntry[]
   feedback          Feedback[]
   chatGroups        ChatGroup[]
   chatMessages      ChatMessage[]
   subscription      Subscription?
   impersonationLogs ImpersonationLog[]
 
-  /* --- Apteka --- */
+  /**
+   * --- Apteka ---
+   */
   medicines       Medicine[]
   medicineBatches MedicineBatch[]
   suppliers       Supplier[]
@@ -116,9 +121,9 @@ model Clinic {
 model WorkingHour {
   id       String  @id @default(uuid())
   clinicId String  @map("clinic_id")
-  weekday  Int     // 0 = yakshanba … 6 = shanba
-  open     String  // "08:00"
-  close    String  // "19:00"
+  weekday  Int // 0 = yakshanba … 6 = shanba
+  open     String // "08:00"
+  close    String // "19:00"
   isClosed Boolean @default(false) @map("is_closed")
 
   clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
@@ -127,9 +132,11 @@ model WorkingHour {
   @@map("working_hours")
 }
 
-/* ================================================================
-   FOYDALANUVCHI VA ROL
-   ================================================================ */
+/**
+ * ================================================================
+ * FOYDALANUVCHI VA ROL
+ * ================================================================
+ */
 
 enum Role {
   /// Platforma egasi — klinika xodimi emas, butun tizimni boshqaradi
@@ -141,6 +148,10 @@ enum Role {
   PHARMACIST
   /// Apteka rahbari — katalog, kirim, hisobot, kassa nazorati. SOTMAYDI.
   PHARMACY_OWNER
+  /// Klinikaning boshqa xodimi — buxgalter, kassir, omborchi va hokazo.
+  /// O'zi faqat profil, jadval va chatni ko'radi; qolganini egasi
+  /// qo'shimcha ruxsat bilan beradi (masalan kirim-chiqim).
+  STAFF
 }
 
 /// Ma'lumot ajratish birligi qanday biznes.
@@ -159,11 +170,11 @@ model User {
   id       String @id @default(uuid())
   clinicId String @map("clinic_id")
 
-  fullName     String  @map("full_name")
+  fullName     String @map("full_name")
   email        String
   phone        String
   /// bcrypt yoki argon2id xeshi. Parolning o'zi HECH QAYERDA saqlanmaydi.
-  passwordHash String  @map("password_hash")
+  passwordHash String @map("password_hash")
 
   /// Parol oxirgi marta qachon o'zgargani.
   ///
@@ -175,9 +186,9 @@ model User {
 
   /// Egasi parolni qayta belgilagan bo'lsa — kirgach almashtirish so'raladi
   mustChangePassword Boolean @default(false) @map("must_change_password")
-  role         Role
-  avatarUrl    String? @map("avatar_url")
-  isActive     Boolean @default(true) @map("is_active")
+  role               Role
+  avatarUrl          String? @map("avatar_url")
+  isActive           Boolean @default(true) @map("is_active")
 
   /// Rol standartiga QO'SHIMCHA ruxsatlar, masalan ["revenue.view"]
   extraPermissions String[] @default([]) @map("extra_permissions")
@@ -208,20 +219,22 @@ model User {
   appointments Appointment[] @relation("AppointmentCreatedBy")
   payments     Payment[]     @relation("PaymentCreatedBy")
 
-  staff             Staff?
-  pharmacyStaff     PharmacyStaff?
-  platformMember    PlatformMember?
-  attendanceMarked  Attendance[]       @relation("AttendanceMarkedBy")
-  bonusesCreated    Bonus[]            @relation("BonusCreatedBy")
-  waiversCreated    PenaltyWaiver[]    @relation("WaiverCreatedBy")
-  debtWaiversCreated DebtWaiver[]      @relation("DebtWaiverCreatedBy")
-  admissionsCreated Admission[]        @relation("AdmissionCreatedBy")
-  shiftClosures     ShiftClosure[]     @relation("ShiftClosedBy")
-  chatGroupsCreated ChatGroup[]        @relation("ChatCreatedBy")
-  chatMemberships   ChatGroupMember[]
-  messages          ChatMessage[]      @relation("MessageAuthor")
-  messageReads      ChatMessageRead[]
-  impersonations    ImpersonationLog[] @relation("ImpersonatedBy")
+  staff              Staff?
+  pharmacyStaff      PharmacyStaff?
+  platformMember     PlatformMember?
+  attendanceMarked   Attendance[]       @relation("AttendanceMarkedBy")
+  bonusesCreated     Bonus[]            @relation("BonusCreatedBy")
+  waiversCreated     PenaltyWaiver[]    @relation("WaiverCreatedBy")
+  debtWaiversCreated DebtWaiver[]       @relation("DebtWaiverCreatedBy")
+  financeCreated     FinanceEntry[]     @relation("FinanceEntryCreatedBy")
+  financeVoided      FinanceEntry[]     @relation("FinanceEntryVoidedBy")
+  admissionsCreated  Admission[]        @relation("AdmissionCreatedBy")
+  shiftClosures      ShiftClosure[]     @relation("ShiftClosedBy")
+  chatGroupsCreated  ChatGroup[]        @relation("ChatCreatedBy")
+  chatMemberships    ChatGroupMember[]
+  messages           ChatMessage[]      @relation("MessageAuthor")
+  messageReads       ChatMessageRead[]
+  impersonations     ImpersonationLog[] @relation("ImpersonatedBy")
 
   /// Email butun tizimda emas, KLINIKA ICHIDA noyob
   @@unique([clinicId, email])
@@ -232,15 +245,15 @@ model User {
 }
 
 model Session {
-  id           String   @id @default(uuid())
-  userId       String   @map("user_id")
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
   /// Tokenning O'ZI emas, xeshi saqlanadi
-  tokenHash    String   @unique @map("token_hash")
-  userAgent    String?  @map("user_agent")
-  ipAddress    String?  @map("ip_address")
-  expiresAt    DateTime @map("expires_at")
-  revokedAt    DateTime? @map("revoked_at")
-  createdAt    DateTime @default(now()) @map("created_at")
+  tokenHash String    @unique @map("token_hash")
+  userAgent String?   @map("user_agent")
+  ipAddress String?   @map("ip_address")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -248,9 +261,11 @@ model Session {
   @@map("sessions")
 }
 
-/* ================================================================
-   SHIFOKOR
-   ================================================================ */
+/**
+ * ================================================================
+ * SHIFOKOR
+ * ================================================================
+ */
 
 enum DoctorStatus {
   ACTIVE
@@ -296,9 +311,11 @@ model Doctor {
   @@map("doctors")
 }
 
-/* ================================================================
-   BEMOR
-   ================================================================ */
+/**
+ * ================================================================
+ * BEMOR
+ * ================================================================
+ */
 
 enum Gender {
   MALE
@@ -364,9 +381,11 @@ model Patient {
   @@map("patients")
 }
 
-/* ================================================================
-   XIZMAT
-   ================================================================ */
+/**
+ * ================================================================
+ * XIZMAT
+ * ================================================================
+ */
 
 enum ServiceStatus {
   ACTIVE
@@ -401,7 +420,7 @@ model Service {
 
   name            String
   category        String
-  price           Int           // so'mda, butun son
+  price           Int // so'mda, butun son
   durationMinutes Int           @map("duration_minutes")
   paymentTiming   PaymentTiming @default(POSTPAID) @map("payment_timing")
   status          ServiceStatus @default(ACTIVE)
@@ -453,9 +472,11 @@ model ServiceLoyaltyTier {
   @@map("service_loyalty_tiers")
 }
 
-/* ================================================================
-   QABUL
-   ================================================================ */
+/**
+ * ================================================================
+ * QABUL
+ * ================================================================
+ */
 
 enum AppointmentStatus {
   SCHEDULED
@@ -497,15 +518,15 @@ model Appointment {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  clinic   Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  patient  Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  doctor   Doctor    @relation(fields: [doctorId], references: [id], onDelete: Restrict)
-  service  Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  clinic     Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient    Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor     Doctor          @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  service    Service         @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   visit      Visit?
   payments   Payment[]
   notices    PatientNotice[]
   debtWaiver DebtWaiver?
-  followUp FollowUp?
+  followUp   FollowUp?
 
   /// Kalendar va kunlik ro'yxat uchun eng muhim indeks
   @@index([clinicId, startsAt])
@@ -515,9 +536,11 @@ model Appointment {
   @@map("appointments")
 }
 
-/* ================================================================
-   TASHRIF — MAXFIY TIBBIY MA'LUMOT
-   ================================================================ */
+/**
+ * ================================================================
+ * TASHRIF — MAXFIY TIBBIY MA'LUMOT
+ * ================================================================
+ */
 
 model Visit {
   id       String @id @default(uuid())
@@ -545,10 +568,10 @@ model Visit {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  clinic      Clinic      @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  patient     Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  doctor      Doctor      @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  clinic      Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointment Appointment  @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  patient     Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor      Doctor       @relation(fields: [doctorId], references: [id], onDelete: Restrict)
   followUps   FollowUp[]
   images      VisitImage[]
 
@@ -584,9 +607,11 @@ model VisitImage {
   @@map("visit_images")
 }
 
-/* ================================================================
-   TAKRORIY TASHRIF
-   ================================================================ */
+/**
+ * ================================================================
+ * TAKRORIY TASHRIF
+ * ================================================================
+ */
 
 enum FollowUpStatus {
   PENDING
@@ -623,9 +648,11 @@ model FollowUp {
   @@map("follow_ups")
 }
 
-/* ================================================================
-   TO'LOV
-   ================================================================ */
+/**
+ * ================================================================
+ * TO'LOV
+ * ================================================================
+ */
 
 enum PaymentMethod {
   CASH
@@ -698,9 +725,11 @@ model Payment {
   @@map("payments")
 }
 
-/* ================================================================
-   BILDIRISHNOMA
-   ================================================================ */
+/**
+ * ================================================================
+ * BILDIRISHNOMA
+ * ================================================================
+ */
 
 model Notification {
   id       String @id @default(uuid())
@@ -710,9 +739,9 @@ model Notification {
   userId String? @map("user_id")
 
   kind     String
-  count    Int      @default(0)
+  count    Int       @default(0)
   href     String
-  severity String   @default("info")
+  severity String    @default("info")
   readAt   DateTime? @map("read_at")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -723,9 +752,11 @@ model Notification {
   @@map("notifications")
 }
 
-/* ================================================================
-   XODIMLAR
-   ================================================================ */
+/**
+ * ================================================================
+ * XODIMLAR
+ * ================================================================
+ */
 
 enum StaffPosition {
   DOCTOR
@@ -738,6 +769,13 @@ enum StaffPosition {
   CLEANER
   SECURITY
   DRIVER
+  CASHIER
+  ORDERLY
+  STOREKEEPER
+  TECHNICIAN
+  COOK
+  MARKETING
+  IT
   OTHER
 }
 
@@ -809,9 +847,11 @@ model Staff {
   @@map("staff")
 }
 
-/* ================================================================
-   DAVOMAT
-   ================================================================ */
+/**
+ * ================================================================
+ * DAVOMAT
+ * ================================================================
+ */
 
 enum AttendanceStatus {
   PRESENT
@@ -838,7 +878,7 @@ model Attendance {
   /// Kamera oldida olingan surat (S3 kaliti). Xodim O'ZI belgilaganda
   /// yagona dalil shu: yuz izi orqaga qaytarilmaydi, surat esa egasiga
   /// "kim kelgani" ni ko'rsatadi.
-  photoKey String? @map("photo_key")
+  photoKey   String? @map("photo_key")
   /// Xodim o'zi belgiladimi (kamera/bot) — yo'qsa kimdir qo'lda yozgan
   selfMarked Boolean @default(false) @map("self_marked")
 
@@ -869,9 +909,11 @@ model Attendance {
   @@map("attendance")
 }
 
-/* ================================================================
-   BONUS
-   ================================================================ */
+/**
+ * ================================================================
+ * BONUS
+ * ================================================================
+ */
 
 enum BonusRewardType {
   PERCENT_OF_SALARY
@@ -941,9 +983,11 @@ model Bonus {
   @@map("bonuses")
 }
 
-/* ================================================================
-   JARIMA
-   ================================================================ */
+/**
+ * ================================================================
+ * JARIMA
+ * ================================================================
+ */
 
 /// Jarima NIMA UCHUN solinadi.
 enum PenaltyTrigger {
@@ -1003,8 +1047,8 @@ model Penalty {
   period String
   date   DateTime @db.Date
 
-  ruleId String      @map("rule_id")
-  rule   PenaltyRule @relation(fields: [ruleId], references: [id], onDelete: Restrict)
+  ruleId   String         @map("rule_id")
+  rule     PenaltyRule    @relation(fields: [ruleId], references: [id], onDelete: Restrict)
   /// Qoida nomi va sababi yozuv paytida MUZLATIB qo'yiladi:
   /// qoida keyin o'zgarsa ham, solingan jarima o'zgarmasligi kerak.
   ruleName String         @map("rule_name")
@@ -1074,9 +1118,11 @@ model PenaltyWaiver {
   @@map("penalty_waivers")
 }
 
-/* ================================================================
-   STATSIONAR
-   ================================================================ */
+/**
+ * ================================================================
+ * STATSIONAR
+ * ================================================================
+ */
 
 enum RoomCategory {
   LUXURY
@@ -1182,9 +1228,11 @@ model Admission {
   @@map("admissions")
 }
 
-/* ================================================================
-   KASSA SMENASI
-   ================================================================ */
+/**
+ * ================================================================
+ * KASSA SMENASI
+ * ================================================================
+ */
 
 /// Smena yopilishi. Kutilgan va topshirilgan naqd orasidagi farq
 /// egasining hisobotiga tushadi. Farq bo'lsa sabab MAJBURIY va
@@ -1215,9 +1263,11 @@ model ShiftClosure {
   @@map("shift_closures")
 }
 
-/* ================================================================
-   BEMOR FIKRI
-   ================================================================ */
+/**
+ * ================================================================
+ * BEMOR FIKRI
+ * ================================================================
+ */
 
 enum FeedbackStatus {
   NEW
@@ -1254,9 +1304,9 @@ model Feedback {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  clinic  Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  patient Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
-  doctor  Doctor?  @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  clinic  Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient Patient?        @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  doctor  Doctor?         @relation(fields: [doctorId], references: [id], onDelete: SetNull)
   images  FeedbackImage[]
 
   @@index([clinicId, status])
@@ -1284,9 +1334,11 @@ model FeedbackImage {
   @@map("feedback_images")
 }
 
-/* ================================================================
-   ICHKI CHAT
-   ================================================================ */
+/**
+ * ================================================================
+ * ICHKI CHAT
+ * ================================================================
+ */
 
 enum ChatKind {
   GROUP
@@ -1334,7 +1386,7 @@ model ChatMessage {
   clinicId String @map("clinic_id")
   groupId  String @map("group_id")
 
-  authorId String @map("author_id")
+  authorId String  @map("author_id")
   text     String
   /// Tizim xabari (guruh yaratildi, a'zo qo'shildi)
   isSystem Boolean @default(false) @map("is_system")
@@ -1363,14 +1415,15 @@ model ChatMessageRead {
   @@map("chat_message_reads")
 }
 
-/* ================================================================
-   PLATFORMA — SaaS QATLAMI
-   ================================================================
-
-   MUHIM: bu jadvallar klinikaga TEGISHLI EMAS. Ular butun tizim
-   haqida va faqat SUPERADMIN ko'radi. Klinika ichidagi hech qanday
-   so'rov bu jadvallarga tegmasligi kerak.
-   ================================================================ */
+/**
+ * ================================================================
+ * PLATFORMA — SaaS QATLAMI
+ * ================================================================
+ * MUHIM: bu jadvallar klinikaga TEGISHLI EMAS. Ular butun tizim
+ * haqida va faqat SUPERADMIN ko'radi. Klinika ichidagi hech qanday
+ * so'rov bu jadvallarga tegmasligi kerak.
+ * ================================================================
+ */
 
 enum PlanTier {
   STARTER
@@ -1409,8 +1462,8 @@ model Plan {
   basePrice Int @map("base_price")
 
   /// -1 = cheksiz
-  limitDoctors  Int @map("limit_doctors")
-  limitStaff    Int @map("limit_staff")
+  limitDoctors Int @map("limit_doctors")
+  limitStaff   Int @map("limit_staff")
 
   /// TARIFGA KIRADIGAN BO'LIMLAR.
   ///
@@ -1428,8 +1481,8 @@ model Plan {
   ///
   /// Bu MODUL EMAS — mahsulotda yoqib-o'chiriladigan narsa emas,
   /// balki xizmat majburiyati. Shuning uchun alohida ustun.
-  supportLevel String @default("queue") @map("support_level")
-  isActive Boolean  @default(true) @map("is_active")
+  supportLevel String  @default("queue") @map("support_level")
+  isActive     Boolean @default(true) @map("is_active")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1575,7 +1628,7 @@ model PlatformMember {
   userId String @unique @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  position String @default("")
+  position    String   @default("")
   /// clinics.view | clinics.manage | billing.view | billing.manage |
   /// data.view | registry.doctors | registry.patients |
   /// clinics.impersonate | team.manage
@@ -1589,16 +1642,18 @@ model PlatformMember {
   @@map("platform_members")
 }
 
-/* ================================================================
-   AUDIT JURNALI
-   ================================================================ */
+/**
+ * ================================================================
+ * AUDIT JURNALI
+ * ================================================================
+ */
 
 model AuditLog {
   id       String @id @default(uuid())
   clinicId String @map("clinic_id")
   userId   String @map("user_id")
 
-  action     String  // login | create | update | delete | view_medical | export
+  action     String // login | create | update | delete | view_medical | export
   entityType String  @map("entity_type")
   entityId   String? @map("entity_id")
   meta       Json    @default("{}")
@@ -1615,14 +1670,26 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-
-/* ================================================================== */
-/*  APTEKA                                                            */
-/*                                                                    */
-/*  Har bir jadvalda `clinicId` — aptekaning ma'lumot kaliti. Filtr   */
-/*  `tenant.extension.ts` da, klinika jadvallari bilan bir xil.       */
-/*  PUL BUTUN SONDA, so'mda.                                          */
-/* ================================================================== */
+/**
+ * ==================================================================
+ */
+/**
+ * APTEKA
+ */
+/**
+ */
+/**
+ * Har bir jadvalda `clinicId` — aptekaning ma'lumot kaliti. Filtr
+ */
+/**
+ * `tenant.extension.ts` da, klinika jadvallari bilan bir xil.
+ */
+/**
+ * PUL BUTUN SONDA, so'mda.
+ */
+/**
+ * ==================================================================
+ */
 
 enum MedicineForm {
   TABLET
@@ -1973,7 +2040,7 @@ model PatientNotice {
   id       String @id @default(uuid())
   clinicId String @map("clinic_id")
 
-  patientId String @map("patient_id")
+  patientId     String  @map("patient_id")
   /// Faqat ESLATMADA to'ladi — qaysi qabul uchun
   appointmentId String? @map("appointment_id")
 
@@ -2017,8 +2084,8 @@ model GoogleAccount {
   id       String @id @default(uuid())
   clinicId String @unique @map("clinic_id")
 
-  email            String
-  refreshTokenEnc  String @map("refresh_token_enc")
+  email           String
+  refreshTokenEnc String @map("refresh_token_enc")
 
   connectedById   String @map("connected_by_id")
   connectedByName String @map("connected_by_name")
@@ -2173,7 +2240,7 @@ model OnlinePrescription {
   id String @id @default(uuid())
 
   /// Retsept yozgan klinika
-  issuerClinicId String @map("issuer_clinic_id")
+  issuerClinicId   String @map("issuer_clinic_id")
   /// Qabul qilgan apteka (`Clinic.kind = PHARMACY`)
   pharmacyClinicId String @map("pharmacy_clinic_id")
 
@@ -2276,13 +2343,70 @@ model ModuleRestriction {
 model TrialPolicy {
   id String @id @default(uuid())
 
-  direction String @unique
+  direction       String   @unique
   /// Necha kun bepul
-  days Int @default(14)
+  days            Int      @default(14)
   /// Sinov davrida YOPIQ bo'limlar
   disabledModules String[] @map("disabled_modules")
 
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("trial_policies")
+}
+
+/// Kirim-chiqim yozuvining turi
+enum FinanceEntryType {
+  /// Chiqim: xarid, ijara, kommunal, maosh...
+  EXPENSE
+  /// Bemor to'lovidan TASHQARI kirim: ijaraga berish, investitsiya...
+  INCOME
+}
+
+/// KIRIM-CHIQIM — bemor to'lovlaridan tashqari klinika puli.
+///
+/// Bemor to'lovi `Payment` da qoladi, bu yerga ko'chirilmaydi: ikki joyda
+/// yozilgan pul ikki xil summa ko'rsatadi. Hisobot ikkalasini qo'shib
+/// o'qiydi.
+///
+/// O'ZGARMAS, xuddi to'lov kabi. Tahrirlash va o'chirish YO'Q — xato
+/// yozuv `voidedAt` bilan BEKOR qilinadi va ro'yxatda sababi bilan
+/// qoladi. Aks holda kassadan olingan pulning izi bir bosishda yo'qolardi.
+///
+/// NAQD YOZUV KASSAGA TA'SIR QILADI: registrator kassadan xaridga pul
+/// bersa, uning smena yopishdagi kutilgan naqd summasi shuncha kamayadi.
+model FinanceEntry {
+  id       String @id @default(uuid())
+  clinicId String @map("clinic_id")
+
+  type       FinanceEntryType
+  /// Kalit: `purchase`, `rent`, `utilities`... ro'yxati `finance.dto.ts` da
+  category   String
+  /// So'mda, BUTUN SON
+  amount     Int
+  method     PaymentMethod
+  /// Pul qachon berilgan/olingan — yozilgan vaqt emas
+  occurredAt DateTime         @map("occurred_at")
+
+  /// Kimga berildi yoki kimdan keldi: "Medtex MChJ", "Elektr ta'minoti"
+  counterparty String  @default("")
+  note         String  @default("")
+  /// Chek va hujjat suratlari — S3 kalitlari. Javobda imzolangan havolaga
+  /// aylanadi (umumiy interseptor ro'yxatni imzolamaydi — servisda).
+  receipts     String[] @default([])
+
+  createdById String   @map("created_by")
+  createdBy   User     @relation("FinanceEntryCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  /// Bekor qilingan bo'lsa — qachon, kim va nega. Yozuv o'chmaydi.
+  voidedAt   DateTime? @map("voided_at")
+  voidedById String?   @map("voided_by")
+  voidedBy   User?     @relation("FinanceEntryVoidedBy", fields: [voidedById], references: [id], onDelete: Restrict)
+  voidReason String    @default("") @map("void_reason")
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, occurredAt])
+  @@index([clinicId, createdById, occurredAt])
+  @@map("finance_entries")
 }

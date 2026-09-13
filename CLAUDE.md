@@ -415,6 +415,25 @@ nobody could say which one was true. `DebtWaiver` writes off a hopeless debt wit
 money: `paymentStatus` stays unpaid — it really was — and only the lists and the notification
 filter the waived row out. `debts.waive` is owner-only for the same reason `payments.refund` is.
 
+**Income & expenses (`src/finance/`, `FinanceEntry`) is the clinic's money outside patient payments.**
+Rent, salaries, supplies, taxes, a taxi paid from the till — and non-patient income. Patient payments
+stay in `Payment` and are never copied here; `GET /finance/summary` reads both and adds them, because
+one sum written in two places eventually shows two numbers. Entries are immutable like payments: no
+edit or delete, only `POST /finance/entries/:id/void` with a mandatory reason, and the voided row stays
+listed. **A cash entry changes the till**: `expectedCashToday` (shift close) is cash payments + cash
+income − cash expenses *recorded by that same user*, not voided — without it a receptionist who paid a
+supplier from the till would close the day with a "shortage". Three permissions: `finance.view` (full
+report, all entries), `finance.create` (record + `GET /finance/my-entries`, only one's own), `finance.void`
+(owner only, like `payments.refund`). The first two are grantable; the staff form turns `create` on
+whenever `view` is granted, because the menu item and route are gated on `create`.
+
+**`Role.STAFF` is the login role for everyone who is not owner, receptionist or doctor** — accountant,
+cashier, storekeeper. It carries only profile, schedule and chat; the owner adds what the job needs
+through `extraPermissions` (an accountant gets `finance.view` + `finance.create`). Before it existed an
+accountant could only be given the receptionist role (the whole patient base) or the owner role
+(everything). Its home page is Finance if granted, otherwise the staff member's own profile. Positions
+(`StaffPosition`) are a separate axis: a guard or cook is a staff row with no login at all.
+
 **The reception panel's unpaid list is the one part that is not "today".** Everything else on that
 panel (counts, queue, cash) comes from the day's appointments; debt comes from a *separate* query
 with no date bound. They were one query once, and yesterday's debt showed in the notification count

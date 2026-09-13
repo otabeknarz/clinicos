@@ -22,6 +22,8 @@ import {
   SURNAME_STEMS,
 } from './names'
 import { generateShiftClosures, generateWard } from './seedWard'
+import { generateFinance } from './seedFinance'
+import type { MockFinanceEntry } from './seedFinance'
 import { generateFeedback } from './seedFeedback'
 import { generatePharmacy } from './seedPharmacy'
 import type {
@@ -134,6 +136,8 @@ export interface SeedData {
   penaltyWaivers: PenaltyWaiver[]
   /** Kechirilgan qarzlar — boshida bo'sh, egasi o'zi qo'shadi */
   debtWaivers: DebtWaiver[]
+  /** Kirim-chiqim: bemor to'lovidan tashqari pul */
+  financeEntries: MockFinanceEntry[]
   feedback: Feedback[]
   /* --- Apteka: alohida biznes, shakllar `types/pharmacy.ts` da --- */
   medicines: Medicine[]
@@ -998,6 +1002,10 @@ export function generateSeed(seed = 20260901): SeedData {
     penaltyRules,
     penaltyWaivers: [],
     debtWaivers: [],
+    financeEntries: generateFinance(MAIN_CLINIC_ID, today, {
+      owner: { id: 'usr_owner', name: 'Anvar Ahmadjonov' },
+      reception: { id: 'usr_reception_1', name: 'Kamola Sobirova' },
+    }),
     feedback,
     medicines: pharmacy.medicines,
     batches: pharmacy.batches,

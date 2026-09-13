@@ -44,6 +44,15 @@ const LABELS: Record<string, string> = {
   CLEANER: 'Farrosh',
   SECURITY: 'Qorovul',
   DRIVER: 'Haydovchi',
+  CASHIER: 'Kassir',
+  ORDERLY: 'Sanitar',
+  STOREKEEPER: 'Omborchi',
+  TECHNICIAN: 'Texnik xodim',
+  COOK: 'Oshpaz',
+  MARKETING: 'Marketolog',
+  IT: 'IT mutaxassis',
+  /* Rol */
+  STAFF: 'Xodim',
   OTHER: 'Boshqa',
   /* Davomat */
   PRESENT: 'Keldi',

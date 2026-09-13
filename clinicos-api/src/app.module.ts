@@ -19,6 +19,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
 import { PermissionsGuard } from './common/guards/permissions.guard'
 import { FeedbackModule } from './feedback/feedback.module'
 import { DebtsModule } from './debts/debts.module'
+import { FinanceModule } from './finance/finance.module'
 import { ExportModule } from './export/export.module'
 import { ImportModule } from './import/import.module'
 import { FaceModule } from './face/face.module'
@@ -60,6 +61,7 @@ import { TelegramModule } from './telegram/telegram.module'
     AppointmentsModule,
     PaymentsModule,
     DebtsModule,
+    FinanceModule,
     ExportModule,
     ImportModule,
     NoticesModule,

@@ -229,6 +229,7 @@ export interface MockDb {
   team: Collection<SeedData['team'][number]>
   penaltyWaivers: Collection<SeedData['penaltyWaivers'][number]>
   debtWaivers: Collection<SeedData['debtWaivers'][number]>
+  financeEntries: Collection<SeedData['financeEntries'][number]>
   feedback: Collection<SeedData['feedback'][number]>
   monthlyStats: Collection<SeedData['monthlyStats'][number] & { id: string }>
   chatGroups: Collection<SeedData['chatGroups'][number]>
@@ -282,6 +283,7 @@ export function getDb(): MockDb {
     team: new Collection('team', seed.team, store),
     penaltyWaivers: new Collection('penaltyWaivers', seed.penaltyWaivers, store),
     debtWaivers: new Collection('debtWaivers', seed.debtWaivers, store),
+    financeEntries: new Collection('financeEntries', seed.financeEntries, store),
     feedback: new Collection('feedback', seed.feedback, store),
     // Oylik yig'ma yozuvlarda `id` yo'q - davr kaliti id vazifasini bajaradi
     monthlyStats: new Collection(

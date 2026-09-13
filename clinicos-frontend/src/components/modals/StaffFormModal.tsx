@@ -9,6 +9,7 @@ import {
   PERCENT_PRESETS,
   POSITIONS_WITH_ACCESS,
   STAFF_POSITIONS,
+  suggestedRole,
   updateStaff,
   WORK_RATES,
 } from '@/api/staff'
@@ -37,7 +38,14 @@ import type { PayType, Permission, Role, Staff, StaffPosition, StaffStatus } fro
  * belgilaydi, lekin u hech qayerda ochiq saqlanmaydi.
  */
 /** Egasi bera oladigan ruxsatlar — serverdagi `GRANTABLE_PERMISSIONS` ko'zgusi */
-const GRANTABLE: Permission[] = ['data.export', 'data.import', 'patients.message']
+const GRANTABLE: Permission[] = [
+  'data.export',
+  'data.import',
+  'patients.message',
+  /* Kirim-chiqim: hisobot (buxgalter) va yozish (kassadan pul beradigan xodim) */
+  'finance.view',
+  'finance.create',
+]
 
 export function StaffFormModal({
   open,
@@ -143,8 +151,14 @@ export function StaffFormModal({
     const suggested = POSITIONS_WITH_ACCESS.includes(next)
     setHasAccess(suggested)
     if (suggested) {
-      setRole(next === 'doctor' ? 'doctor' : next === 'manager' ? 'owner' : 'receptionist')
+      setRole(next === 'doctor' ? 'doctor' : next === 'manager' ? 'owner' : suggestedRole(next))
     }
+    /*
+      Buxgalterga kirim-chiqim hisoboti, kassirga esa chiqim yozish
+      oldindan belgilanadi — aks holda ular kirib, bo'sh ekranni ko'rardi.
+    */
+    if (next === 'accountant') setExtra(['finance.view', 'finance.create'])
+    else if (next === 'cashier') setExtra(['finance.create'])
     // Shifokorlar ko'pincha foiz evaziga ishlaydi
     if (next === 'doctor') {
       setPayType('percent')
@@ -601,6 +615,7 @@ export function StaffFormModal({
                     { value: 'owner', label: t('role.owner') },
                     { value: 'receptionist', label: t('role.receptionist') },
                     { value: 'doctor', label: t('role.doctor') },
+                    { value: 'staff', label: t('role.staff') },
                   ]}
                 />
               </div>
@@ -619,13 +634,7 @@ export function StaffFormModal({
                       <button
                         key={permission}
                         type="button"
-                        onClick={() =>
-                          setExtra((current) =>
-                            current.includes(permission)
-                              ? current.filter((item) => item !== permission)
-                              : [...current, permission],
-                          )
-                        }
+                        onClick={() => setExtra((current) => toggleGrant(current, permission))}
                         className={cn(
                           'rounded-full px-3 py-1.5 text-footnote font-medium',
                           'transition-colors duration-150',
@@ -723,4 +732,24 @@ export function StaffFormModal({
       </div>
     </Modal>
   )
+}
+
+/**
+ * Qo'shimcha ruxsatni yoqish/o'chirish.
+ *
+ * Kirim-chiqim HISOBOTI yozish huquqisiz berilmaydi: menyudagi band va
+ * sahifa yozish huquqiga bog'langan, hisobotni ko'radigan buxgalter esa
+ * yozuvni ham kiritadi. Shuning uchun hisobot yoqilsa yozish ham yoqiladi,
+ * yozish o'chirilsa hisobot ham o'chadi.
+ */
+function toggleGrant(current: Permission[], permission: Permission): Permission[] {
+  const on = current.includes(permission)
+  let next = on ? current.filter((item) => item !== permission) : [...current, permission]
+  if (!on && permission === 'finance.view' && !next.includes('finance.create')) {
+    next = [...next, 'finance.create']
+  }
+  if (on && permission === 'finance.create') {
+    next = next.filter((item) => item !== 'finance.view')
+  }
+  return next
 }

@@ -27,6 +27,7 @@ export const TENANT_MODELS = new Set<string>([
   'ExportLink',
   'Feedback',
   'FeedbackImage',
+  'FinanceEntry',
   'FollowUp',
   'GoogleAccount',
   'GoogleSheet',

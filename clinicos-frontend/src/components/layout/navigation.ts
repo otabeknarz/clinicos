@@ -1,4 +1,5 @@
 import {
+  ArrowLeftRight,
   BarChart3,
   Building2,
   BedDouble,
@@ -312,6 +313,18 @@ export const NAVIGATION: NavGroup[] = [
         permission: 'debts.view',
       },
       { to: '/revenue', labelKey: 'nav.revenue', icon: TrendingUp, permission: 'revenue.view' },
+      {
+        /*
+          KIRIM-CHIQIM. `finance.create` ga bog'langan, `view` ga emas:
+          kassadan xaridga pul beradigan registrator ham shu yerda yozadi
+          (u faqat o'z yozuvlarini ko'radi). Hisobotni ko'radigan odamda
+          yozish huquqi doim birga beriladi.
+        */
+        to: '/finance',
+        labelKey: 'nav.finance',
+        icon: ArrowLeftRight,
+        permission: 'finance.create',
+      },
       {
         to: '/cash-control',
         labelKey: 'nav.cashControl',

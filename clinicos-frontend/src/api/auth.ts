@@ -347,6 +347,9 @@ const MODULE_BY_PERMISSION: Partial<Record<Permission, string>> = {
   'debts.view': 'debts',
   'debts.waive': 'debts',
   'revenue.view': 'revenue',
+  'finance.view': 'finance',
+  'finance.create': 'finance',
+  'finance.void': 'finance',
 }
 
 /**

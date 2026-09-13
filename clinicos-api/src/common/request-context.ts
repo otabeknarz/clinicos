@@ -32,6 +32,7 @@ export interface RequestUser {
     | 'DOCTOR'
     | 'PHARMACIST'
     | 'PHARMACY_OWNER'
+    | 'STAFF'
     | 'PATIENT'
   /** Rol DOCTOR bo'lsa — shifokor profili id'si, aks holda null */
   doctorId: string | null

@@ -85,6 +85,14 @@ export type Permission =
   | 'chat.use'
   | 'cashcontrol.view'
   | 'shift.close'
+  /* Kirim-chiqim — bemor to'lovidan tashqari pul. `view` — butun hisobot,
+     `create` — chiqim/kirim yozish (kassadan xaridga pul berish),
+     `void` — xato yozuvni bekor qilish, faqat egasida.
+     IZOHDA BO'SH QATOR BO'LMASIN: `check:permissions` ro'yxatni
+     birinchi bo'sh qatorgacha o'qiydi. */
+  | 'finance.view'
+  | 'finance.create'
+  | 'finance.void'
   /* Apteka — klinika ichidagi alohida biznes: o'z tovari, o'z
      kassasi, o'z hisoboti. `sell` kassada ishlash uchun, `manage`
      esa katalog, kirim va narxlar uchun.
@@ -165,6 +173,17 @@ export const OWNER_PERMISSIONS: readonly Permission[] = [
   'cashcontrol.view',
   'revenue.view',
   'analytics.view',
+  /*
+    KIRIM-CHIQIM. Egasida `create` ham bor — `payments.create` dan farqli
+    o'laroq: ijara, soliq yoki katta xaridni ko'pincha egasining o'zi
+    to'laydi. Bu yerda solishtiriladigan "ikkinchi tomon" yo'q, ya'ni
+    vazifalar bo'linishi buzilmaydi. Kassadan berilgan naqd esa baribir
+    uni bergan xodimning smenasiga tushadi.
+    `finance.void` FAQAT egasida — `payments.refund` bilan bir xil sabab.
+  */
+  'finance.view',
+  'finance.create',
+  'finance.void',
   'settings.view',
   'settings.manage',
   'users.manage',
@@ -266,6 +285,24 @@ export const DOCTOR_PERMISSIONS: readonly Permission[] = [
   'settings.view',
 ] as const
 
+/**
+ * XODIM — buxgalter, kassir, omborchi, qorovul va boshqalar.
+ *
+ * O'zi deyarli hech narsa ko'rmaydi: profil, ish jadvali, chat. Bemorlar,
+ * qabullar va pul YO'Q. Ishiga kerak bo'lganini egasi qo'shimcha ruxsat
+ * bilan beradi (masalan buxgalterga `finance.view` + `finance.create`).
+ *
+ * NEGA ALOHIDA ROL: ilgari tizimga kiradigan xodimga faqat "egasi",
+ * "registrator" yoki "shifokor" rolini berish mumkin edi. Buxgalterga
+ * registrator roli bemorlar bazasini, egasi roli esa hammasini ochib
+ * qo'yardi.
+ */
+export const STAFF_PERMISSIONS: readonly Permission[] = [
+  'dashboard.view',
+  'chat.use',
+  'settings.view',
+] as const
+
 export const SUPERADMIN_PERMISSIONS: readonly Permission[] = [
   'data.export',
   'platform.view',
@@ -314,6 +351,7 @@ export const IMPERSONATION_PERMISSIONS: readonly Permission[] = [
   'cashcontrol.view',
   'revenue.view',
   'analytics.view',
+  'finance.view',
   'settings.view',
 ] as const
 
@@ -324,6 +362,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly string[]> = {
   DOCTOR: DOCTOR_PERMISSIONS,
   PHARMACIST: PHARMACIST_PERMISSIONS,
   PHARMACY_OWNER: PHARMACY_OWNER_PERMISSIONS,
+  STAFF: STAFF_PERMISSIONS,
 }
 
 /**
@@ -354,4 +393,10 @@ export const GRANTABLE_PERMISSIONS = [
   'data.export',
   'data.import',
   'patients.message',
+  /*
+    Kirim-chiqim: buxgalterga hisobot, kassirga yoki registratorga
+    chiqim yozish. `finance.void` ATAYLAB yo'q — bekor qilish egasida.
+  */
+  'finance.view',
+  'finance.create',
 ] as const satisfies readonly Permission[]

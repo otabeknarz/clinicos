@@ -41,6 +41,9 @@ const AppointmentsPage = lazy(() =>
 const AttendancePage = lazy(() =>
   import('@/pages/Attendance').then((m) => ({ default: m.AttendancePage })),
 )
+const FinancePage = lazy(() =>
+  import('@/pages/Finance').then((m) => ({ default: m.FinancePage })),
+)
 const CashControlPage = lazy(() =>
   import('@/pages/CashControl').then((m) => ({ default: m.CashControlPage })),
 )
@@ -315,6 +318,18 @@ function HomePage() {
     return (
       <Suspense fallback={<PageLoader />}>
         <DoctorHomePage />
+      </Suspense>
+    )
+  }
+
+  /*
+    XODIM (buxgalter, kassir...) — umumiy panel unga kerak emas. Kirim-chiqim
+    berilgan bo'lsa to'g'ri o'sha yerga, aks holda o'z profili.
+  */
+  if (session?.user.role === 'staff') {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        {session.permissions.includes('finance.create') ? <FinancePage /> : <MyProfile />}
       </Suspense>
     )
   }
@@ -789,6 +804,14 @@ function AppRoutes() {
           element={
             <Guard permission="cashcontrol.view">
               <CashControlPage />
+            </Guard>
+          }
+        />
+        <Route
+          path="finance"
+          element={
+            <Guard permission="finance.create">
+              <FinancePage />
             </Guard>
           }
         />

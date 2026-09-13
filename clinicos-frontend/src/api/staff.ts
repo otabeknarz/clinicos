@@ -648,22 +648,50 @@ function countWorkdays(workdays: number[], days: number): number {
 /* Ma'lumotnomalar                                                     */
 /* ------------------------------------------------------------------ */
 
+/*
+  Klinikadagi HAMMA xodim — shifokordan qorovulgacha. Lavozim tizimga kirish
+  huquqini bermaydi: qorovul yoki oshpaz ro'yxatda turadi, davomati va oyligi
+  hisoblanadi, lekin tizimga kirmaydi. Aniq nomi "Lavozim nomi" da yoziladi.
+*/
 export const STAFF_POSITIONS: StaffPosition[] = [
   'doctor',
   'nurse',
   'receptionist',
   'manager',
   'accountant',
+  'cashier',
   'lab_tech',
   'pharmacist',
+  'orderly',
   'cleaner',
   'security',
   'driver',
+  'storekeeper',
+  'technician',
+  'cook',
+  'marketing',
+  'it',
   'other',
 ]
 
 /** Odatda tizimga kirish kerak bo'ladigan lavozimlar (forma uchun taklif) */
-export const POSITIONS_WITH_ACCESS: StaffPosition[] = ['doctor', 'receptionist', 'manager']
+export const POSITIONS_WITH_ACCESS: StaffPosition[] = [
+  'doctor',
+  'receptionist',
+  'manager',
+  'accountant',
+  'cashier',
+]
+
+/**
+ * Lavozimga mos tizim roli — forma birinchi marta shu bilan to'ldiriladi.
+ * Egasi baribir o'zgartira oladi.
+ */
+export function suggestedRole(position: StaffPosition): 'owner' | 'receptionist' | 'doctor' | 'staff' {
+  if (position === 'doctor') return 'doctor'
+  if (position === 'receptionist') return 'receptionist'
+  return 'staff'
+}
 
 /** Stavka variantlari */
 export const WORK_RATES = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2]

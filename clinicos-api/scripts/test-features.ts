@@ -27,6 +27,7 @@ import { TelegramService } from '../src/telegram/telegram.service'
  *   6. Bot — eslatma 3 kun oldin "Qabul qildim" tugmasi bilan,
  *      tugma qabulni tasdiqlaydi, "Tanishib chiqdim" xabarni yopadi.
  *   7. Apteka o'zi ro'yxatdan o'tadi — PHARMACY turi, sinov, apteka paneli.
+ *   8. Kirim-chiqim — yozish, kassaga ta'sir, bekor qilish, ruxsatlar; buxgalter "Xodim" roli bilan.
  *
  * TELEGRAM CHAQIRILMAYDI: xizmatning yuborish metodlari shu yerda
  * almashtiriladi va nima yuborilgani yozib olinadi.
@@ -497,6 +498,133 @@ async function main() {
   const tenantNames = JSON.stringify(tenants.data)
   check('apteka klinikalar ro‘yxatiga aralashmadi', !tenantNames.includes(`Sinov Dorixona ${RUN}`))
 
+  /* ================================================================ */
+  console.log('\n8. Kirim-chiqim va xodim roli')
+  /* ================================================================ */
+  const today = localDay(new Date())
+  const range = `from=${today}&to=${today}`
+  const financeOwner = (await login('owner@shifomed.uz')).token!
+
+  const financeBefore = (await call('GET', `/finance/summary?${range}`, financeOwner)).data
+  check('egasi hisobotni ko‘radi', typeof financeBefore?.net === 'number', short(financeBefore))
+
+  const rent = await call('POST', '/finance/entries', financeOwner, {
+    type: 'expense', category: 'rent', amount: 1_000_000, method: 'transfer', counterparty: 'Sinov ijara',
+  })
+  check('egasi chiqim yozdi', rent.status === 201 && Boolean(rent.data?.createdByName), short(rent.data))
+
+  const financeAfter = (await call('GET', `/finance/summary?${range}`, financeOwner)).data
+  check('chiqim hisobotga tushdi', financeAfter?.expense?.total === financeBefore.expense.total + 1_000_000, `${financeAfter?.expense?.total}`)
+
+  const wrongCategory = await call('POST', '/finance/entries', financeOwner, {
+    type: 'income', category: 'rent', amount: 5000, method: 'cash',
+  })
+  check('turi yo‘nalishga mos kelmasa rad', wrongCategory.status === 400, String(wrongCategory.status))
+
+  const future = await call('POST', '/finance/entries', financeOwner, {
+    type: 'expense', category: 'other', amount: 5000, method: 'cash', occurredAt: '2099-01-01T10:00:00Z',
+  })
+  check('kelajakdagi sana rad', future.status === 400, String(future.status))
+
+  const foreignReceipt = await call('POST', '/finance/entries', financeOwner, {
+    type: 'expense', category: 'other', amount: 5000, method: 'cash',
+    receipts: ['clinics/00000000-0000-0000-0000-000000000000/finance/00000000-0000-0000-0000-000000000000.jpg'],
+  })
+  check('begona klinika rasmi biriktirilmaydi', foreignReceipt.status === 400, String(foreignReceipt.status))
+  const tooMany = await call('POST', '/finance/entries', financeOwner, {
+    type: 'expense', category: 'other', amount: 5000, method: 'cash', receipts: Array.from({ length: 11 }, (_, i) => `x${i}`),
+  })
+  check('10 tadan ortiq rasm rad', tooMany.status === 400, String(tooMany.status))
+  check('yozuvda rasmlar ro‘yxati qaytadi', Array.isArray(rent.data?.receipts), short(rent.data?.receipts))
+
+  /* Registrator — standart holatda yo'q, egasi bergach faqat yozadi */
+  const receptionUser = await prisma.user.findFirstOrThrow({ where: { email: 'reception@shifomed.uz' } })
+  const receptionToken = (await login('reception@shifomed.uz')).token!
+  const noAccess = await call('POST', '/finance/entries', receptionToken, {
+    type: 'expense', category: 'transport', amount: 30_000, method: 'cash',
+  })
+  check('registratorda standart ruxsat yo‘q', noAccess.status === 403, String(noAccess.status))
+
+  await prisma.user.update({
+    where: { id: receptionUser.id },
+    data: { extraPermissions: [...receptionUser.extraPermissions, 'finance.create'] },
+  })
+  try {
+    const cashBefore = (await call('GET', '/shifts/current', receptionToken)).data?.expectedCash
+    const taxi = await call('POST', '/finance/entries', receptionToken, {
+      type: 'expense', category: 'transport', amount: 30_000, method: 'cash', counterparty: 'Taksi',
+    })
+    check('ruxsat berilgach registrator yozdi', taxi.status === 201, short(taxi.data))
+
+    const cashAfter = (await call('GET', '/shifts/current', receptionToken)).data?.expectedCash
+    check('kassadan naqd chiqim kutilgan naqdni kamaytirdi', cashAfter === cashBefore - 30_000, `${cashBefore} → ${cashAfter}`)
+
+    const mine = await call('GET', `/finance/my-entries?${range}`, receptionToken)
+    check('registrator faqat o‘z yozuvini ko‘radi', mine.status === 200 && mine.data.every((e: any) => e.createdById === receptionUser.id) && mine.data.some((e: any) => e.id === taxi.data.id), short(mine.data?.length))
+    check('registrator umumiy hisobotni ko‘rmaydi', (await call('GET', `/finance/summary?${range}`, receptionToken)).status === 403)
+    check('registrator bekor qila olmaydi', (await call('POST', `/finance/entries/${taxi.data.id}/void`, receptionToken, { reason: 'xato yozildi' })).status === 403)
+
+    const otherOwner = (await login('owner@salomat.uz')).token!
+    const foreignVoid = await call('POST', `/finance/entries/${taxi.data.id}/void`, otherOwner, { reason: 'begona klinika' })
+    check('boshqa klinika bekor qila olmaydi', foreignVoid.status === 404, String(foreignVoid.status))
+    const foreignList = await call('GET', `/finance/entries?${range}`, otherOwner)
+    check('boshqa klinika yozuvni ko‘rmaydi', !(foreignList.data ?? []).some((e: any) => e.id === taxi.data.id))
+
+    const noReason = await call('POST', `/finance/entries/${taxi.data.id}/void`, financeOwner, { reason: '' })
+    check('sababsiz bekor qilinmaydi', noReason.status === 400, String(noReason.status))
+    const voided = await call('POST', `/finance/entries/${taxi.data.id}/void`, financeOwner, { reason: 'Ikki marta yozilgan' })
+    check('egasi bekor qildi', voided.status === 201 && Boolean(voided.data?.voidedAt && voided.data?.voidedByName), short(voided.data))
+    const again = await call('POST', `/finance/entries/${taxi.data.id}/void`, financeOwner, { reason: 'yana bir bor' })
+    check('ikkinchi marta bekor qilinmaydi', again.status === 400, String(again.status))
+
+    const cashVoided = (await call('GET', '/shifts/current', receptionToken)).data?.expectedCash
+    check('bekor qilingan chiqim kassaga qaytdi', cashVoided === cashBefore, `${cashVoided}`)
+    const listed = (await call('GET', `/finance/entries?${range}`, financeOwner)).data
+    check('bekor qilingan yozuv ro‘yxatda qoldi', listed.some((e: any) => e.id === taxi.data.id && e.voidReason === 'Ikki marta yozilgan'))
+  } finally {
+    await prisma.user.update({ where: { id: receptionUser.id }, data: { extraPermissions: receptionUser.extraPermissions } })
+  }
+
+  /* Buxgalter — "Xodim" roli bilan, bemorlarsiz */
+  const accountantLogin = `buxgalter${RUN}@clinic-os.uz`
+  const accountant = await call('POST', '/staff', financeOwner, {
+    fullName: 'Sinov Buxgalter',
+    phone: '+998901112233',
+    position: 'accountant',
+    positionTitle: 'Buxgalter',
+    workdays: [1, 2, 3, 4, 5],
+    shiftStart: '09:00',
+    shiftEnd: '18:00',
+    payType: 'salary',
+    salary: 4_000_000,
+    hiredAt: today,
+    hasSystemAccess: true,
+    role: 'staff',
+    login: accountantLogin,
+    password: 'buxgalter-parol-1',
+    extraPermissions: ['finance.view', 'finance.create'],
+  })
+  check('buxgalter "Xodim" roli bilan qo‘shildi', accountant.status === 201, short(accountant.data))
+
+  const guard = await call('POST', '/staff', financeOwner, {
+    fullName: 'Sinov Qorovul', phone: '+998901112244', position: 'security', positionTitle: 'Qorovul',
+    workdays: [0, 1, 2, 3, 4, 5, 6], shiftStart: '20:00', shiftEnd: '08:00', payType: 'salary', salary: 2_500_000, hiredAt: today,
+  })
+  check('qorovul tizimga kirishsiz qo‘shildi', guard.status === 201 && !guard.data?.hasSystemAccess, short(guard.data))
+  const cook = await call('POST', '/staff', financeOwner, {
+    fullName: 'Sinov Oshpaz', phone: '+998901112255', position: 'cook', positionTitle: 'Oshpaz',
+    workdays: [1, 2, 3, 4, 5, 6], shiftStart: '08:00', shiftEnd: '16:00', payType: 'salary', salary: 3_000_000, hiredAt: today,
+  })
+  check('yangi lavozim (oshpaz) qabul qilindi', cook.status === 201 && cook.data?.position === 'cook', short(cook.data))
+
+  const accountantSession = (await call('POST', '/auth/login', undefined, { email: accountantLogin, password: 'buxgalter-parol-1' })).data as any
+  check('buxgalter kirdi, roli staff', accountantSession?.user?.role === 'staff', short(accountantSession?.user))
+  check('buxgalterda kirim-chiqim ruxsati bor', (accountantSession?.permissions ?? []).includes('finance.view'))
+  check('buxgalter hisobotni ko‘radi', (await call('GET', `/finance/summary?${range}`, accountantSession.token)).status === 200)
+  check('buxgalter bemorlarni ko‘rmaydi', (await call('GET', '/patients', accountantSession.token)).status === 403)
+  check('buxgalter to‘lovlarni ko‘rmaydi', (await call('GET', '/payments', accountantSession.token)).status === 403)
+  check('buxgalter bekor qila olmaydi', (await call('POST', `/finance/entries/${rent.data.id}/void`, accountantSession.token, { reason: 'sinov uchun' })).status === 403)
+
   await app.close()
   console.log(`\n${passed} ta o‘tdi, ${failed} ta xato`)
   process.exit(failed > 0 ? 1 : 0)
@@ -506,3 +634,11 @@ main().catch((error) => {
   console.error(error)
   process.exit(1)
 })
+
+/** Serverning mahalliy kuni — `toISOString` UTC beradi va kechqurun adashadi */
+function localDay(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}

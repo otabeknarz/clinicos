@@ -59,6 +59,11 @@ export type Role =
    * bo'lardi va kassa nazoratining ma'nosi qolmasdi.
    */
   | 'pharmacy_owner'
+  /**
+   * XODIM — buxgalter, kassir, omborchi. Bemorlar va pul yo'q;
+   * kerakli bo'limni egasi qo'shimcha ruxsat bilan ochadi.
+   */
+  | 'staff'
 
 /**
  * Alohida ruxsatlar. Rol → ruxsatlar xaritasi `src/lib/permissions.ts`da.
@@ -124,6 +129,10 @@ export type Permission =
   | 'cashcontrol.view'
   /* --- Smena yopish (administratsiya) --- */
   | 'shift.close'
+  /* Kirim-chiqim: hisobot, yozish, bekor qilish (faqat egasi) */
+  | 'finance.view'
+  | 'finance.create'
+  | 'finance.void'
   /* --- Apteka: klinika ichidagi alohida biznes --- */
   | 'pharmacy.view'
   | 'pharmacy.sell'
@@ -368,6 +377,7 @@ export const CLINIC_MODULES = [
   'calendar',
   'debts',
   'revenue',
+  'finance',
 ] as const
 
 export type ClinicModule = (typeof CLINIC_MODULES)[number]
@@ -1570,6 +1580,13 @@ export type StaffPosition =
   | 'cleaner'
   | 'security'
   | 'driver'
+  | 'cashier'
+  | 'orderly'
+  | 'storekeeper'
+  | 'technician'
+  | 'cook'
+  | 'marketing'
+  | 'it'
   | 'other'
 
 export type StaffStatus = 'active' | 'on_leave' | 'fired'
@@ -2831,4 +2848,71 @@ export interface ExportLinkInfo {
 export interface ExportLinkCreated extends ExportLinkInfo {
   /** Manzilning yo'l qismi — to'liq havolani interfeys yig'adi */
   path: string
+}
+
+/* ------------------------------------------------------------------ */
+/* Kirim-chiqim                                                        */
+/* ------------------------------------------------------------------ */
+
+export type FinanceEntryType = 'expense' | 'income'
+
+/** Chiqim turlari — serverdagi `EXPENSE_CATEGORIES` ko'zgusi */
+export const EXPENSE_CATEGORIES = [
+  'purchase',
+  'supplies',
+  'salary',
+  'rent',
+  'utilities',
+  'repair',
+  'marketing',
+  'taxes',
+  'transport',
+  'food',
+  'other',
+] as const
+
+/** Bemor to'lovidan tashqari kirim turlari — `INCOME_CATEGORIES` ko'zgusi */
+export const INCOME_CATEGORIES = [
+  'rent_income',
+  'investment',
+  'insurance',
+  'partner',
+  'other_income',
+] as const
+
+/**
+ * Kirim-chiqim yozuvi.
+ *
+ * O'ZGARMAS: tahrir va o'chirish yo'q. Xato yozuv bekor qilinadi —
+ * `voidedAt` to'ladi va u summadan chiqadi, ro'yxatda esa qoladi.
+ */
+export interface FinanceEntry {
+  id: ID
+  type: FinanceEntryType
+  category: string
+  amount: UZS
+  method: PaymentMethod
+  occurredAt: ISODateTime
+  counterparty: string
+  note: string
+  /** Chek va hujjat suratlari — imzolangan havolalar (demoda data URL) */
+  receipts: string[]
+  createdById: ID
+  createdByName: string
+  createdAt: ISODateTime
+  voidedAt: ISODateTime | null
+  voidedByName: string | null
+  voidReason: string
+}
+
+export interface FinanceSummary {
+  from: ISODate
+  to: ISODate
+  income: { patients: UZS; other: UZS; total: UZS }
+  expense: { total: UZS; cash: UZS }
+  net: UZS
+  patientsByMethod: { cash: UZS; card: UZS; transfer: UZS }
+  byCategory: { type: FinanceEntryType; category: string; amount: UZS; count: number }[]
+  daily: { date: ISODate; income: UZS; expense: UZS }[]
+  voidedCount: number
 }

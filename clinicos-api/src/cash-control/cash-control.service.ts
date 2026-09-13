@@ -137,22 +137,38 @@ export class CashControlService {
     }
   }
 
-  /** Bugungi kutilayotgan naqd — smenani yopishda ko'rsatiladi */
+  /**
+   * Bugungi kutilayotgan naqd — smenani yopishda ko'rsatiladi.
+   *
+   * Bemordan olingan naqd + kassaga kirgan boshqa naqd − kassadan
+   * berilgan naqd (xarid, taksi, avans). Chiqim hisobga olinmasa,
+   * xaridga pul bergan registrator kechqurun "kamomad" bilan qolardi —
+   * pul esa aslida chekda turibdi.
+   *
+   * Faqat SHU xodim yozgan va bekor QILINMAGAN yozuvlar: kassani u
+   * topshiradi, boshqa odam yozgan chiqim uning kassasidan chiqmagan.
+   */
   async expectedCashToday() {
     const { userId } = this.ctx.require()
     const now = new Date()
+    const today = { gte: startOfDay(now), lte: endOfDay(now) }
 
-    const result = await this.db.payment.aggregate({
-      where: {
-        status: 'PAID',
-        method: 'CASH',
-        createdById: userId,
-        paidAt: { gte: startOfDay(now), lte: endOfDay(now) },
-      },
-      _sum: { amount: true },
-    })
+    const [payments, entries] = await Promise.all([
+      this.db.payment.aggregate({
+        where: { status: 'PAID', method: 'CASH', createdById: userId, paidAt: today },
+        _sum: { amount: true },
+      }),
+      this.db.financeEntry.groupBy({
+        by: ['type'],
+        where: { method: 'CASH', createdById: userId, voidedAt: null, occurredAt: today },
+        _sum: { amount: true },
+      }),
+    ])
 
-    return { expectedCash: result._sum.amount ?? 0 }
+    const cashIn = entries.find((e) => e.type === 'INCOME')?._sum.amount ?? 0
+    const cashOut = entries.find((e) => e.type === 'EXPENSE')?._sum.amount ?? 0
+
+    return { expectedCash: (payments._sum.amount ?? 0) + cashIn - cashOut }
   }
 
   /**

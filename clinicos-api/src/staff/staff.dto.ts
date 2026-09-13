@@ -19,10 +19,19 @@ import {
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 
+/*
+  Klinikadagi HAMMA xodim: shifokordan qorovulgacha. Lavozim tizimga
+  kirish huquqini BERMAYDI — u alohida belgilanadi (`hasSystemAccess`).
+  Aniq nomi (`positionTitle`) erkin yoziladi: "Katta hamshira".
+*/
 export const POSITIONS = [
   'doctor', 'nurse', 'receptionist', 'manager', 'accountant',
-  'lab_tech', 'pharmacist', 'cleaner', 'security', 'driver', 'other',
+  'cashier', 'lab_tech', 'pharmacist', 'orderly', 'cleaner', 'security',
+  'driver', 'storekeeper', 'technician', 'cook', 'marketing', 'it', 'other',
 ] as const
+
+/** Tizimga kiradigan xodimga beriladigan rollar */
+export const STAFF_ROLES = ['owner', 'receptionist', 'doctor', 'staff'] as const
 
 export class StaffQueryDto {
   @IsOptional()
@@ -120,8 +129,8 @@ export class StaffInputDto {
 
 
   @IsOptional() @ValidateIf((_, v) => v !== null)
-  @IsIn(['owner', 'receptionist', 'doctor'])
-  role: 'owner' | 'receptionist' | 'doctor' | null = null
+  @IsIn(STAFF_ROLES)
+  role: (typeof STAFF_ROLES)[number] | null = null
 
   @IsOptional() @IsString() @MaxLength(150)
   login: string = ''
@@ -227,8 +236,8 @@ export class UpdateStaffDto {
 
 
   @IsOptional() @ValidateIf((_, v) => v !== null)
-  @IsIn(['owner', 'receptionist', 'doctor'])
-  role?: 'owner' | 'receptionist' | 'doctor' | null
+  @IsIn(STAFF_ROLES)
+  role?: (typeof STAFF_ROLES)[number] | null
 
   @IsOptional() @IsString() @MaxLength(150)
   login?: string

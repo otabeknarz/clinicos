@@ -23,7 +23,8 @@ import { StorageService } from './storage.service'
  * bu marshrut xodim tokenini kutadi.
  */
 /* `pharmacy` — kirim hujjatlari (nakladnoy, sertifikat) */
-const KINDS = ['avatars', 'logos', 'visits', 'feedback', 'pharmacy'] as const
+/* `finance` — kirim-chiqim yozuvining cheki yoki hujjati */
+const KINDS = ['avatars', 'logos', 'visits', 'feedback', 'pharmacy', 'finance'] as const
 type Kind = (typeof KINDS)[number]
 
 /**

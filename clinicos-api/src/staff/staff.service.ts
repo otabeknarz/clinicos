@@ -985,7 +985,7 @@ async function syncUser(
       email: login,
       phone: dto.phone?.trim() || current.phone,
       passwordHash: await argon2.hash(dto.password as string),
-      role: toDb(dto.role as 'owner' | 'receptionist' | 'doctor'),
+      role: toDb(dto.role as 'owner' | 'receptionist' | 'doctor' | 'staff'),
       extraPermissions: dto.extraPermissions ?? [],
       doctorId,
       mustChangePassword: dto.mustChangePassword ?? true,

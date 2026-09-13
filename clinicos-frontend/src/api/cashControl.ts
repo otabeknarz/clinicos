@@ -178,20 +178,36 @@ export async function getExpectedCashToday(userId: ID): Promise<UZS> {
 
   const { clinicId } = apiContext()
   const todayKey = toISODate(new Date())
+  const db = getDb()
 
-  return delay(
-    getDb()
-      .payments.all(clinicId)
-      .filter(
-        (p) =>
-          p.method === 'cash' &&
-          p.status === 'paid' &&
-          p.createdBy === userId &&
-          p.paidAt.slice(0, 10) === todayKey,
-      )
-      .reduce((sum, p) => sum + p.amount, 0),
-    100,
-  )
+  const collected = db.payments
+    .all(clinicId)
+    .filter(
+      (p) =>
+        p.method === 'cash' &&
+        p.status === 'paid' &&
+        p.createdBy === userId &&
+        p.paidAt.slice(0, 10) === todayKey,
+    )
+    .reduce((sum, p) => sum + p.amount, 0)
+
+  /*
+    Kassadan berilgan va kassaga kirgan boshqa naqd — serverdagi bilan
+    bir xil: registrator xaridga pul bersa, kechqurun "kamomad" chiqmasin.
+  */
+  const cashEntries = db.financeEntries
+    .all(clinicId)
+    .filter(
+      (e) =>
+        e.method === 'cash' &&
+        !e.voidedAt &&
+        e.createdById === userId &&
+        toISODate(new Date(e.occurredAt)) === todayKey,
+    )
+  const cashIn = cashEntries.filter((e) => e.type === 'income').reduce((s, e) => s + e.amount, 0)
+  const cashOut = cashEntries.filter((e) => e.type === 'expense').reduce((s, e) => s + e.amount, 0)
+
+  return delay(collected + cashIn - cashOut, 100)
 }
 
 export interface ShiftCloseInput {

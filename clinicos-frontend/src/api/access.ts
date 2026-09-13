@@ -63,6 +63,7 @@ const MOCK_MODULES = [
   'calendar',
   'debts',
   'revenue',
+  'finance',
 ]
 
 const MOCK_CORE = [
