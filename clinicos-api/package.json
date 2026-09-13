@@ -21,7 +21,8 @@
     "smoke": "ts-node scripts/smoke.ts",
     "check:dto": "ts-node scripts/check-dto.ts",
     "test:crud": "ts-node scripts/test-crud.ts",
-    "check:boot": "ts-node scripts/check-boot.ts"
+    "check:boot": "ts-node scripts/check-boot.ts",
+    "test:features": "ts-node scripts/test-features.ts"
   },
   "keywords": [],
   "author": "",

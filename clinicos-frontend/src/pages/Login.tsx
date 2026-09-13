@@ -26,6 +26,13 @@ import '@/pages/public/public-dark.css'
 
 type Mode = 'login' | 'register'
 
+/** Yo'nalishga mos lavozimlar */
+function positionsFor(direction: string): (typeof LEAD_POSITIONS)[number][] {
+  return direction === 'pharmacy'
+    ? ['owner', 'manager', 'pharmacist', 'other']
+    : ['owner', 'chief_doctor', 'manager', 'administrator', 'doctor', 'other']
+}
+
 /**
  * VILOYATLAR.
  *
@@ -329,6 +336,17 @@ export function LoginPage() {
   const phoneDigits = reg.phone.replace(/\D/g, '').length
 
   /*
+    APTEKA — boshqa lavozimlar va boshqa nomlar. Aptekada "bosh
+    shifokor" ham, "administrator" ham yo'q; "Klinika egasi" o'rniga
+    "Apteka egasi" yoziladi.
+  */
+  const isPharmacy = reg.direction === 'pharmacy'
+  const positionOptions = positionsFor(reg.direction).map((key) => ({
+    value: key,
+    label: t(isPharmacy && key === 'owner' ? 'leadPosition.pharmacyOwner' : `leadPosition.${key}`),
+  }))
+
+  /*
     NIMA YETISHMAYAPTI — BIRINCHISI AYTILADI.
 
     Tugma o'chiq turib, sababini aytmasa, odam formani qayta-qayta
@@ -623,13 +641,17 @@ export function LoginPage() {
               ) : (
                 <>
               <div className="form-field">
-                <label htmlFor="clinicName">{t('login.clinicName')}</label>
+                <label htmlFor="clinicName">
+                  {isPharmacy ? t('login.pharmacyName') : t('login.clinicName')}
+                </label>
                 <input
                   id="clinicName"
                   type="text"
                   className={cn(red('clinicName') && 'is-invalid')}
                   aria-invalid={red('clinicName') || undefined}
-                  placeholder={t('login.clinicNamePlaceholder')}
+                  placeholder={
+                    isPharmacy ? t('login.pharmacyNamePlaceholder') : t('login.clinicNamePlaceholder')
+                  }
                   autoComplete="organization"
                   value={reg.clinicName}
                   onBlur={() => touch('clinicName')}
@@ -646,10 +668,15 @@ export function LoginPage() {
                   label: t(`direction.${key}`),
                 }))}
                 onChange={(value) =>
-                  setReg((v) => ({
-                    ...v,
-                    direction: value as (typeof CLINIC_DIRECTIONS)[number],
-                  }))
+                  setReg((v) => {
+                    const direction = value as (typeof CLINIC_DIRECTIONS)[number]
+                    const allowed = positionsFor(direction)
+                    return {
+                      ...v,
+                      direction,
+                      position: allowed.includes(v.position) ? v.position : 'owner',
+                    }
+                  })
                 }
               />
 
@@ -672,10 +699,7 @@ export function LoginPage() {
                 id="registerPosition"
                 label={t('login.position')}
                 value={reg.position}
-                options={LEAD_POSITIONS.map((key) => ({
-                  value: key,
-                  label: t(`leadPosition.${key}`),
-                }))}
+                options={positionOptions}
                 onChange={(value) =>
                   setReg((v) => ({
                     ...v,

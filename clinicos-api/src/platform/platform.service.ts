@@ -115,6 +115,12 @@ export class PlatformService {
         query.status === 'deleted'
           ? { clinic: { deletedAt: { not: null } } }
           : { clinic: { deletedAt: null } },
+        /*
+          Apteka ham sinov obunasi bilan ochiladi (o'zi ro'yxatdan
+          o'tganda) — lekin u klinikalar ro'yxatiga aralashmaydi,
+          uning o'z bo'limi bor.
+        */
+        { clinic: { kind: 'CLINIC' } },
         query.status === 'all' || query.status === 'deleted'
           ? {}
           : { status: toDb(query.status) },
@@ -798,7 +804,7 @@ export class PlatformService {
     const rows = await this.db.plan.findMany({ orderBy: { basePrice: 'asc' } })
 
     const subs = await this.db.subscription.findMany({
-      where: { clinic: { deletedAt: null } },
+      where: { clinic: { deletedAt: null, kind: 'CLINIC' } },
       select: { planId: true, status: true, termPrice: true, termMonths: true },
     })
 

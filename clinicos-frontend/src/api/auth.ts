@@ -422,7 +422,8 @@ export async function unlinkTelegram(): Promise<{ linked: boolean }> {
 /* ------------------------------------------------------------------ */
 
 /** Klinikaning yo'nalishi — serverdagi ro'yxat bilan bir xil */
-export const CLINIC_DIRECTIONS = ['general', 'dental', 'eye', 'lab'] as const
+/* `pharmacy` — apteka ham o'zi ro'yxatdan o'tadi (tizim aptekalarga ham sotiladi) */
+export const CLINIC_DIRECTIONS = ['general', 'dental', 'eye', 'lab', 'pharmacy'] as const
 /** Ro'yxatdan o'tayotgan odam klinikada kim */
 export const LEAD_POSITIONS = [
   'owner',
@@ -430,6 +431,7 @@ export const LEAD_POSITIONS = [
   'manager',
   'administrator',
   'doctor',
+  'pharmacist',
   'other',
 ] as const
 /** Klinika hajmi */

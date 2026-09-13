@@ -1931,4 +1931,9 @@ export const dict: Dict = {
   'module.pharmacyshift': 'Shift closing',
   'module.pharmacyanalytics': 'Pharmacy analytics',
   'module.pharmacycash': 'Pharmacy cash control',
+  'direction.pharmacy': 'Pharmacy',
+  'leadPosition.pharmacist': 'Pharmacist',
+  'leadPosition.pharmacyOwner': 'Pharmacy owner',
+  'login.pharmacyName': 'Pharmacy name',
+  'login.pharmacyNamePlaceholder': 'Your pharmacy’s name',
 }

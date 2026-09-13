@@ -34,8 +34,18 @@ import { TENANT_MODELS } from './tenant-models'
  *
  *   3. `update` va `delete` ham unikal `where` talab qiladi.
  *      Ularni `updateMany`/`deleteMany` ga aylantirib bo'lmaydi,
- *      chunki chaqiruvchi bitta yozuv qaytishini kutadi. Shuning
- *      uchun avval egalik tekshiriladi, keyin amal bajariladi.
+ *      chunki chaqiruvchi bitta yozuv qaytishini kutadi. Prisma 5
+ *      dan beri unikal `where` ga QO'SHIMCHA shart qo'shish mumkin
+ *      (`{ id, clinicId }`) — shuning uchun `clinicId` so'rovning
+ *      O'ZIGA qo'yiladi va begona yozuv shunchaki topilmaydi.
+ *
+ *      TARIX: ilgari bu yerda alohida "oldindan tekshiruv" so'rovi
+ *      bor edi va u ASOSIY mijozda, tranzaksiyadan TASHQARIDA
+ *      bajarilardi. Tranzaksiya ichidagi har bir `tx.x.update`
+ *      ikkinchi ulanishni kutardi: bitta ulanishli bazada 5 soniyada
+ *      "expired transaction" bilan yiqilardi, productionda esa
+ *      ulanishlar hovuzi to'lganda xuddi shu qotish kutardi (xizmat,
+ *      xodim, tashrif, to'lov yozish — hammasi shu yo'ldan o'tadi).
  *
  * ------------------------------------------------------------
  * IKKINCHI QATLAM
@@ -69,7 +79,7 @@ const WHERE_OPERATIONS = new Set([
 /** Bitta unikal yozuvni oladigan amallar — `findFirst` ga aylantiriladi */
 const UNIQUE_READ_OPERATIONS = new Set(['findUnique', 'findUniqueOrThrow'])
 
-/** Bitta yozuvni o'zgartiradigan amallar — avval egalik tekshiriladi */
+/** Bitta yozuvni o'zgartiradigan amallar — egalik sharti `where` ga qo'shiladi */
 const UNIQUE_WRITE_OPERATIONS = new Set(['update', 'delete'])
 
 type AnyArgs = Record<string, unknown>
@@ -130,21 +140,49 @@ export function forClinic<T extends { $extends: unknown }>(
 
           /*
             --- Unikal yozish ---
-            Avval yozuv shu klinikanikimi — tekshiramiz. Tekshirmasdan
-            `updateMany` ga aylantirsak, chaqiruvchi kutgan yagona
-            yozuv o'rniga son qaytardi va kod jim buzilardi.
+            `clinicId` so'rovning O'Z shartiga qo'shiladi: begona yozuv
+            topilmaydi va o'zgarmaydi. Alohida oldindan tekshiruv
+            YO'Q — u tranzaksiyadan tashqarida bajarilib, tranzaksiya
+            ichidagi yozishni qotirib qo'yardi (fayl boshidagi izoh).
+
+            Yozish muvaffaqiyatsiz bo'lgandagina sababi aniqlanadi:
+            yozuv boshqa klinikaniki bo'lsa `CrossTenantAccessError` —
+            ya'ni xato turi va jurnal avvalgidek qoladi.
           */
           if (UNIQUE_WRITE_OPERATIONS.has(operation)) {
-            await assertOwned(prisma, model, a.where as AnyArgs, clinicId)
-            return query(a as never)
+            const original = (a.where as AnyArgs) ?? {}
+            a.where = { ...original, clinicId }
+            try {
+              return await query(a as never)
+            } catch (error) {
+              if (isPrismaCode(error, 'P2025')) {
+                const state = await findOwned(prisma, model, original, clinicId)
+                if (state === 'other-tenant') throw new CrossTenantAccessError(model)
+              }
+              throw error
+            }
           }
 
-          /* --- upsert: ikkala yo'l ham cheklanadi --- */
+          /*
+            --- upsert: ikkala yo'l ham cheklanadi ---
+            `where` ga ham, `create` ga ham `clinicId`. Begona yozuv
+            bir xil unikal kalit bilan mavjud bo'lsa, `where` uni
+            topmaydi va yaratishga urinish noyoblik xatosi bilan
+            to'xtaydi — begona yozuvga tegilmaydi.
+          */
           if (operation === 'upsert') {
+            const original = (a.where as AnyArgs) ?? {}
+            a.where = { ...original, clinicId }
             a.create = { ...((a.create as AnyArgs) ?? {}), clinicId }
-            const existing = await findOwned(prisma, model, a.where as AnyArgs, clinicId)
-            if (existing === 'other-tenant') throw new CrossTenantAccessError(model)
-            return query(a as never)
+            try {
+              return await query(a as never)
+            } catch (error) {
+              if (isPrismaCode(error, 'P2002')) {
+                const state = await findOwned(prisma, model, original, clinicId)
+                if (state === 'other-tenant') throw new CrossTenantAccessError(model)
+              }
+              throw error
+            }
           }
 
           /*
@@ -183,21 +221,13 @@ async function findOwned(
   return row.clinicId === clinicId ? 'ok' : 'other-tenant'
 }
 
-async function assertOwned(
-  prisma: unknown,
-  model: string,
-  where: AnyArgs,
-  clinicId: string,
-) {
-  const state = await findOwned(prisma, model, where, clinicId)
-
-  /*
-    Yozuv topilmasa o'tkazamiz: Prisma o'zi "topilmadi" xatosini
-    beradi va bu to'g'ri javob. Boshqa klinikaniki bo'lsa esa
-    "topilmadi" deymiz — "bor, lekin sizniki emas" degan javob
-    boshqa klinikada shunday yozuv borligini oshkor qiladi.
-  */
-  if (state === 'other-tenant') throw new CrossTenantAccessError(model)
+/** Prisma'ning ma'lum xato kodi (`P2025` — topilmadi, `P2002` — noyoblik) */
+function isPrismaCode(error: unknown, code: string): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: unknown }).code === code
+  )
 }
 
 /**

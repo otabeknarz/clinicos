@@ -31,6 +31,7 @@ import { useCardSpotlight } from '@/lib/useCardSpotlight'
 import { useEntranceMotion } from '@/lib/useEntranceMotion'
 import { useSoftUi } from '@/lib/useSoftUi'
 import { moduleOf } from '@/api/auth'
+import { TrialBar } from './TrialBar'
 import { useI18n } from '@/i18n'
 import type { Permission } from '@/types/models'
 import { useAuth } from '@/store/auth-context'
@@ -256,6 +257,9 @@ export function PharmacyLayout() {
             <LogOut size={17} />
           </IconButton>
         </header>
+
+        {/* O'zi ro'yxatdan o'tgan apteka ham sinovda — qolgan kun ko'rinib tursin */}
+        <TrialBar />
 
         {/* Yuqori panel yo'q — katta panel tepadan ham chekinadi (`admin-panel--top`) */}
         <main

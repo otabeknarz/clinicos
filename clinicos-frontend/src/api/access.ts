@@ -37,6 +37,8 @@ export interface TrialPolicy {
   disabledModules: string[]
   /** Bazada alohida yozuv bormi — yo'qsa sukut qiymat */
   custom: boolean
+  /** Shu qatorda tanlanadigan bo'limlar (apteka qatorida — apteka bo'limlari) */
+  modules?: string[]
 }
 
 export interface TrialList {
@@ -102,11 +104,17 @@ let mockTrials: TrialPolicy[] = [
   'dental',
   'eye',
   'lab',
+  'pharmacy',
 ].map((direction) => ({
   direction,
   days: 14,
-  disabledModules: ['revenue', 'analytics', 'cashcontrol', 'ward'],
+  disabledModules:
+    direction === 'pharmacy'
+      ? ['pharmacyanalytics', 'pharmacycash']
+      : ['revenue', 'analytics', 'cashcontrol', 'ward'],
   custom: false,
+  modules:
+    direction === 'pharmacy' ? MOCK_PHARMACY : [...MOCK_CORE, ...MOCK_MODULES],
 }))
 
 // GET /platform/access

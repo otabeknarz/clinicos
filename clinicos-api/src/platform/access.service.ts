@@ -4,8 +4,8 @@ import {
   CLINIC_MODULES,
   CORE_MODULES,
   PHARMACY_MODULES,
+  defaultTrialClosed,
   TRIAL_DAYS,
-  TRIAL_DISABLED_MODULES,
 } from '../common/modules'
 import { RestrictionsService } from '../common/restrictions.service'
 import { PrismaService } from '../prisma/prisma.service'
@@ -119,7 +119,7 @@ export class AccessService {
     const rows = await this.db.trialPolicy.findMany()
     const byDirection = new Map(rows.map((row) => [row.direction, row]))
 
-    const directions = ['default', 'general', 'dental', 'eye', 'lab']
+    const directions = ['default', 'general', 'dental', 'eye', 'lab', 'pharmacy']
 
     return {
       /* Sinov faqat klinika uchun — apteka bo'limlari bu yerda yo'q */
@@ -129,9 +129,14 @@ export class AccessService {
         return {
           direction,
           days: row?.days ?? TRIAL_DAYS,
-          disabledModules: row?.disabledModules ?? [...TRIAL_DISABLED_MODULES],
+          disabledModules: row?.disabledModules ?? defaultTrialClosed(direction),
           /* Bazada yozuv bormi — interfeysda "sukut" deb ko'rsatiladi */
           custom: Boolean(row),
+          /* Apteka qatorida apteka bo'limlari, qolganlarida klinikaniki */
+          modules:
+            direction === 'pharmacy'
+              ? [...PHARMACY_MODULES]
+              : [...CORE_MODULES, ...CLINIC_MODULES],
         }
       }),
     }
@@ -171,7 +176,7 @@ export class AccessService {
 
     return {
       days: row?.days ?? TRIAL_DAYS,
-      disabledModules: row?.disabledModules ?? [...TRIAL_DISABLED_MODULES],
+      disabledModules: row?.disabledModules ?? defaultTrialClosed(direction),
     }
   }
 }

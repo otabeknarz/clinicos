@@ -100,8 +100,12 @@ that injects `clinicId` into every operation on a tenant model. Things to know b
 
 - `findUnique`/`findUniqueOrThrow` are rewritten to `findFirst`/`findFirstOrThrow` (Prisma rejects
   non-unique fields in a unique `where`).
-- `update`/`delete` do an ownership pre-check, then run normally — they are *not* converted to
-  `updateMany`/`deleteMany`, because callers expect a single record back.
+- `update`/`delete`/`upsert` put `clinicId` into the unique `where` itself (`{ id, clinicId }`) —
+  they are *not* converted to `updateMany`/`deleteMany`, because callers expect a single record
+  back. There used to be a separate ownership pre-check, run on the root client *outside* the
+  transaction; every `tx.x.update` then waited for a second connection and deadlocked (instantly
+  on a one-connection DB, under load in production). Only on a failed write is ownership looked
+  up, to keep throwing `CrossTenantAccessError` for another clinic's row.
 - Cross-tenant hits surface as "not found", never "exists but not yours".
 - Any Prisma operation not in its allowlist **throws** rather than passing through unfiltered.
   If Prisma adds an operation, this is where you handle it.

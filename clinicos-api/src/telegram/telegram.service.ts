@@ -1,6 +1,7 @@
 import { randomBytes, createHmac, timingSafeEqual } from 'node:crypto'
 
 import { Injectable, Logger } from '@nestjs/common'
+import type { OnModuleInit } from '@nestjs/common'
 
 /**
  * TELEGRAM — mini app va bot xabarlari.
@@ -28,7 +29,7 @@ export type BotKind = 'staff' | 'patient'
 const LINK_CODE_TTL_MS = 15 * 60 * 1000
 
 @Injectable()
-export class TelegramService {
+export class TelegramService implements OnModuleInit {
   private readonly log = new Logger(TelegramService.name)
 
   /**
@@ -81,6 +82,98 @@ export class TelegramService {
 
   get patientEnabled(): boolean {
     return this.tokenOf('patient') !== null
+  }
+
+  /**
+   * ISHGA TUSHISHDA BOTLARNI TEKSHIRISH.
+   *
+   * Webhook kodda emas, qo'lda o'rnatilgan. Agar u `allowed_updates`
+   * ro'yxati bilan o'rnatilgan va unda `callback_query` bo'lmasa,
+   * xabarlardagi "Tanishib chiqdim" / "Qabul qildim" tugmalari
+   * bosilganda serverga HECH NARSA kelmaydi — tugma aylanib turadi,
+   * odam esa "bot buzuq" deb o'ylaydi. Tashqaridan buni sezib
+   * bo'lmaydi, shuning uchun:
+   *
+   *   - holat LOGGA yoziladi (manzil xosti, kutayotgan yangiliklar,
+   *     oxirgi xato) — tokenning o'zi hech qayerga yozilmaydi;
+   *   - `callback_query` yetishmasa, webhook AYNAN O'SHA manzil va
+   *     o'sha maxfiy kalit bilan qayta o'rnatiladi, faqat ro'yxat
+   *     to'ldiriladi. Manzil taxmin qilinmaydi — Telegramning o'zidan
+   *     olinadi, ya'ni ishlab turgan botni buzib qo'yish yo'li yo'q.
+   *
+   * Fon ishida va xatolarni yutib ishlaydi: bot tekshiruvi ilovani
+   * ko'tarilishini kechiktirmasligi va yiqitmasligi kerak.
+   */
+  onModuleInit() {
+    setTimeout(() => {
+      void this.checkWebhook('staff')
+      void this.checkWebhook('patient')
+    }, 5000)
+  }
+
+  private async checkWebhook(bot: BotKind): Promise<void> {
+    const token = this.tokenOf(bot)
+    if (!token) {
+      this.log.warn(`Telegram (${bot}): token yo'q — bot o'chiq`)
+      return
+    }
+
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`, {
+        signal: AbortSignal.timeout(8000),
+      })
+      const data = (await res.json()) as {
+        result?: {
+          url?: string
+          pending_update_count?: number
+          last_error_message?: string
+          last_error_date?: number
+          allowed_updates?: string[]
+        }
+      }
+      const info = data.result ?? {}
+
+      if (!info.url) {
+        this.log.warn(`Telegram (${bot}): webhook O'RNATILMAGAN — bot xabarlarni qabul qilmaydi`)
+        return
+      }
+
+      const host = safeHost(info.url)
+      const allowed = info.allowed_updates ?? []
+      this.log.log(
+        `Telegram (${bot}): webhook ${host}, kutayotgan: ${info.pending_update_count ?? 0}, ` +
+          `turlar: ${allowed.length ? allowed.join(',') : 'hammasi'}`,
+      )
+
+      if (info.last_error_message) {
+        const when = info.last_error_date
+          ? new Date(info.last_error_date * 1000).toISOString()
+          : '?'
+        this.log.warn(`Telegram (${bot}): oxirgi xato (${when}): ${info.last_error_message}`)
+      }
+
+      /* Bo'sh ro'yxat — Telegram hamma turini yuboradi, tuzatish kerak emas */
+      const missing = ['message', 'callback_query'].filter((kind) => !allowed.includes(kind))
+      if (allowed.length === 0 || missing.length === 0) return
+
+      const secret = this.webhookSecretOf(bot)
+      const fix = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: info.url,
+          allowed_updates: [...new Set([...allowed, 'message', 'callback_query'])],
+          ...(secret ? { secret_token: secret } : {}),
+        }),
+        signal: AbortSignal.timeout(8000),
+      })
+
+      this.log.warn(
+        `Telegram (${bot}): webhook'da ${missing.join(',')} yo'q edi — qayta o'rnatildi (${fix.status})`,
+      )
+    } catch (error) {
+      this.log.warn(`Telegram (${bot}): webhook tekshirilmadi: ${String(error)}`)
+    }
   }
 
   /**
@@ -320,11 +413,28 @@ export class TelegramService {
       callback_query_id: callbackId,
       text: note,
     })
-    await this.call(token, 'deleteMessage', { chat_id: chatId, message_id: messageId })
+
+    const deleted = await this.call(token, 'deleteMessage', {
+      chat_id: chatId,
+      message_id: messageId,
+    })
+
+    /*
+      48 SOATDAN ESKI XABARNI BOT O'CHIRA OLMAYDI (Telegram cheklovi).
+      Unda hech bo'lmasa tugma olib tashlanadi — aks holda odam
+      bosadi, hech narsa o'zgarmaydi va "ishlamayapti" deb o'ylaydi.
+    */
+    if (!deleted) {
+      await this.call(token, 'editMessageReplyMarkup', {
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: { inline_keyboard: [] },
+      })
+    }
   }
 
-  /** Telegram API chaqiruvi — xato faqat jurnalga tushadi */
-  private async call(token: string, method: string, body: unknown): Promise<void> {
+  /** Telegram API chaqiruvi — xato faqat jurnalga tushadi. `true` — muvaffaqiyatli. */
+  private async call(token: string, method: string, body: unknown): Promise<boolean> {
     try {
       const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
         method: 'POST',
@@ -332,9 +442,14 @@ export class TelegramService {
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(5000),
       })
-      if (!res.ok) this.log.warn(`Telegram ${method} ${res.status}: ${await res.text()}`)
+      if (!res.ok) {
+        this.log.warn(`Telegram ${method} ${res.status}: ${await res.text()}`)
+        return false
+      }
+      return true
     } catch (error) {
       this.log.warn(`Telegram ${method} yuborilmadi: ${String(error)}`)
+      return false
     }
   }
 
@@ -489,5 +604,14 @@ export class TelegramService {
     } catch (error) {
       this.log.warn(`Telegram yuborilmadi: ${String(error)}`)
     }
+  }
+}
+
+/** Logga faqat xost — yo'l va so'rov qismida maxfiy narsa bo'lishi mumkin */
+function safeHost(url: string): string {
+  try {
+    return new URL(url).host
+  } catch {
+    return '?'
   }
 }

@@ -1985,4 +1985,9 @@ export const dict: Dict = {
   'module.pharmacyshift': 'Smena yopish',
   'module.pharmacyanalytics': 'Apteka tahlili',
   'module.pharmacycash': 'Apteka kassa solishtiruvi',
+  'direction.pharmacy': 'Apteka',
+  'leadPosition.pharmacist': 'Farmatsevt',
+  'leadPosition.pharmacyOwner': 'Apteka egasi',
+  'login.pharmacyName': 'Apteka nomi',
+  'login.pharmacyNamePlaceholder': 'Aptekangiz nomi',
 }

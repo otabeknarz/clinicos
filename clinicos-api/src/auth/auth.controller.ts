@@ -79,8 +79,8 @@ export class AuthController {
   */
   @Public()
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.auth.startRegistration(dto)
+  register(@Body() dto: RegisterDto, @Req() req: Request) {
+    return this.auth.startRegistration(dto, clientIp(req))
   }
 
   /*

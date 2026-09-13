@@ -257,7 +257,7 @@ export function PlatformAccessPage() {
             <TrialRow
               key={policy.direction}
               policy={policy}
-              modules={trials.data?.modules ?? []}
+              modules={policy.modules ?? trials.data?.modules ?? []}
               onSaved={() => {
                 toast.success(t('toast.saved'))
                 setVersion((v) => v + 1)
@@ -277,7 +277,7 @@ function TrialRow({
   modules,
   onSaved,
 }: {
-  policy: { direction: string; days: number; disabledModules: string[]; custom: boolean }
+  policy: { direction: string; days: number; disabledModules: string[]; custom: boolean; modules?: string[] }
   modules: string[]
   onSaved: () => void
 }) {

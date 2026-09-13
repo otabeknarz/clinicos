@@ -12,7 +12,7 @@ import {
   Min,
 } from 'class-validator'
 
-import { CLINIC_MODULES, CORE_MODULES, RESTRICTABLE_MODULES } from '../common/modules'
+import { RESTRICTABLE_MODULES } from '../common/modules'
 
 /** Bo'limni yopish qoidasi */
 export class RestrictionDto {
@@ -37,7 +37,7 @@ export class RestrictionDto {
 
 /** Yo'nalish bo'yicha sinov sharti */
 export class TrialPolicyDto {
-  @IsIn(['default', 'general', 'dental', 'eye', 'lab'])
+  @IsIn(['default', 'general', 'dental', 'eye', 'lab', 'pharmacy'])
   direction!: string
 
   @Type(() => Number) @IsInt() @Min(1) @Max(180)
@@ -45,6 +45,6 @@ export class TrialPolicyDto {
 
   @IsArray()
   @ArrayMaxSize(20)
-  @IsIn([...CORE_MODULES, ...CLINIC_MODULES], { each: true })
+  @IsIn([...RESTRICTABLE_MODULES], { each: true })
   disabledModules: string[] = []
 }

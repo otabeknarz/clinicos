@@ -231,6 +231,20 @@ export const TRIAL_DISABLED_MODULES: ClinicModule[] = [
   'ward',
 ]
 
+/**
+ * APTEKA SINOVIDA YOPIQLAR — rahbar qatlami: tahlil va kassa
+ * solishtiruvi. Kassa, katalog va tovar qabul qilish ochiq —
+ * apteka ertasiga savdoni boshlay olishi kerak.
+ */
+export const PHARMACY_TRIAL_DISABLED_MODULES: string[] = ['pharmacyanalytics', 'pharmacycash']
+
+/** Yo'nalish uchun sinovda yopiqlarning SUKUT to'plami (bazada shart bo'lmasa) */
+export function defaultTrialClosed(direction: string): string[] {
+  return direction === 'pharmacy'
+    ? [...PHARMACY_TRIAL_DISABLED_MODULES]
+    : [...TRIAL_DISABLED_MODULES]
+}
+
 /** Sinov necha kun davom etadi */
 export const TRIAL_DAYS = 14
 

@@ -156,18 +156,28 @@ async function main() {
   /* ---------- 7. Apteka — alohida mijoz ---------- */
   console.log('\nApteka')
 
-  const pharmacy = await base.clinic.findFirst({ where: { kind: 'PHARMACY' } })
+  /* Dorisi bor apteka — sinov aptekalari bo'sh bo'lishi mumkin */
+  const seededMedicine = await base.medicine.findFirst({ orderBy: { createdAt: 'asc' } })
+  const pharmacy = seededMedicine
+    ? await base.clinic.findFirst({ where: { id: seededMedicine.clinicId, kind: 'PHARMACY' } })
+    : null
   if (!pharmacy) {
     check('seedda apteka bor', false, 'avval: npm run db:seed')
   } else {
     const dbP = forClinic(base, pharmacy.id)
-    const allMedicines = await base.medicine.count()
+    /*
+      Bazada boshqa aptekalar ham bo'lishi mumkin (`test:features`
+      sinov aptekalarini yaratadi) — shuning uchun solishtirish shu
+      aptekaning o'z dorilari soni bilan.
+    */
+    const ownMedicines = await base.medicine.count({ where: { clinicId: pharmacy.id } })
     const medicinesP = await dbP.medicine.findMany()
 
     check(
       'apteka faqat o‘z dorilarini ko‘radi',
-      allMedicines > 0 && medicinesP.length === allMedicines &&
+      ownMedicines > 0 && medicinesP.length === ownMedicines &&
         medicinesP.every((m) => m.clinicId === pharmacy.id),
+      `${medicinesP.length} / ${ownMedicines}`,
     )
     check('klinika aptekaning dorisini ko‘rmaydi', (await dbA.medicine.count()) === 0)
     check('klinika aptekaning savdosini ko‘rmaydi', (await dbA.sale.count()) === 0)

@@ -298,15 +298,22 @@ async function main() {
       kirishga urinilganda ko'rinardi va sababi umumiy xabar
       ostida yashiringan edi.
     */
+    /*
+      `POST /auth/login` 201 qaytaradi (NestJS'da POST ning odatiy kodi) —
+      mijoz ham, bu sinov ham 2xx ni muvaffaqiyat deb biladi. Ilgari bu
+      yerda 200 kutilardi va sinov bu qadamga yetib kelmagani uchun
+      (tranzaksiya qotishi) xato ko'rinmay yotardi.
+    */
+    const isOk = (status: number) => status >= 200 && status < 300
     const asStaff = (email: string, password: string) =>
       call('POST', '/auth/login', undefined, { email, password })
 
     const first = await asStaff(`crud.docstaff.${RUN}@shifomed.uz`, 'crud-doctor-1234')
-    check('  yaratilgan hisob bilan kirildi', first.status === 200, short(first.data))
+    check('  yaratilgan hisob bilan kirildi', isOk(first.status), short(first.data))
 
     await call('PATCH', `/staff/${docStaffId}`, owner, { password: 'crud-doctor-5678' })
     const withNew = await asStaff(`crud.docstaff.${RUN}@shifomed.uz`, 'crud-doctor-5678')
-    check('  yangi parol ishladi', withNew.status === 200, short(withNew.data))
+    check('  yangi parol ishladi', isOk(withNew.status), short(withNew.data))
     const withOld = await asStaff(`crud.docstaff.${RUN}@shifomed.uz`, 'crud-doctor-1234')
     check('  eski parol RAD ETILDI', withOld.status === 401, `status: ${withOld.status}`)
 
@@ -317,7 +324,7 @@ async function main() {
       `crud.docstaff.yangi.${RUN}@shifomed.uz`,
       'crud-doctor-5678',
     )
-    check('  yangi login ishladi', renamedLogin.status === 200, short(renamedLogin.data))
+    check('  yangi login ishladi', isOk(renamedLogin.status), short(renamedLogin.data))
 
     const shown = await call('GET', `/staff/${docStaffId}`, owner)
     check(
@@ -338,7 +345,7 @@ async function main() {
       `crud.docstaff.yangi.${RUN}@shifomed.uz`,
       'crud-doctor-5678',
     )
-    check('  kirish qaytarildi', restored.status === 200, short(restored.data))
+    check('  kirish qaytarildi', isOk(restored.status), short(restored.data))
 
     // Ishdan bo'shagan xodim ertasiga ham kira olmasligi kerak
     await call('PATCH', `/staff/${docStaffId}`, owner, { status: 'fired' })
@@ -356,7 +363,7 @@ async function main() {
       `crud.docstaff.yangi.${RUN}@shifomed.uz`,
       'crud-doctor-5678',
     )
-    check('  qayta ishga olingach kirish tiklandi', rehired.status === 200, short(rehired.data))
+    check('  qayta ishga olingach kirish tiklandi', isOk(rehired.status), short(rehired.data))
 
     // Lavozim o'zgarsa yozuv o'chmaydi, faqat ro'yxatdan chiqadi
     await call('PATCH', `/staff/${docStaffId}`, owner, { position: 'nurse' })

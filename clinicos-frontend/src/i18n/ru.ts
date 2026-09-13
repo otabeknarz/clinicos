@@ -1936,4 +1936,9 @@ export const dict: Dict = {
   'module.pharmacyshift': 'Закрытие смены',
   'module.pharmacyanalytics': 'Аналитика аптеки',
   'module.pharmacycash': 'Сверка кассы аптеки',
+  'direction.pharmacy': 'Аптека',
+  'leadPosition.pharmacist': 'Фармацевт',
+  'leadPosition.pharmacyOwner': 'Владелец аптеки',
+  'login.pharmacyName': 'Название аптеки',
+  'login.pharmacyNamePlaceholder': 'Название вашей аптеки',
 }

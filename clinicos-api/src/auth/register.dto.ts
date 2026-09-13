@@ -13,8 +13,11 @@ import { IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class
  * mazmunini butunlay o'zgartiradi.
  */
 
-/** Klinikaning yo'nalishi — `ClinicKind` bilan bir xil ro'yxat */
-export const CLINIC_DIRECTIONS = ['general', 'dental', 'eye', 'lab'] as const
+/**
+ * Yo'nalish. `pharmacy` — APTEKA: tizim aptekalarga ham alohida
+ * sotiladi, ular ham o'zi ro'yxatdan o'tadi.
+ */
+export const CLINIC_DIRECTIONS = ['general', 'dental', 'eye', 'lab', 'pharmacy'] as const
 
 /** Ro'yxatdan o'tayotgan odam klinikada kim */
 export const LEAD_POSITIONS = [
@@ -23,6 +26,8 @@ export const LEAD_POSITIONS = [
   'manager',
   'administrator',
   'doctor',
+  /* Aptekada — farmatsevt */
+  'pharmacist',
   'other',
 ] as const
 

@@ -132,12 +132,17 @@ export class PrescriptionsService {
     }
 
     /*
-      Chetlatish RO'YXAT BO'SHAB QOLMAGUNCHA ishlaydi. Bitta
-      aptekasi bor shaharda "oxirgisi chetda" qoidasi retseptni
-      umuman yuborib bo'lmaydigan qilib qo'yardi.
+      Chetlatilganlar O'CHIRILMAYDI — ro'yxat OXIRIGA suriladi va
+      faqat boshqa apteka yetmaganda bo'sh o'rinni to'ldiradi.
+
+      TARIX: ilgari ular butunlay chiqarilardi. 4 ta aptekali
+      tizimda oxirgi ikkitasi chetda qolib, shifokorga 3 o'rniga
+      2 ta taklif chiqardi; bitta aptekali shaharda esa retseptni
+      umuman yuborib bo'lmasdi.
     */
-    const pool = pharmacies.filter((one) => !avoid.has(one.id))
-    const chosen = shuffle(pool.length > 0 ? pool : pharmacies).slice(0, OFFER_SIZE)
+    const fresh = shuffle(pharmacies.filter((one) => !avoid.has(one.id)))
+    const avoided = shuffle(pharmacies.filter((one) => avoid.has(one.id)))
+    const chosen = [...fresh, ...avoided].slice(0, OFFER_SIZE)
 
     return Promise.all(chosen.map((pharmacy) => this.priceFor(pharmacy, items)))
   }

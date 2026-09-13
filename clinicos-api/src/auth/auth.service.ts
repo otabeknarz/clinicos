@@ -14,7 +14,7 @@ import { checkClinicAccess } from '../common/clinic-access'
 import { AuditService } from '../common/audit.service'
 import { toApiClinic } from '../clinic/clinic.service'
 import { RequestContext } from '../common/request-context'
-import { isPermissionBlocked, moduleOf, TRIAL_DAYS, TRIAL_DISABLED_MODULES } from '../common/modules'
+import { defaultTrialClosed, isPermissionBlocked, moduleOf, TRIAL_DAYS } from '../common/modules'
 import { looksLikePhone, normalizePhone } from '../common/phone'
 import { IMPERSONATION_PERMISSIONS, resolvePermissions } from '../common/permissions'
 import { DISABLED_BY_KIND } from '../common/modules'
@@ -295,7 +295,7 @@ export class AuthService {
    * tasdiqlash esa ro'yxatdan o'tishga ikkinchi ilova qo'shadi.
    * Raqam baribir tekshiriladi — sotuvchi qo'ng'iroq qilganda.
    */
-  async startRegistration(dto: RegisterDto) {
+  async startRegistration(dto: RegisterDto, ip: string | null = null) {
     const phone = normalizePhone(dto.phone)
 
     /*
@@ -343,6 +343,29 @@ export class AuthService {
     }
 
     sweepPending(this.pending)
+
+    /*
+      BIR RAQAMGA BITTA KUTISH. Odam formani qayta yuborsa, eskisi
+      o'chadi — aks holda bitta raqam o'nlab joyni egallab turardi.
+    */
+    for (const [key, value] of this.pending) {
+      if (value.dto.phone === phone) this.pending.delete(key)
+    }
+
+    /*
+      BIR MANZILDAN KO'PI BILAN 5 TA. Ochiq marshrut: cheklovsiz
+      bo'lsa, kimdir umumiy 500 talik joyni to'ldirib, 15 daqiqa
+      davomida haqiqiy mijozlarni ro'yxatdan o'tkazmay qo'yardi.
+      Ilovaning umumiy "throttler" i ishlatilmadi — proksi ortida u
+      hammani bitta manzil deb ko'rib, birgalikda cheklab qo'yardi.
+    */
+    if (ip) {
+      const fromIp = [...this.pending.values()].filter((value) => value.ip === ip).length
+      if (fromIp >= MAX_PENDING_PER_IP) {
+        throw new BadRequestException('Juda ko‘p urinish — bir necha daqiqadan keyin qaytadan')
+      }
+    }
+
     if (this.pending.size >= MAX_PENDING) {
       throw new BadRequestException('Hozir band — bir necha daqiqadan keyin urinib ko‘ring')
     }
@@ -353,6 +376,7 @@ export class AuthService {
       expiresAt: Date.now() + PENDING_TTL_MS,
       session: null,
       chatId: null,
+      ip,
     })
 
     return {
@@ -431,7 +455,7 @@ export class AuthService {
 
     return {
       days: row?.days ?? TRIAL_DAYS,
-      disabledModules: row?.disabledModules ?? [...TRIAL_DISABLED_MODULES],
+      disabledModules: row?.disabledModules ?? defaultTrialClosed(direction),
     }
   }
 
@@ -470,6 +494,95 @@ export class AuthService {
     /* Kirish uchun email kerak emas, lekin ustun bo'sh qolmasligi kerak */
     const login = phone
 
+    /*
+      APTEKA — ALOHIDA YO'L. Tizim aptekalarga ham sotiladi va ular
+      ham o'zi ro'yxatdan o'tadi. Farqi: klinika turi `PHARMACY`,
+      egasining roli `PHARMACY_OWNER` va xodim yozuvi `PharmacyStaff`
+      da (apteka paneli xodimni shu yerdan topadi). Platforma
+      aptekani qo'lda ochganda ham aynan shunday yaratiladi
+      (`platform-pharmacies.service.ts`).
+
+      Obuna yozuvi aptekaga ham ochiladi — faqat SINOV uchun: muddat
+      shu orqali tugaydi va sinov tasmasi sanab turadi.
+    */
+    if (dto.direction === 'pharmacy') {
+      const pharmacyOwner = await this.db.acrossAllClinics().$transaction(async (tx) => {
+        const clinic = await tx.clinic.create({
+          data: {
+            kind: 'PHARMACY',
+            direction: 'pharmacy',
+            name: clinicName,
+            city: dto.city?.trim() ?? '',
+            address: dto.city?.trim() ?? '',
+            phone,
+          },
+        })
+
+        const user = await tx.user.create({
+          data: {
+            clinicId: clinic.id,
+            fullName,
+            email: phone,
+            phone,
+            passwordHash: await argon2.hash(dto.password),
+            role: 'PHARMACY_OWNER',
+            telegramUserId,
+          },
+        })
+
+        await tx.pharmacyStaff.create({
+          data: {
+            clinicId: clinic.id,
+            fullName,
+            phone,
+            login: phone,
+            role: 'PHARMACY_OWNER',
+            salary: 0,
+            workdays: [1, 2, 3, 4, 5, 6],
+            shiftStart: '09:00',
+            shiftEnd: '18:00',
+            hiredAt: now,
+            canReceive: true,
+            userId: user.id,
+          },
+        })
+
+        await tx.subscription.create({
+          data: {
+            clinicId: clinic.id,
+            status: 'TRIAL',
+            planId: plan.id,
+            termPrice: 0,
+            termMonths: 3,
+            trialEndsAt: trialEnds,
+            nextInvoiceAt: trialEnds,
+            ownerName: fullName,
+            ownerEmail: '',
+            ownerPhone: phone,
+            city: dto.city?.trim() ?? '',
+          },
+        })
+
+        await tx.lead.create({
+          data: {
+            createdClinicId: clinic.id,
+            clinicName,
+            fullName,
+            phone,
+            position: dto.position,
+            direction: dto.direction,
+            city: dto.city?.trim() ?? '',
+            staffCount: dto.staffCount ?? '',
+          },
+        })
+
+        return user
+      })
+
+      await this.audit.recordLogin({ clinicId: pharmacyOwner.clinicId, userId: pharmacyOwner.id })
+      return this.buildSession(pharmacyOwner.id)
+    }
+
     const owner = await this.db.acrossAllClinics().$transaction(async (tx) => {
       const clinic = await tx.clinic.create({
         data: {
@@ -484,7 +597,7 @@ export class AuthService {
             va to'lagan zahoti o'z-o'zidan ochiladi. Yozib qo'yilsa,
             to'lagan mijoz ham ularni ko'rmay qolardi.
           */
-          disabledModules: DISABLED_BY_KIND[dto.direction],
+          disabledModules: DISABLED_BY_KIND[dto.direction as keyof typeof DISABLED_BY_KIND] ?? [],
           /* Dushanbadan shanbagacha 09:00-18:00 — keyin o'zgartiriladi */
           workingHours: {
             create: [1, 2, 3, 4, 5, 6].map((weekday) => ({
@@ -738,6 +851,8 @@ interface PendingRegistration {
   session: Awaited<ReturnType<AuthService['me']>> | null
   /** Botdagi suhbat — raqam shu yerdan keladi */
   chatId: string | null
+  /** So'rov kelgan manzil — bir manzildan ko'p urinishni cheklash uchun */
+  ip: string | null
 }
 
 /** Kod necha vaqt yashaydi */
@@ -751,6 +866,9 @@ const PENDING_TTL_MS = 15 * 60 * 1000
  * emas.
  */
 const MAX_PENDING = 500
+
+/** Bitta manzildan bir vaqtda nechta kutish */
+const MAX_PENDING_PER_IP = 5
 
 function sweepPending(map: Map<string, PendingRegistration>): void {
   const now = Date.now()

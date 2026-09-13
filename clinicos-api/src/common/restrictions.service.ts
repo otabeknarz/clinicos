@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 
 import { PrismaService } from '../prisma/prisma.service'
-import { TRIAL_DISABLED_MODULES } from './modules'
+import { defaultTrialClosed } from './modules'
 
 /**
  * ============================================================
@@ -101,7 +101,7 @@ export class RestrictionsService {
         policies.find((one) => one.direction === clinic.direction) ??
         policies.find((one) => one.direction === 'default')
 
-      const closed = policy?.disabledModules ?? [...TRIAL_DISABLED_MODULES]
+      const closed = policy?.disabledModules ?? defaultTrialClosed(clinic.direction)
       for (const module of closed) {
         if (!byModule.has(module)) {
           byModule.set(module, { module, reason: 'trial', note: '' })
