@@ -29,6 +29,7 @@ import { TelegramService } from '../src/telegram/telegram.service'
  *   7. Apteka o'zi ro'yxatdan o'tadi — PHARMACY turi, sinov, apteka paneli.
  *   8. Kirim-chiqim — yozish, kassaga ta'sir, bekor qilish, ruxsatlar; buxgalter "Xodim" roli bilan.
  *   9. Bemorga "qabulga yozildingiz", kartasi keyin ochilgan bot foydalanuvchisi, egaga kirim-chiqim xabari.
+ *  10. Dam olish kunlari — yangi qabul rad, ko'chirish boshqa kunga va shifokorga, band vaqt va bayram.
  *
  * TELEGRAM CHAQIRILMAYDI: xizmatning yuborish metodlari shu yerda
  * almashtiriladi va nima yuborilgani yozib olinadi.
@@ -703,6 +704,89 @@ async function main() {
     await prisma.user.update({ where: { id: ownerUser.id }, data: { telegramUserId: ownerTelegramBefore } })
     await prisma.user.update({ where: { id: receptionUser.id }, data: { extraPermissions: receptionUser.extraPermissions } })
   }
+
+  /* ================================================================ */
+  console.log('\n10. Dam olish kunlari va qabullarni ko‘chirish')
+  /* ================================================================ */
+  const dayAt = (offset: number, hour: number, minute: number) => {
+    const d = new Date()
+    d.setDate(d.getDate() + offset)
+    d.setHours(hour, minute, 0, 0)
+    return d
+  }
+  const doctorA = bookDoctor
+  /* Ikkinchi shifokor — seedda bittagina bo'lishi mumkin */
+  const doctorB =
+    (await prisma.doctor.findFirst({
+      where: { clinicId: receptionUser.clinicId, status: 'ACTIVE', id: { not: doctorA.id } },
+    })) ??
+    (await prisma.doctor.create({
+      data: {
+        clinicId: receptionUser.clinicId, fullName: 'Sinov Ikkinchi Shifokor', specialty: 'therapist', phone: '', email: '',
+        consultationFee: 0, workdays: [1, 2, 3, 4, 5, 6], shiftStart: '08:00', shiftEnd: '20:00', hiredAt: new Date(),
+      },
+    }))
+  const sickDay = localDay(dayAt(2, 12, 0))
+  const nextDay = localDay(dayAt(3, 12, 0))
+  const holiday = localDay(dayAt(4, 12, 0))
+
+  const appt = await call('POST', '/appointments', receptionToken, {
+    patientId: newPatient.data.id, doctorId: doctorA.id, serviceId: bookService.id, startsAt: dayAt(2, 19, 35).toISOString(),
+  })
+  check('ko‘chiriladigan qabul yozildi', appt.status === 201, short(appt.data))
+
+  const sick = await call('POST', '/days-off', receptionToken, { from: sickDay, to: sickDay, doctorId: doctorA.id, reason: 'Kasal' })
+  check('shifokorga dam olish belgilandi', sick.status === 201 && sick.data?.created === 1, short(sick.data))
+  check('ta’sir qilgan qabullar soni qaytdi', (sick.data?.affectedAppointments ?? 0) >= 1, short(sick.data))
+
+  const again = await call('POST', '/days-off', receptionToken, { from: sickDay, to: sickDay, doctorId: doctorA.id })
+  check('o‘sha kun qayta yozilmadi', again.data?.created === 0, short(again.data))
+
+  const blocked = await call('POST', '/appointments', receptionToken, {
+    patientId: newPatient.data.id, doctorId: doctorA.id, serviceId: bookService.id, startsAt: dayAt(2, 11, 5).toISOString(),
+  })
+  check('dam olish kuniga yangi qabul yozilmaydi', blocked.status === 400 && String(blocked.data?.message).includes('ishlamaydi'), short(blocked.data))
+
+  const listed = await call('GET', `/days-off?from=${sickDay}&to=${sickDay}`, receptionToken)
+  check('dam olish kuni ro‘yxatda', (listed.data ?? []).some((d: any) => d.doctorId === doctorA.id && d.reason === 'Kasal'), short(listed.data))
+
+  check('shifokor dam olish belgilay olmaydi', (await call('POST', '/days-off', doctorToken, { from: sickDay, to: sickDay })).status === 403)
+
+  /* Boshqa shifokorga, o'sha vaqtda */
+  sent.length = 0
+  const toDoctor = await call('POST', '/appointments/bulk-move', receptionToken, { ids: [appt.data.id], mode: 'doctor', doctorId: doctorB.id })
+  check('boshqa shifokorga o‘tkazildi', toDoctor.data?.moved?.[0]?.doctorId === doctorB.id, short(toDoctor.data))
+  await settle()
+  check('bemorga "qabulingiz o‘zgardi" bordi', sent.some((m) => m.to === botTelegram && m.text.includes('Qabulingiz o‘zgardi')), short(sent.map((m) => m.text.slice(0, 30))))
+
+  /* Tasdiqlab, keyin boshqa kunga — tasdiq bekor bo'ladi */
+  await prisma.appointment.update({ where: { id: appt.data.id }, data: { status: 'CONFIRMED' } })
+  const toDate = await call('POST', '/appointments/bulk-move', receptionToken, { ids: [appt.data.id], mode: 'date', date: nextDay })
+  const movedRow = toDate.data?.moved?.[0]
+  check('boshqa kunga ko‘chdi, vaqti saqlandi', Boolean(movedRow) && localDay(new Date(movedRow.startsAt)) === nextDay && new Date(movedRow.startsAt).getHours() === 19 && new Date(movedRow.startsAt).getMinutes() === 35, short(movedRow))
+  check('kun o‘zgargach tasdiq qaytadan so‘raladi', movedRow?.status === 'scheduled', movedRow?.status)
+
+  /* Klinika dam oladi — u kunga ko'chmaydi */
+  const clinicHoliday = await call('POST', '/days-off', financeOwner, { from: holiday, to: holiday, reason: 'Bayram' })
+  check('egasi klinika dam olishini belgiladi', clinicHoliday.status === 201, short(clinicHoliday.data))
+  const toHoliday = await call('POST', '/appointments/bulk-move', receptionToken, { ids: [appt.data.id], mode: 'date', date: holiday })
+  check('klinika dam oladigan kunga ko‘chmaydi', toHoliday.data?.moved?.length === 0 && String(toHoliday.data?.skipped?.[0]?.reason).includes('klinika dam oladi'), short(toHoliday.data))
+
+  /* Band vaqtga o'tkazilmaydi */
+  const rival = await call('POST', '/appointments', receptionToken, {
+    patientId: newPatient.data.id, doctorId: doctorA.id, serviceId: bookService.id, startsAt: dayAt(3, 19, 35).toISOString(),
+  })
+  const clash = await call('POST', '/appointments/bulk-move', receptionToken, { ids: [rival.data?.id], mode: 'doctor', doctorId: doctorB.id })
+  check('band vaqtga o‘tkazilmaydi', clash.data?.moved?.length === 0 && String(clash.data?.skipped?.[0]?.reason).includes('band'), short(clash.data))
+
+  /* Dam olish bekor qilinsa — yana yozish mumkin */
+  for (const row of [...(listed.data ?? []), ...(clinicHoliday.data?.items ?? [])]) {
+    await call('DELETE', `/days-off/${row.id}`, row.doctorId ? receptionToken : financeOwner)
+  }
+  const reopened = await call('POST', '/appointments', receptionToken, {
+    patientId: newPatient.data.id, doctorId: doctorA.id, serviceId: bookService.id, startsAt: dayAt(2, 11, 5).toISOString(),
+  })
+  check('dam olish o‘chirilgach qabul yoziladi', reopened.status === 201, short(reopened.data))
 
   await app.close()
   console.log(`\n${passed} ta o‘tdi, ${failed} ta xato`)

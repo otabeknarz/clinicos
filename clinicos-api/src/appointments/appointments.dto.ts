@@ -1,9 +1,14 @@
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
   IsDateString,
   IsIn,
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
   ValidateIf,
 } from 'class-validator'
@@ -125,4 +130,35 @@ export class DoctorLoadQueryDto {
 
   @IsDateString()
   to!: string
+}
+
+/**
+ * QABULLARNI KO'CHIRISH — bir yo'la bir nechta.
+ *
+ * `date` — boshqa kunga, VAQTI saqlanadi (09:30 bo'lsa yangi kunda ham
+ * 09:30). `doctor` — o'sha vaqtda boshqa shifokorga. Shifokor kasal
+ * bo'lib qolgan kunning ikki odatiy yechimi shu.
+ */
+export class BulkMoveDto {
+  @IsArray()
+  @ArrayMinSize(1, { message: 'Qabul tanlanmagan' })
+  @ArrayMaxSize(200)
+  @IsUUID('all', { each: true })
+  ids!: string[]
+
+  @IsIn(['date', 'doctor'])
+  mode!: 'date' | 'doctor'
+
+  @ValidateIf((dto: BulkMoveDto) => dto.mode === 'date')
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Yangi sana tanlanmagan' })
+  date?: string
+
+  @ValidateIf((dto: BulkMoveDto) => dto.mode === 'doctor')
+  @IsUUID('all', { message: 'Yangi shifokor tanlanmagan' })
+  doctorId?: string
+
+  /** Bemorlarga bemor botidan xabar yuborilsinmi */
+  @IsOptional()
+  @IsBoolean()
+  notify: boolean = true
 }

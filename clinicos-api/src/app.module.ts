@@ -20,6 +20,7 @@ import { PermissionsGuard } from './common/guards/permissions.guard'
 import { FeedbackModule } from './feedback/feedback.module'
 import { DebtsModule } from './debts/debts.module'
 import { FinanceModule } from './finance/finance.module'
+import { DaysOffModule } from './days-off/days-off.module'
 import { ExportModule } from './export/export.module'
 import { ImportModule } from './import/import.module'
 import { FaceModule } from './face/face.module'
@@ -62,6 +63,7 @@ import { TelegramModule } from './telegram/telegram.module'
     PaymentsModule,
     DebtsModule,
     FinanceModule,
+    DaysOffModule,
     ExportModule,
     ImportModule,
     NoticesModule,

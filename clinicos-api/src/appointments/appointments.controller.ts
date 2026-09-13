@@ -10,12 +10,14 @@ import {
   Query,
 } from '@nestjs/common'
 
+import { Audit } from '../common/audit.interceptor'
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { IdParamDto } from '../patients/patients.dto'
 import {
   AppointmentInputDto,
   AppointmentQueryDto,
   AppointmentRangeDto,
+  BulkMoveDto,
   DoctorLoadQueryDto,
   SetStatusDto,
   UpdateAppointmentDto,
@@ -68,6 +70,20 @@ export class AppointmentsController {
   }
 
   // POST /appointments
+  /*
+    POST /appointments/bulk-move
+
+    Shifokor ishlamay qolgan kunning qabullarini boshqa kunga yoki boshqa
+    shifokorga o'tkazish. Band vaqtga tushganlari O'TKAZILMAYDI — javobda
+    sababi bilan qaytadi.
+  */
+  @Post('bulk-move')
+  @RequirePermission('appointments.edit')
+  @Audit('bulk_move', 'appointment')
+  bulkMove(@Body() dto: BulkMoveDto) {
+    return this.appointments.bulkMove(dto)
+  }
+
   @Post()
   @RequirePermission('appointments.create')
   create(@Body() dto: AppointmentInputDto) {

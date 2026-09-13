@@ -93,6 +93,8 @@ export type Permission =
   | 'finance.view'
   | 'finance.create'
   | 'finance.void'
+  /* Dam olish kuni: klinika yoki shifokor ishlamaydigan kunni belgilash */
+  | 'daysoff.manage'
   /* Apteka — klinika ichidagi alohida biznes: o'z tovari, o'z
      kassasi, o'z hisoboti. `sell` kassada ishlash uchun, `manage`
      esa katalog, kirim va narxlar uchun.
@@ -184,6 +186,8 @@ export const OWNER_PERMISSIONS: readonly Permission[] = [
   'finance.view',
   'finance.create',
   'finance.void',
+  /* Bayram yoki shifokor ta'tili — ish tartibi egasining qarori */
+  'daysoff.manage',
   'settings.view',
   'settings.manage',
   'users.manage',
@@ -207,6 +211,8 @@ export const RECEPTIONIST_PERMISSIONS: readonly Permission[] = [
   'appointments.edit',
   'appointments.cancel',
   'calendar.view',
+  /* Shifokor kasal bo'lib qoldi — registrator kunni belgilab, qabullarni ko'chiradi */
+  'daysoff.manage',
   'doctors.view',
   'services.view',
   'payments.view',

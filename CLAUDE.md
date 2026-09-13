@@ -434,6 +434,28 @@ accountant could only be given the receptionist role (the whole patient base) or
 (everything). Its home page is Finance if granted, otherwise the staff member's own profile. Positions
 (`StaffPosition`) are a separate axis: a guard or cook is a staff row with no login at all.
 
+**Days off (`src/days-off/`, `DayOff`) block booking; they never move appointments on their own.**
+`doctorId` null means the whole clinic is closed (a holiday), otherwise one doctor is off. `create` and
+`update` in `appointments.service` reject a start that falls on either (`closedReason`). Existing
+appointments stay where they are until reception moves them with `POST /appointments/bulk-move`
+(`mode: 'date'` keeps the time of day, `mode: 'doctor'` keeps date and time). Each appointment is
+checked and saved on its own — a clash with the target doctor, a closed target day or a non-active
+status puts it in `skipped` with a reason instead of failing the batch. A date change resets
+`CONFIRMED` to `SCHEDULED` (the patient confirmed the old time) and deletes that appointment's reminder
+notices so the reminder job fires again for the new day. Moving silently would be worse than not
+moving: the patient bot gets a "your appointment changed" message. The date is stored as UTC midnight
+(`common/day-key.ts`) and compared through the server-local day key, so it does not depend on the
+container's timezone. `daysoff.manage` is held by owner and receptionist.
+
+**Patients hear about a booking the moment it is made, not only 3 and 1 days before.**
+`notifyPatient` sends "you are booked" through the patient bot and records a `BOOKED` notice; the
+reminder job skips a reminder when such a notice is recent, so a booking for tomorrow is not followed by
+"you have an appointment tomorrow" half an hour later. **The bot link is remembered per phone**
+(`TelegramPhoneLink`, a global table: digits → Telegram id). It used to be written only onto the patient
+cards that existed when the patient shared their number, so a card created afterwards — often exactly
+the new patient being booked — had no link and every message was silently skipped. `patients.service`
+now reads the link on create and on phone change; phone numbers are compared by digits only.
+
 **The reception panel's unpaid list is the one part that is not "today".** Everything else on that
 panel (counts, queue, cash) comes from the day's appointments; debt comes from a *separate* query
 with no date bound. They were one query once, and yesterday's debt showed in the notification count

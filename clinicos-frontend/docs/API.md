@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**234 ta endpoint.**
+**238 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -711,6 +711,15 @@ yo'qotilgan daromad, shuning uchun bu eng foydali kesim.
 
 ```ts
 getDoctorLoad(from: Date, to: Date): Promise<DoctorLoad>
+```
+
+### `POST /appointments/bulk-move`
+
+Bir nechta qabulni ko'chirish. Band vaqtga yoki dam olish kuniga
+tushganlari o'tkazilmaydi — `skipped` da sababi bilan qaytadi.
+
+```ts
+bulkMoveAppointments(input: BulkMoveInput): Promise<BulkMoveResult>
 ```
 
 ## Tashriflar va tashxis
@@ -3602,6 +3611,34 @@ deyishini va qancha pul kerakligini oldindan biladi.
 
 ```ts
 cabinetPrescriptions(): Promise<Prescription[]>
+```
+
+## daysOff
+
+`src/api/daysOff.ts`
+
+> DAM OLISH KUNLARI.
+> 
+> Butun klinika (bayram) yoki bitta shifokor (kasal, ta'til). Belgilangan
+> kunga yangi qabul yozilmaydi; allaqachon yozilganlari o'z-o'zidan
+> ko'chmaydi — ularni kalendardagi "Ko'chirish" oynasi o'tkazadi.
+
+### `GET /days-off?from=&to=`
+
+```ts
+listDaysOff(from: string, to: string): Promise<DayOff[]>
+```
+
+### `POST /days-off`
+
+```ts
+createDayOff(input: DayOffInput): Promise<DayOffResult>
+```
+
+### `DELETE /days-off/:id`
+
+```ts
+deleteDayOff(id: ID): Promise<void>
 ```
 
 ## debts

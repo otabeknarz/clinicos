@@ -24,6 +24,7 @@ import {
 import { generateShiftClosures, generateWard } from './seedWard'
 import { generateFinance } from './seedFinance'
 import type { MockFinanceEntry } from './seedFinance'
+import type { DayOff } from '@/types/models'
 import { generateFeedback } from './seedFeedback'
 import { generatePharmacy } from './seedPharmacy'
 import type {
@@ -138,6 +139,8 @@ export interface SeedData {
   debtWaivers: DebtWaiver[]
   /** Kirim-chiqim: bemor to'lovidan tashqari pul */
   financeEntries: MockFinanceEntry[]
+  /** Dam olish kunlari — boshida bo'sh */
+  daysOff: (DayOff & { clinicId: string })[]
   feedback: Feedback[]
   /* --- Apteka: alohida biznes, shakllar `types/pharmacy.ts` da --- */
   medicines: Medicine[]
@@ -1002,6 +1005,7 @@ export function generateSeed(seed = 20260901): SeedData {
     penaltyRules,
     penaltyWaivers: [],
     debtWaivers: [],
+    daysOff: [],
     financeEntries: generateFinance(MAIN_CLINIC_ID, today, {
       owner: { id: 'usr_owner', name: 'Anvar Ahmadjonov' },
       reception: { id: 'usr_reception_1', name: 'Kamola Sobirova' },

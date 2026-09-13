@@ -87,6 +87,8 @@ const OWNER_PERMISSIONS: Permission[] = [
   'finance.view',
   'finance.create',
   'finance.void',
+  // Bayram yoki shifokor ta'tili
+  'daysoff.manage',
   'settings.view',
   'settings.manage',
   'users.manage',
@@ -116,6 +118,8 @@ const RECEPTIONIST_PERMISSIONS: Permission[] = [
   'appointments.edit',
   'appointments.cancel',
   'calendar.view',
+  // Shifokor ishlamay qolsa — kunni belgilab, qabullarni ko'chiradi
+  'daysoff.manage',
   'doctors.view',
   'services.view',
   'payments.view',

@@ -89,6 +89,7 @@ model Clinic {
   admissions        Admission[]
   shiftClosures     ShiftClosure[]
   financeEntries    FinanceEntry[]
+  daysOff           DayOff[]
   feedback          Feedback[]
   chatGroups        ChatGroup[]
   chatMessages      ChatMessage[]
@@ -297,6 +298,7 @@ model Doctor {
 
   clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   user         User?
+  daysOff      DayOff[]
   appointments Appointment[]
   visits       Visit[]
   payments     Payment[]
@@ -2036,6 +2038,8 @@ enum PatientNoticeKind {
   REMINDER_SOON
   /// Qabul yozilgan zahoti — "siz qabulga yozildingiz"
   BOOKED
+  /// Qabul boshqa kunga yoki boshqa shifokorga ko'chirilganda
+  RESCHEDULED
 }
 
 model PatientNotice {
@@ -2435,4 +2439,35 @@ model TelegramPhoneLink {
 
   @@index([telegramUserId])
   @@map("telegram_phone_links")
+}
+
+/// DAM OLISH KUNI — butun klinika yoki bitta shifokor.
+///
+/// `doctorId` bo'sh — butun klinika yopiq (bayram, sanitariya kuni).
+/// To'lgan — shu shifokor ishlamaydi (kasal, ta'til, safar).
+///
+/// Bu kunga YANGI qabul yozilmaydi — server rad etadi. Allaqachon
+/// yozilganlari o'z-o'zidan ko'chmaydi: registrator ularni kalendardan
+/// boshqa kunga yoki boshqa shifokorga o'tkazadi va bemorga botdan
+/// xabar boradi. Avtomatik ko'chirish xavfli — bemor bilmay qolardi.
+///
+/// Sana UTC yarim tuni sifatida saqlanadi (`2026-09-15T00:00Z`), ya'ni
+/// konteynerning vaqt mintaqasiga bog'liq emas.
+model DayOff {
+  id       String  @id @default(uuid())
+  clinicId String  @map("clinic_id")
+  doctorId String? @map("doctor_id")
+
+  date   DateTime @db.Date
+  reason String   @default("")
+
+  createdById String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  clinic Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  doctor Doctor? @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, date])
+  @@index([clinicId, doctorId, date])
+  @@map("days_off")
 }

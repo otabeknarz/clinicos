@@ -16,6 +16,7 @@ import type {
   Appointment,
   AppointmentExpanded,
   AppointmentStatus,
+  BulkMoveResult,
   DoctorLoad,
   DoctorLoadRow,
   ID,
@@ -343,4 +344,99 @@ export async function getDoctorLoad(from: Date, to: Date): Promise<DoctorLoad> {
 function timeToMin(t: string): number {
   const [h, m] = t.split(':').map(Number)
   return h * 60 + m
+}
+
+/* ------------------------------------------------------------------ */
+/* Ko'chirish                                                          */
+/* ------------------------------------------------------------------ */
+
+export interface BulkMoveInput {
+  ids: ID[]
+  /** `date` — boshqa kunga, vaqti saqlanadi; `doctor` — o'sha vaqtda boshqa shifokorga */
+  mode: 'date' | 'doctor'
+  date?: string
+  doctorId?: ID
+  /** Bemorlarga botdan xabar */
+  notify: boolean
+}
+
+/**
+ * Bir nechta qabulni ko'chirish. Band vaqtga yoki dam olish kuniga
+ * tushganlari o'tkazilmaydi — `skipped` da sababi bilan qaytadi.
+ */
+// POST /appointments/bulk-move
+export async function bulkMoveAppointments(input: BulkMoveInput): Promise<BulkMoveResult> {
+  if (!USE_MOCK) return request<BulkMoveResult>('POST', '/appointments/bulk-move', { body: input })
+
+  const { clinicId } = apiContext()
+  const db = getDb()
+  const dayKey = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const patients = new Map(db.patients.all(clinicId).map((p) => [p.id, p.fullName]))
+  const result: BulkMoveResult = { moved: [], skipped: [] }
+
+  for (const id of input.ids) {
+    const row = db.appointments.find(id, clinicId)
+    const name = row ? (patients.get(row.patientId) ?? '—') : '—'
+    const skip = (reason: string) => result.skipped.push({ id, patientName: name, time: row?.startsAt ?? '', reason })
+    if (!row) {
+      skip('Qabul topilmadi')
+      continue
+    }
+    if (row.status !== 'scheduled' && row.status !== 'confirmed') {
+      skip('Qabul boshlangan yoki yopilgan — ko‘chirilmaydi')
+      continue
+    }
+
+    const old = new Date(row.startsAt)
+    let starts = old
+    if (input.mode === 'date' && input.date) {
+      const [y, m, d] = input.date.split('-').map(Number)
+      starts = new Date(y, m - 1, d, old.getHours(), old.getMinutes())
+    }
+    const doctorId = input.mode === 'doctor' && input.doctorId ? input.doctorId : row.doctorId
+    if (starts.getTime() === old.getTime() && doctorId === row.doctorId) {
+      skip('O‘zgarish yo‘q — o‘sha kun va o‘sha shifokor')
+      continue
+    }
+    if (starts.getTime() < Date.now()) {
+      skip('Yangi vaqt o‘tib ketgan')
+      continue
+    }
+
+    const off = db.daysOff
+      .all(clinicId)
+      .filter((d) => d.date === dayKey(starts) && (d.doctorId === null || d.doctorId === doctorId))
+    if (off.length > 0) {
+      skip(off.some((d) => d.doctorId === null) ? 'Bu kun klinika dam oladi' : 'Bu kun shifokor ishlamaydi')
+      continue
+    }
+
+    const ends = starts.getTime() + row.durationMinutes * 60_000
+    const clash = db.appointments
+      .all(clinicId)
+      .filter((a) => a.id !== row.id && a.doctorId === doctorId)
+      .filter((a) => a.status === 'scheduled' || a.status === 'confirmed' || a.status === 'checked_in')
+      .find((a) => {
+        const s = new Date(a.startsAt).getTime()
+        return s < ends && s + a.durationMinutes * 60_000 > starts.getTime()
+      })
+    if (clash) {
+      skip(`Shu vaqt band: ${patients.get(clash.patientId) ?? '—'}`)
+      continue
+    }
+
+    const updated = db.appointments.update(
+      row.id,
+      {
+        startsAt: starts.toISOString(),
+        doctorId,
+        status: row.status === 'confirmed' && starts.getTime() !== old.getTime() ? 'scheduled' : row.status,
+      },
+      clinicId,
+    )
+    if (updated) result.moved.push(updated)
+  }
+
+  return delay(result, 350)
 }

@@ -9,6 +9,7 @@ import { Prisma } from '@prisma/client'
 
 import { toApi, toApiDateTime, toDb } from '../common/api-enum'
 import { paginated } from '../common/pagination'
+import { dayKeyToDb, localDayKey } from '../common/day-key'
 import { RequestContext } from '../common/request-context'
 import { escapeHtml, whenInWords } from '../common/telegram-text'
 import { PrismaService } from '../prisma/prisma.service'
@@ -17,6 +18,7 @@ import {
   AppointmentInputDto,
   AppointmentQueryDto,
   AppointmentRangeDto,
+  BulkMoveDto,
   DoctorLoadQueryDto,
   SetStatusDto,
   UpdateAppointmentDto,
@@ -152,6 +154,9 @@ export class AppointmentsService {
     await this.requireOwn('patient', dto.patientId, 'Bemor topilmadi')
     await this.requireOwn('doctor', dto.doctorId, 'Shifokor topilmadi')
 
+    const closed = await this.closedReason(new Date(dto.startsAt), dto.doctorId)
+    if (closed) throw new BadRequestException(closed)
+
     const row = await this.db.appointment.create({
       data: {
         clinicId,
@@ -185,6 +190,207 @@ export class AppointmentsService {
     void this.notifyPatient(row)
 
     return toApiAppointment(row)
+  }
+
+  /**
+   * Shu kun klinika yoki shifokor uchun dam olish kunimi.
+   * Dam olish bo'lsa — foydalanuvchiga ko'rsatiladigan sabab, aks holda `null`.
+   */
+  private async closedReason(startsAt: Date, doctorId: string): Promise<string | null> {
+    const rows = await this.db.dayOff.findMany({
+      where: {
+        date: dayKeyToDb(localDayKey(startsAt)),
+        OR: [{ doctorId: null }, { doctorId }],
+      },
+      select: { doctorId: true, reason: true },
+    })
+    if (rows.length === 0) return null
+    const clinicWide = rows.find((row) => row.doctorId === null)
+    const row = clinicWide ?? rows[0]
+    const why = row.reason ? ` (${row.reason})` : ''
+    return clinicWide
+      ? `Bu kun klinika dam oladi${why} — boshqa kunni tanlang`
+      : `Bu kun shifokor ishlamaydi${why} — boshqa kun yoki boshqa shifokorni tanlang`
+  }
+
+  /**
+   * QABULLARNI KO'CHIRISH.
+   *
+   * Har bir qabul ALOHIDA tekshiriladi va ALOHIDA saqlanadi: bittasi band
+   * vaqtga tushsa, qolganlari to'xtamaydi. Javob — ko'chirilganlar va
+   * sababi bilan qolib ketganlar; registrator ularni qo'lda joylaydi.
+   *
+   * QOIDALAR:
+   *   - faqat rejada yoki tasdiqlangan qabul ko'chadi (kelgan, yakunlangan,
+   *     bekor qilingan va kelmagan — tarix, ular o'zgarmaydi);
+   *   - yangi kun klinika yoki yangi shifokor uchun dam olish bo'lmasin;
+   *   - yangi shifokorning o'sha vaqti band bo'lmasin;
+   *   - KUNI o'zgarsa, tasdiq bekor bo'ladi (bemor ESKI vaqtni tasdiqlagan)
+   *     va eski eslatmalar o'chiriladi — yangi kun uchun qaytadan boradi.
+   */
+  async bulkMove(dto: BulkMoveDto) {
+    if (dto.mode === 'doctor') {
+      await this.requireOwn('doctor', dto.doctorId!, 'Shifokor topilmadi')
+    }
+
+    const rows = await this.db.appointment.findMany({
+      where: { id: { in: dto.ids } },
+      include: EXPAND,
+      orderBy: { startsAt: 'asc' },
+    })
+
+    const moved: ReturnType<typeof toApiAppointment>[] = []
+    const skipped: { id: string; patientName: string; time: string; reason: string }[] = []
+
+    for (const row of rows) {
+      const skip = (reason: string) =>
+        skipped.push({ id: row.id, patientName: row.patient.fullName, time: row.startsAt.toISOString(), reason })
+
+      if (row.status !== 'SCHEDULED' && row.status !== 'CONFIRMED') {
+        skip('Qabul boshlangan yoki yopilgan — ko‘chirilmaydi')
+        continue
+      }
+
+      let startsAt = row.startsAt
+      if (dto.mode === 'date') {
+        const [y, m, d] = dto.date!.split('-').map(Number)
+        startsAt = new Date(y, m - 1, d, row.startsAt.getHours(), row.startsAt.getMinutes(), 0, 0)
+      }
+      const doctorId = dto.mode === 'doctor' ? dto.doctorId! : row.doctorId
+
+      if (startsAt.getTime() === row.startsAt.getTime() && doctorId === row.doctorId) {
+        skip('O‘zgarish yo‘q — o‘sha kun va o‘sha shifokor')
+        continue
+      }
+      if (startsAt.getTime() < Date.now()) {
+        skip('Yangi vaqt o‘tib ketgan')
+        continue
+      }
+
+      const closed = await this.closedReason(startsAt, doctorId)
+      if (closed) {
+        skip(closed.replace(/ — .*$/, ''))
+        continue
+      }
+
+      /* Yangi shifokorning shu vaqti bandmi */
+      const endsAt = new Date(startsAt.getTime() + row.durationMinutes * 60_000)
+      const dayStart = new Date(startsAt)
+      dayStart.setHours(0, 0, 0, 0)
+      const dayEnd = new Date(startsAt)
+      dayEnd.setHours(23, 59, 59, 999)
+      const sameDay = await this.db.appointment.findMany({
+        where: {
+          doctorId,
+          id: { not: row.id },
+          status: { in: ['SCHEDULED', 'CONFIRMED', 'CHECKED_IN'] },
+          startsAt: { gte: dayStart, lte: dayEnd },
+        },
+        select: { startsAt: true, durationMinutes: true, patient: { select: { fullName: true } } },
+      })
+      const clash = sameDay.find(
+        (other) =>
+          other.startsAt < endsAt &&
+          new Date(other.startsAt.getTime() + other.durationMinutes * 60_000) > startsAt,
+      )
+      if (clash) {
+        skip(`Shu vaqt band: ${clash.patient.fullName}`)
+        continue
+      }
+
+      const dayChanged = localDayKey(startsAt) !== localDayKey(row.startsAt)
+      const updated = await this.db.appointment.update({
+        where: { id: row.id },
+        data: {
+          startsAt,
+          doctorId,
+          ...(row.status === 'CONFIRMED' && startsAt.getTime() !== row.startsAt.getTime()
+            ? { status: 'SCHEDULED' }
+            : {}),
+        },
+        include: EXPAND,
+      })
+
+      /* Eski vaqt uchun yuborilgan eslatmalar yangi kun uchun qaytadan borsin */
+      await this.db.patientNotice.deleteMany({
+        where: {
+          appointmentId: row.id,
+          kind: { in: dayChanged ? ['REMINDER', 'REMINDER_SOON', 'RESCHEDULED'] : ['RESCHEDULED'] },
+        },
+      })
+
+      if (dto.notify) void this.notifyRescheduled(updated, row.startsAt, row.doctor.fullName)
+      if (doctorId !== row.doctorId || dayChanged) void this.notifyDoctor(updated)
+
+      moved.push(toApiAppointment(updated))
+    }
+
+    const found = new Set(rows.map((row) => row.id))
+    for (const id of dto.ids) {
+      if (!found.has(id)) skipped.push({ id, patientName: '—', time: '', reason: 'Qabul topilmadi' })
+    }
+
+    this.log.log(`Ko‘chirish: ${moved.length} ta ko‘chirildi, ${skipped.length} ta qoldi`)
+    return { moved, skipped }
+  }
+
+  /** "Qabulingiz o'zgardi" — bemorga, bemor botidan. Xato tashlamaydi. */
+  private async notifyRescheduled(
+    row: { id: string; clinicId: string; startsAt: Date; patient: { id: string }; doctor: { fullName: string }; service: { name: string } },
+    oldStartsAt: Date,
+    oldDoctor: string,
+  ) {
+    try {
+      if (!this.telegram.patientEnabled) return
+      const details = await this.db.appointment.findFirst({
+        where: { id: row.id },
+        select: {
+          patient: { select: { telegramUserId: true } },
+          clinic: { select: { name: true, phone: true } },
+        },
+      })
+      if (!details?.patient.telegramUserId) {
+        this.log.log(`Bemor boti: bemor ${row.patient.id} botga ulanmagan — ko‘chirish xabari yuborilmadi`)
+        return
+      }
+
+      const lines = [
+        `<b>${escapeHtml(details.clinic.name)}</b>`,
+        '',
+        '<b>Qabulingiz o‘zgardi.</b>',
+        '',
+        `<b>Yangi vaqt:</b> ${escapeHtml(whenInWords(row.startsAt))}`,
+        `<b>Shifokor:</b> ${escapeHtml(row.doctor.fullName)}`,
+        `<b>Xizmat:</b> ${escapeHtml(row.service.name)}`,
+      ]
+      if (oldStartsAt.getTime() !== row.startsAt.getTime() || oldDoctor !== row.doctor.fullName) {
+        lines.push('', `Avvalgisi: ${escapeHtml(whenInWords(oldStartsAt))}, ${escapeHtml(oldDoctor)}`)
+      }
+      if (details.clinic.phone) {
+        lines.push('', `Vaqt to‘g‘ri kelmasa, qo‘ng‘iroq qiling: ${escapeHtml(details.clinic.phone)}`)
+      }
+      const text = lines.join('\n')
+
+      await this.telegram.send(
+        details.patient.telegramUserId,
+        text,
+        { inline_keyboard: [[{ text: 'Qabul qildim', callback_data: `appt:${row.id}` }]] },
+        'patient',
+      )
+      await this.db.patientNotice.create({
+        data: {
+          clinicId: row.clinicId,
+          patientId: row.patient.id,
+          appointmentId: row.id,
+          kind: 'RESCHEDULED',
+          text: text.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'),
+          createdByName: 'Tizim',
+          delivered: true,
+        },
+      })
+    } catch (error) {
+      this.log.warn(`Bemor boti: ko‘chirish xabari yuborilmadi: ${String(error)}`)
+    }
   }
 
   /**
@@ -385,6 +591,15 @@ export class AppointmentsService {
     }
     if (dto.patientId) await this.requireOwn('patient', dto.patientId, 'Bemor topilmadi')
     if (dto.doctorId) await this.requireOwn('doctor', dto.doctorId, 'Shifokor topilmadi')
+
+    /* Vaqt yoki shifokor o'zgarsa — yangi kun dam olish kuni emasligi tekshiriladi */
+    if (dto.startsAt || dto.doctorId) {
+      const closed = await this.closedReason(
+        dto.startsAt ? new Date(dto.startsAt) : current.startsAt,
+        dto.doctorId ?? current.doctorId,
+      )
+      if (closed) throw new BadRequestException(closed)
+    }
 
     const row = await this.db.appointment.update({
       where: { id },

@@ -1,11 +1,22 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarPlus, Check, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import {
+  ArrowRightLeft,
+  CalendarOff,
+  CalendarPlus,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+} from 'lucide-react'
 
 import { getDoctorLoad, listAppointmentsRange } from '@/api/appointments'
+import { listDaysOff } from '@/api/daysOff'
 import { listDoctorsShort } from '@/api/doctors'
 import { LoadView } from './calendar/LoadView'
 import { doctorColors, STATUS_DOT, STATUS_ORDER, tint } from './calendar/colors'
+import { BulkMoveModal } from './calendar/BulkMoveModal'
+import { DayOffModal } from './calendar/DayOffModal'
 import { AppointmentFormModal } from '@/components/modals/AppointmentFormModal'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
@@ -29,7 +40,8 @@ import { APPOINTMENT_LABEL, APPOINTMENT_TONE } from '@/lib/status'
 import { useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
-import type { AppointmentExpanded } from '@/types/models'
+import { useToast } from '@/store/toast-context'
+import type { AppointmentExpanded, DayOff } from '@/types/models'
 
 type View = 'day' | 'week' | 'load'
 
@@ -60,6 +72,10 @@ export function CalendarPage() {
   const [doctorId, setDoctorId] = useState<string>('all')
   const [formOpen, setFormOpen] = useState(false)
   const [preset, setPreset] = useState<{ date: string; time: string } | null>(null)
+  const toast = useToast()
+  /* Dam olish va ko'chirish oynalari */
+  const [dayOffOpen, setDayOffOpen] = useState(false)
+  const [moving, setMoving] = useState<{ date: string; doctorId: string | 'all' } | null>(null)
 
   const { data: doctors } = useAsync(() => listDoctorsShort(), [])
 
@@ -73,6 +89,11 @@ export function CalendarPage() {
   )
 
   const rows = (data ?? []).filter((a) => a.status !== 'cancelled')
+
+  const daysOff = useAsync(
+    () => listDaysOff(toISODate(from), toISODate(to)),
+    [toISODate(from), toISODate(to)],
+  )
 
   /* Rang shifokorlar ro'yxatidagi tartibdan — izoh va kartalar mos kelsin */
   const colorOf = useMemo(() => doctorColors((doctors ?? []).map((d) => d.id)), [doctors])
@@ -92,6 +113,13 @@ export function CalendarPage() {
 
   function openSlot(day: Date, slotTime: string) {
     if (!can('appointments.create')) return
+    /* Klinika yopiq kunga forma ochilmaydi — server baribir rad etardi */
+    const key = toISODate(day)
+    const closed = (daysOff.data ?? []).find((d) => d.date === key && d.doctorId === null)
+    if (closed) {
+      toast.error(t('dayoff.clinicClosed') + (closed.reason ? ` — ${closed.reason}` : ''))
+      return
+    }
     setPreset({ date: toISODate(day), time: slotTime })
     setFormOpen(true)
   }
@@ -161,6 +189,28 @@ export function CalendarPage() {
               placeholder={t('calendar.allDoctors')}
             />
           ) : null}
+
+          {/*
+            SHIFOKOR ISHLAMAY QOLDI — ikki qadam: kunni belgilash va
+            qabullarni ko'chirish. Ikkalasi shu yerda, kalendar oldida.
+          */}
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            {can('daysoff.manage') ? (
+              <Button variant="gray" size="sm" icon={<CalendarOff size={15} />} onClick={() => setDayOffOpen(true)}>
+                {t('dayoff.button')}
+              </Button>
+            ) : null}
+            {can('appointments.edit') ? (
+              <Button
+                variant="gray"
+                size="sm"
+                icon={<ArrowRightLeft size={15} />}
+                onClick={() => setMoving({ date: toISODate(anchor), doctorId })}
+              >
+                {t('move.button')}
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         {/* --- To'r --- */}
@@ -193,11 +243,15 @@ export function CalendarPage() {
               onPickDoctor={setDoctorId}
             />
             {/* Telefonda vaqt to'ri sig'maydi — ro'yxat ko'rinishi qulayroq */}
-            <CalendarAgenda days={days} appointments={rows} colorOf={colorOf} className="md:hidden" />
+            <CalendarAgenda days={days} appointments={rows} colorOf={colorOf} daysOff={daysOff.data ?? []} className="md:hidden" />
             <CalendarGrid
               days={days}
               appointments={rows}
               colorOf={colorOf}
+              daysOff={daysOff.data ?? []}
+              doctorFilter={doctorId}
+              canMove={can('appointments.edit')}
+              onMove={(date, movingDoctor) => setMoving({ date, doctorId: movingDoctor })}
               showDoctor={doctorId === 'all'}
               canCreate={can('appointments.create')}
               onSlotClick={openSlot}
@@ -206,6 +260,32 @@ export function CalendarPage() {
           </>
         )}
       </Card>
+
+      <DayOffModal
+        open={dayOffOpen}
+        onClose={() => setDayOffOpen(false)}
+        doctors={doctors ?? []}
+        initialDate={toISODate(anchor)}
+        initialDoctorId={doctorId}
+        onSaved={(affected) => {
+          setDayOffOpen(false)
+          daysOff.reload()
+          /* Shu kunlarda qabul bor — darhol ko'chirishga o'tamiz */
+          if (affected && can('appointments.edit')) {
+            toast.success(t('dayoff.affected', { count: affected.count }))
+            setMoving({ date: affected.date, doctorId: affected.doctorId })
+          }
+        }}
+      />
+
+      <BulkMoveModal
+        open={moving !== null}
+        onClose={() => setMoving(null)}
+        onDone={reload}
+        doctors={doctors ?? []}
+        initialDate={moving?.date ?? toISODate(anchor)}
+        initialDoctorId={moving?.doctorId ?? 'all'}
+      />
 
       <AppointmentFormModal
         open={formOpen}
@@ -227,6 +307,10 @@ function CalendarGrid({
   days,
   appointments,
   colorOf,
+  daysOff,
+  doctorFilter,
+  canMove,
+  onMove,
   showDoctor,
   canCreate,
   onSlotClick,
@@ -235,6 +319,11 @@ function CalendarGrid({
   days: Date[]
   appointments: AppointmentExpanded[]
   colorOf: (doctorId: string) => string
+  daysOff: DayOff[]
+  /** Tanlangan shifokor — uning dam olishi ustunni to'liq yopadi */
+  doctorFilter: string | 'all'
+  canMove: boolean
+  onMove: (date: string, doctorId: string | 'all') => void
   /** Hamma shifokor ko'rinayotganda kartada shifokor ismi ham yoziladi */
   showDoctor: boolean
   canCreate: boolean
@@ -263,22 +352,61 @@ function CalendarGrid({
           style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0,1fr))` }}
         >
           <div />
-          {days.map((day) => (
-            <div key={day.toISOString()} className="px-2 py-2.5 text-center">
-              <p className="text-caption-2 uppercase tracking-wide text-label-tertiary">
-                {weekLabels[day.getDay()]}
-              </p>
-              <p
-                className={cn(
-                  'mx-auto mt-0.5 flex h-7 w-7 items-center justify-center rounded-full',
-                  'text-footnote font-semibold tnum',
-                  isToday(day) ? 'bg-accent text-white' : 'text-label',
-                )}
-              >
-                {day.getDate()}
-              </p>
-            </div>
-          ))}
+          {days.map((day) => {
+            const off = dayOffInfo(day, daysOff, doctorFilter)
+            /* Ta'sir qilgan faol qabullar — ko'chirish tugmasi uchun */
+            const affected = appointments.filter(
+              (a) =>
+                isSameDay(new Date(a.startsAt), day) &&
+                (a.status === 'scheduled' || a.status === 'confirmed') &&
+                (off.clinic || off.doctors.some((d) => d.doctorId === a.doctorId)),
+            )
+            return (
+              <div key={day.toISOString()} className="px-2 py-2.5 text-center">
+                <p className="text-caption-2 uppercase tracking-wide text-label-tertiary">
+                  {weekLabels[day.getDay()]}
+                </p>
+                <p
+                  className={cn(
+                    'mx-auto mt-0.5 flex h-7 w-7 items-center justify-center rounded-full',
+                    'text-footnote font-semibold tnum',
+                    isToday(day) ? 'bg-accent text-white' : off.clinic ? 'bg-bad-soft text-bad' : 'text-label',
+                  )}
+                >
+                  {day.getDate()}
+                </p>
+                {/* Kim ishlamaydi — kun sarlavhasining o'zida */}
+                {off.clinic ? (
+                  <p className="mt-1 truncate text-caption-2 font-semibold text-bad" title={off.clinic.reason}>
+                    {t('dayoff.clinicBadge')}
+                  </p>
+                ) : off.doctors.length > 0 ? (
+                  <p
+                    className="mt-1 truncate text-caption-2 font-medium text-warn"
+                    title={off.doctors.map((d) => `${d.doctorName ?? ''}${d.reason ? ` — ${d.reason}` : ''}`).join('\n')}
+                  >
+                    {off.doctors.length === 1
+                      ? t('dayoff.doctorBadge', { name: shortName(off.doctors[0].doctorName ?? '') })
+                      : t('dayoff.doctorsBadge', { count: off.doctors.length })}
+                  </p>
+                ) : null}
+                {canMove && affected.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onMove(
+                        toISODate(day),
+                        off.clinic ? 'all' : off.doctors.length === 1 ? (off.doctors[0].doctorId ?? 'all') : doctorFilter,
+                      )
+                    }
+                    className="mx-auto mt-1 flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-caption-2 font-semibold text-white hover:brightness-110"
+                  >
+                    <ArrowRightLeft size={10} /> {t('move.dayButton', { count: affected.length })}
+                  </button>
+                ) : null}
+              </div>
+            )
+          })}
         </div>
 
         {/* --- Vaqt to'ri --- */}
@@ -318,6 +446,9 @@ function CalendarGrid({
             const dayAppointments = appointments.filter((a) =>
               isSameDay(new Date(a.startsAt), day),
             )
+            const off = dayOffInfo(day, daysOff, doctorFilter)
+            /* Klinika yopiq yoki tanlangan shifokor ishlamaydi — ustun chiziqli */
+            const closedColumn = Boolean(off.clinic) || (doctorFilter !== 'all' && off.doctors.length > 0)
 
             return (
               <div
@@ -325,9 +456,17 @@ function CalendarGrid({
                 className={cn(
                   'relative border-l border-separator',
                   /* Bugungi ustun — ko'z qayerdan boshlashni darhol topsin */
-                  isToday(day) && 'bg-accent/[0.035]',
+                  isToday(day) && !closedColumn && 'bg-accent/[0.035]',
                 )}
-                style={{ height: totalHeight }}
+                style={{
+                  height: totalHeight,
+                  ...(closedColumn
+                    ? {
+                        backgroundImage:
+                          'repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-bad) 7%, transparent) 0 8px, transparent 8px 16px)',
+                      }
+                    : {}),
+                }}
               >
                 {/* Bo'sh slotlar — bosilsa yangi qabul */}
                 {slots.map((slot, index) => (
@@ -483,11 +622,13 @@ function CalendarAgenda({
   days,
   appointments,
   colorOf,
+  daysOff,
   className,
 }: {
   days: Date[]
   appointments: AppointmentExpanded[]
   colorOf: (doctorId: string) => string
+  daysOff: DayOff[]
   className?: string
 }) {
   const { t, tService } = useI18n()
@@ -517,6 +658,15 @@ function CalendarAgenda({
               <span className="text-footnote font-medium text-label-secondary">
                 {weekLabels[day.getDay()]}
               </span>
+              {dayOffInfo(day, daysOff, 'all').clinic ? (
+                <span className="rounded-full bg-bad-soft px-2 py-0.5 text-caption-2 font-semibold text-bad">
+                  {t('dayoff.clinicBadge')}
+                </span>
+              ) : dayOffInfo(day, daysOff, 'all').doctors.length > 0 ? (
+                <span className="rounded-full bg-warn-soft px-2 py-0.5 text-caption-2 font-medium text-warn">
+                  {t('dayoff.doctorsBadge', { count: dayOffInfo(day, daysOff, 'all').doctors.length })}
+                </span>
+              ) : null}
               <span className="ml-auto text-caption tnum text-label-tertiary">
                 {dayRows.length}
               </span>
@@ -744,4 +894,25 @@ function NowLine() {
       <span className="h-px flex-1 bg-bad" />
     </div>
   )
+}
+
+/**
+ * Shu kun kim ishlamaydi. Shifokor tanlangan bo'lsa — faqat o'sha
+ * shifokorning dam olishi hisobga olinadi (boshqalari bu ko'rinishga
+ * tegishli emas).
+ */
+function dayOffInfo(day: Date, daysOff: DayOff[], doctorFilter: string | 'all') {
+  const key = toISODate(day)
+  const rows = daysOff.filter((d) => d.date === key)
+  return {
+    clinic: rows.find((d) => d.doctorId === null) ?? null,
+    doctors: rows.filter((d) => d.doctorId !== null && (doctorFilter === 'all' || d.doctorId === doctorFilter)),
+  }
+}
+
+/** "Aziz Karimov" → "A. Karimov" — kun sarlavhasiga sig'sin */
+function shortName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/)
+  if (parts.length < 2) return fullName
+  return `${parts[0][0]}. ${parts.slice(1).join(' ')}`
 }

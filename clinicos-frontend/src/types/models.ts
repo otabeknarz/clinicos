@@ -133,6 +133,7 @@ export type Permission =
   | 'finance.view'
   | 'finance.create'
   | 'finance.void'
+  | 'daysoff.manage'
   /* --- Apteka: klinika ichidagi alohida biznes --- */
   | 'pharmacy.view'
   | 'pharmacy.sell'
@@ -2915,4 +2916,33 @@ export interface FinanceSummary {
   byCategory: { type: FinanceEntryType; category: string; amount: UZS; count: number }[]
   daily: { date: ISODate; income: UZS; expense: UZS }[]
   voidedCount: number
+}
+
+/* ------------------------------------------------------------------ */
+/* Dam olish kunlari va qabullarni ko'chirish                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Dam olish kuni. `doctorId` bo'sh — butun klinika yopiq (bayram),
+ * to'lgan — shu shifokor ishlamaydi (kasal, ta'til).
+ */
+export interface DayOff {
+  id: ID
+  date: ISODate
+  doctorId: ID | null
+  doctorName: string | null
+  reason: string
+}
+
+export interface DayOffResult {
+  created: number
+  /** Shu kunlardagi faol qabullar — ularni ko'chirish taklif qilinadi */
+  affectedAppointments: number
+  affectedDays: ISODate[]
+  items: DayOff[]
+}
+
+export interface BulkMoveResult {
+  moved: Appointment[]
+  skipped: { id: ID; patientName: string; time: string; reason: string }[]
 }
