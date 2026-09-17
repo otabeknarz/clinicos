@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { CalendarDays, CalendarRange, Plus, Search, Wallet } from 'lucide-react'
+import { CalendarDays, CalendarRange, Plus, Search, Trash2, Wallet } from 'lucide-react'
 
-import { getPaymentSummary, listPayments } from '@/api/payments'
+import { deletePayment, getPaymentSummary, listPayments } from '@/api/payments'
 import { PaymentFormModal } from '@/components/modals/PaymentFormModal'
+import { DeleteWithCodeModal } from '@/components/modals/DeleteWithCodeModal'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
+import { Button, IconButton } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { SearchInput } from '@/components/ui/Form'
 import { StatStrip } from '@/components/ui/Hero'
@@ -21,6 +22,7 @@ import { PAYMENT_LABEL, PAYMENT_TONE } from '@/lib/status'
 import { useAsync, useDebounced } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
+import { useToast } from '@/store/toast-context'
 import type { PaymentExpanded, PaymentMethod, PaymentStatus } from '@/types/models'
 
 const PAGE_SIZE = 15
@@ -28,6 +30,7 @@ const PAGE_SIZE = 15
 export function PaymentsPage() {
   const { t, tService } = useI18n()
   const { can } = useAuth()
+  const toast = useToast()
 
   /*
     Klinikaning haftalik/oylik aylanmasi — egasining raqami.
@@ -43,6 +46,7 @@ export function PaymentsPage() {
   )
   const [page, setPage] = useState(1)
   const [formOpen, setFormOpen] = useState(false)
+  const [deleting, setDeleting] = useState<PaymentExpanded | null>(null)
 
   const debounced = useDebounced(search, 250)
 
@@ -107,6 +111,28 @@ export function PaymentsPage() {
         </Badge>
       ),
     },
+    ...(can('payments.delete')
+      ? [
+          {
+            key: 'actions',
+            header: '',
+            align: 'right' as const,
+            width: 'w-12',
+            render: (row: PaymentExpanded) => (
+              <IconButton
+                label={t('action.delete')}
+                className="hover:text-bad"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setDeleting(row)
+                }}
+              >
+                <Trash2 size={15} />
+              </IconButton>
+            ),
+          },
+        ]
+      : []),
   ]
 
   return (
@@ -295,6 +321,31 @@ export function PaymentsPage() {
         open={formOpen}
         onClose={() => setFormOpen(false)}
         onSaved={refreshAll}
+      />
+
+      <DeleteWithCodeModal
+        open={deleting !== null}
+        onClose={() => setDeleting(null)}
+        title={t('paymentDelete.title')}
+        description={
+          deleting ? (
+            <div className="rounded-[12px] bg-sunken px-4 py-3">
+              <p className="text-subhead font-medium text-label">
+                {deleting.patient.fullName} — {money(deleting.amount)}
+              </p>
+              <p className="mt-0.5 text-caption text-label-secondary">
+                {dateShort(deleting.paidAt)} · {t('paymentDelete.hint')}
+              </p>
+            </div>
+          ) : null
+        }
+        withReason
+        onConfirm={async ({ code, reason }) => {
+          if (!deleting) return
+          await deletePayment(deleting.id, { code, reason })
+          toast.success(t('toast.deleted'))
+          refreshAll()
+        }}
       />
     </>
   )

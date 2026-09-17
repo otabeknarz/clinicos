@@ -9,7 +9,9 @@ import {
   Query,
 } from '@nestjs/common'
 
+import { Audit } from '../common/audit.interceptor'
 import { RequirePermission } from '../common/guards/permissions.guard'
+import { DeleteCodeDto } from '../delete-code/delete-code.dto'
 import { IdParamDto } from '../patients/patients.dto'
 import { PriceQueryDto, ServiceInputDto,
   UpdateServiceDto, ServiceListQueryDto } from './services.dto'
@@ -72,5 +74,19 @@ export class ServicesController {
   @RequirePermission('services.manage')
   remove(@Param() params: IdParamDto) {
     return this.services.remove(params.id)
+  }
+
+  /*
+    POST /services/:id/delete  { code }
+
+    O'chirish kodi bilan ro'yxatdan butunlay olib tashlash — arxivda ham
+    ko'rinmaydi. Ishlatilmagan xizmat bazadan o'chadi; ishlatilgani
+    yashiriladi, eski qabul va to'lovlar esa nomini saqlaydi.
+  */
+  @Post(':id/delete')
+  @RequirePermission('services.manage')
+  @Audit('delete', 'service')
+  removeWithCode(@Param() params: IdParamDto, @Body() dto: DeleteCodeDto) {
+    return this.services.removeWithCode(params.id, dto.code)
   }
 }

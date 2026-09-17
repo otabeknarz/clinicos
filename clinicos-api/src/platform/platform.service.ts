@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
@@ -14,8 +15,10 @@ import { DISABLED_BY_KIND } from '../common/modules'
 import { paginated } from '../common/pagination'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
+import { KEY_PREFIX, StorageService } from '../storage/storage.service'
 import {
   ArchiveDto,
+  PurgeTenantDto,
   BillingTermDto,
   ImpersonateDto,
   InvoiceQueryDto,
@@ -88,6 +91,7 @@ export class PlatformService {
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
     private readonly auth: AuthService,
+    private readonly storage: StorageService,
   ) {}
 
   /** Klinika filtridan tashqaridagi mijoz — faqat shu modulda */
@@ -600,6 +604,112 @@ export class PlatformService {
     })
 
     return this.tenantById(id)
+  }
+
+  /**
+   * KLINIKANI BUTUNLAY O'CHIRISH.
+   *
+   * `clinic_id` ustuni bor HAR BIR jadvaldan shu klinikaning qatorlari
+   * o'chiriladi. Jadvallar ro'yxati bazaning o'zidan olinadi — yangi jadval
+   * qo'shilganda bu kodni yangilash esdan chiqmasin. Tashqi kalitlar
+   * tartibi qo'lda yozilmaydi: bog'liq qator hali bor jadval keyingi
+   * aylanishda qaytadan urinib ko'riladi (`toza_platforma` migratsiyasi
+   * bilan bir xil yondashuv). Hammasi BITTA SQL bayonotida — yarmida
+   * to'xtasa hech narsa o'chmaydi.
+   *
+   * `clinic_id` siz bog'lanishlar alohida: onlayn retseptlar (chiquvchi va
+   * kiruvchi), foydalanuvchilar sessiyasi, klinikaga qo'yilgan cheklovlar,
+   * sotuv so'rovidagi havola.
+   *
+   * Platformaning o'z yozuvi (superadmin turgan klinika) o'chirilmaydi —
+   * aks holda admin panelga hech kim kira olmay qolardi.
+   */
+  async purgeTenant(id: string, dto: PurgeTenantDto) {
+    const { userId } = this.ctx.require()
+
+    const clinic = await this.db.clinic.findUnique({
+      where: { id },
+      select: { id: true, name: true },
+    })
+    if (!clinic) throw new NotFoundException('Klinika topilmadi')
+
+    if (dto.confirmName.trim() !== clinic.name.trim()) {
+      throw new BadRequestException('Klinika nomi mos kelmadi')
+    }
+
+    const admin = await this.db.user.findUnique({
+      where: { id: userId },
+      select: { passwordHash: true },
+    })
+    const ok = admin
+      ? await argon2.verify(admin.passwordHash, dto.password).catch(() => false)
+      : false
+    if (!ok) throw new ForbiddenException('Parol noto‘g‘ri')
+
+    const platformUsers = await this.db.user.count({
+      where: { clinicId: id, role: 'SUPERADMIN' },
+    })
+    if (platformUsers > 0) {
+      throw new BadRequestException('Platformaning o‘z yozuvini o‘chirib bo‘lmaydi')
+    }
+
+    /* `id` — tekshirilgan UUID (IdParamDto), SQL ga parametr sifatida */
+    await this.db.$executeRawUnsafe(
+      `DO $purge$
+      DECLARE
+        target    text := '${id.replace(/'/g, '')}';
+        pending   text[];
+        remaining text[];
+        tname     text;
+        pass      int := 0;
+      BEGIN
+        DELETE FROM online_prescriptions
+          WHERE issuer_clinic_id = target OR pharmacy_clinic_id = target;
+        DELETE FROM module_restrictions WHERE target_clinic_id = target;
+        UPDATE leads SET created_clinic_id = NULL WHERE created_clinic_id = target;
+        DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE clinic_id = target);
+
+        SELECT array_agg(c.table_name::text ORDER BY c.table_name) INTO pending
+        FROM information_schema.columns c
+        JOIN information_schema.tables t
+          ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+        WHERE c.table_schema = 'public'
+          AND c.column_name = 'clinic_id'
+          AND t.table_type = 'BASE TABLE';
+
+        LOOP
+          pass := pass + 1;
+          remaining := '{}';
+          FOREACH tname IN ARRAY coalesce(pending, '{}') LOOP
+            BEGIN
+              EXECUTE format('DELETE FROM %I WHERE clinic_id = $1', tname) USING target;
+            EXCEPTION WHEN foreign_key_violation THEN
+              remaining := remaining || tname;
+            END;
+          END LOOP;
+          EXIT WHEN cardinality(remaining) = 0;
+          IF pass >= 60 THEN
+            RAISE EXCEPTION 'Klinika o''chmadi, bog''liq jadvallar: %', remaining;
+          END IF;
+          pending := remaining;
+        END LOOP;
+
+        DELETE FROM clinics WHERE id = target;
+      END $purge$`,
+    )
+
+    /* Fayllar — rentgen, avatar, cheklar. Omborda xato bo'lsa ham baza tozalangan */
+    let files = 0
+    if (this.storage.enabled) {
+      try {
+        const keys = await this.storage.listKeys(`${KEY_PREFIX}${id}/`)
+        files = keys.length > 0 ? await this.storage.deleteKeys(keys) : 0
+      } catch {
+        files = -1
+      }
+    }
+
+    return { purged: true, name: clinic.name, files }
   }
 
   /**

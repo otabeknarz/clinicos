@@ -1,15 +1,22 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common'
 
+import { Audit } from '../common/audit.interceptor'
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { IdParamDto } from '../patients/patients.dto'
-import { PaymentInputDto, PaymentQueryDto, RevenueQueryDto } from './payments.dto'
+import {
+  DeletePaymentDto,
+  PaymentInputDto,
+  PaymentQueryDto,
+  RevenueQueryDto,
+} from './payments.dto'
 import { PaymentsService } from './payments.service'
 
 /**
  * To'lovlar.
  *
- * DIQQAT: bu yerda PATCH ham, DELETE ham YO'Q va bo'lmasligi kerak.
- * Kiritilgan to'lov o'zgarmaydi — xato bo'lsa qaytariladi.
+ * PATCH YO'Q: kiritilgan to'lov o'zgarmaydi — xato bo'lsa qaytariladi.
+ * O'chirish esa faqat o'chirish kodi bilan (`POST /payments/:id/delete`),
+ * audit jurnaliga to'lovning to'liq nusxasi yoziladi va egasiga xabar boradi.
  */
 @Controller()
 export class PaymentsController {
@@ -34,6 +41,14 @@ export class PaymentsController {
   @RequirePermission('payments.create')
   create(@Body() dto: PaymentInputDto) {
     return this.payments.create(dto)
+  }
+
+  // POST /payments/:id/delete  { code, reason }
+  @Post('payments/:id/delete')
+  @RequirePermission('payments.delete')
+  @Audit('delete', 'payment')
+  remove(@Param() params: IdParamDto, @Body() dto: DeletePaymentDto) {
+    return this.payments.remove(params.id, dto)
   }
 
   // POST /payments/:id/refund

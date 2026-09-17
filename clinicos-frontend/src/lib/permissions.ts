@@ -57,6 +57,9 @@ const OWNER_PERMISSIONS: Permission[] = [
   'dashboard.view',
   'patients.view',
   'patients.viewMedical',
+  // Tahrirlash va kod bilan o'chirish — yaratish esa registratorda
+  'patients.edit',
+  'patients.delete',
   'appointments.view',
   'calendar.view',
   'doctors.view',
@@ -67,6 +70,9 @@ const OWNER_PERMISSIONS: Permission[] = [
   'debts.view',
   // Qaytarish faqat egasida — registrator o'z kamomadini yopa olmasin
   'payments.refund',
+  'payments.delete',
+  // Qarzni undirish — qarzlar ro'yxatidan
+  'debts.collect',
   // Qarzni kechirish ham: pulni oladigan odam qarzni yopa olmasin
   'debts.waive',
   'revenue.view',
@@ -124,7 +130,11 @@ const RECEPTIONIST_PERMISSIONS: Permission[] = [
   'services.view',
   'payments.view',
   'debts.view',
+  'debts.collect',
   'payments.create',
+  // O'chirish — faqat egasi bergan kod bilan
+  'patients.delete',
+  'payments.delete',
   'ward.view',
   'ward.manage',
   // Davomatni administratsiya belgilaydi — kim keldi, kim kelmadi
@@ -150,11 +160,17 @@ const DOCTOR_PERMISSIONS: Permission[] = [
   'dashboard.view',
   'patients.view',
   'patients.viewMedical',
+  // O'ziga bemor yozadi (server boshqa shifokorni rad etadi)
+  'patients.create',
+  'appointments.create',
   'appointments.view',
   'calendar.view',
   'services.view',
   'visits.view',
   'visits.create',
+  // O'z bemorlarining qarzi — ko'rish va undirish
+  'debts.view',
+  'debts.collect',
   'ward.view',
   // Shifokor o'zi haqidagi fikrlarni ANONIM ko'radi
   'feedback.view',

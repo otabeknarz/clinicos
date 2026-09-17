@@ -44,6 +44,7 @@ export class SearchService {
             role === 'DOCTOR' && doctorId
               ? { OR: [{ primaryDoctorId: doctorId }, { appointments: { some: { doctorId } } }] }
               : {},
+            { deletedAt: null },
             {
               OR: [
                 { fullName: { contains: needle, mode: 'insensitive' } },

@@ -1,6 +1,7 @@
-import { ClipboardList, ShieldAlert } from 'lucide-react'
+import { CalendarClock, ClipboardList, ShieldAlert } from 'lucide-react'
 
-import { listCabinetVisits } from '@/api/cabinet'
+import { listCabinetAppointments, listCabinetVisits } from '@/api/cabinet'
+import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/ui/States'
 import { dateLong, time } from '@/lib/format'
@@ -22,25 +23,74 @@ export function CabinetVisitsPage() {
     () => listCabinetVisits(profile?.patientId),
     [profile?.patientId],
   )
+  /*
+    REJALASHTIRILGAN QABULLAR tarixdan OLDIN turadi: bemor bu sahifani
+    ko'pincha "qachon borishim kerak" deb ochadi. Ilgari faqat bosh
+    sahifadagi eng yaqin bittasi ko'rinardi.
+  */
+  const upcoming = useAsync(
+    () => listCabinetAppointments(profile?.patientId),
+    [profile?.patientId],
+  )
 
   if (loading) return <CardSkeleton />
   if (error) return <ErrorState onRetry={reload} />
 
+  const planned = upcoming.data ?? []
+  const plannedBlock =
+    planned.length > 0 ? (
+      <section className="space-y-2">
+        <h2 className="flex items-center gap-1.5 px-1 text-footnote font-semibold uppercase tracking-wide text-label-tertiary">
+          <CalendarClock size={14} />
+          {t('cabinet.planned')}
+        </h2>
+        <ol className="space-y-2">
+          {planned.map((appointment) => (
+            <li key={appointment.id}>
+              <Card className="rounded-[20px] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-subhead font-semibold text-label">
+                      {dateLong(appointment.startsAt)}, {time(appointment.startsAt)}
+                    </p>
+                    <p className="mt-0.5 text-caption text-label-secondary">
+                      {tService(appointment.serviceName)} · {appointment.doctorName}
+                    </p>
+                  </div>
+                  <Badge tone={appointment.status === 'scheduled' ? 'warn' : 'ok'}>
+                    {appointment.status === 'scheduled'
+                      ? t('cabinet.plannedWaiting')
+                      : appointment.status === 'confirmed'
+                        ? t('cabinet.plannedConfirmed')
+                        : t('cabinet.plannedArrived')}
+                  </Badge>
+                </div>
+              </Card>
+            </li>
+          ))}
+        </ol>
+      </section>
+    ) : null
+
   if (!data || data.length === 0) {
     return (
-      <Card className="rounded-[20px]">
-        <EmptyState
-          icon={<ClipboardList size={24} strokeWidth={1.75} />}
-          title={t('cabinet.noVisits')}
-          description={t('cabinet.noVisitsHint')}
-          className="py-10"
-        />
-      </Card>
+      <div className="space-y-4">
+        {plannedBlock}
+        <Card className="rounded-[20px]">
+          <EmptyState
+            icon={<ClipboardList size={24} strokeWidth={1.75} />}
+            title={t('cabinet.noVisits')}
+            description={t('cabinet.noVisitsHint')}
+            className="py-10"
+          />
+        </Card>
+      </div>
     )
   }
 
   return (
     <div className="space-y-4">
+      {plannedBlock}
       <p className="inline-flex items-center gap-1.5 rounded-full bg-warn-soft px-2.5 py-1 text-caption font-medium text-warn">
         <ShieldAlert size={13} />
         {t('cabinet.medicalNotice')}

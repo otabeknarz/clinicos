@@ -83,9 +83,11 @@ These are enforced in code, but new code must uphold them too. Long-form rationa
    reconciles. Owner has no `visits.create`/`payments.create`; receptionist has no
    `visits.create` and no `cashcontrol.view`. Before adding a permission, ask whether the
    holder can now audit themselves.
-3. **Money records are immutable.** There is no edit/delete endpoint for a payment and there
-   must not be one — mistakes are corrected with a refund record. Same shape elsewhere:
-   penalties are waived rather than deleted, impersonation is logged *before* entry.
+3. **Money records are immutable — except through the deletion code.** There is no edit endpoint
+   for a payment; mistakes are corrected with a refund record. The one way to remove a payment (or
+   a patient with everything attached) is `POST /payments/:id/delete` / `POST /patients/:id/delete`
+   with the clinic's **deletion code** (below). Same shape elsewhere: penalties are waived rather
+   than deleted, impersonation is logged *before* entry.
 
 ## Backend architecture
 
@@ -417,7 +419,7 @@ feedback exists for the same reason: without it a section left alone for a month
 The badge answers "something arrived", not "there is work somewhere".
 
 **Debt is computed, never stored.** `GET /debts` derives it as price − payments, in two lists
-(appointments and admissions). A stored balance column would drift from the payment rows and then
+(appointments and admissions); only the agreed due date is stored. A stored balance column would drift from the payment rows and then
 nobody could say which one was true. `DebtWaiver` writes off a hopeless debt without touching the
 money: `paymentStatus` stays unpaid — it really was — and only the lists and the notification
 filter the waived row out. `debts.waive` is owner-only for the same reason `payments.refund` is.
@@ -440,6 +442,50 @@ through `extraPermissions` (an accountant gets `finance.view` + `finance.create`
 accountant could only be given the receptionist role (the whole patient base) or the owner role
 (everything). Its home page is Finance if granted, otherwise the staff member's own profile. Positions
 (`StaffPosition`) are a separate axis: a guard or cook is a staff row with no login at all.
+
+**The deletion code (`src/delete-code/`, `Clinic.deleteCodeHash`) is the only path to destroying
+clinic data.** The owner sets a 4–8 digit code in Settings → Clinic, confirmed with their own password;
+it is stored as an argon2 hash and never returned. Deleting a payment (`payments.delete`), a patient
+(`patients.delete`) or a service (`services.manage`) requires it — the permission says *who may press
+the button*, the code says *the owner agreed*. Five wrong codes lock the clinic for 15 minutes (in
+memory, one container). Every deletion writes an audit row with a snapshot and sends the owners a
+Telegram message. A patient has two modes: `hide` sets `Patient.deletedAt` (lists and search skip it,
+history and revenue stay; creating a patient with the same phone revives the card) and `purge` deletes
+payments, admissions (freeing beds), appointments and visits — revenue drops. A used service is hidden
+(`Service.deletedAt`), an unused one is deleted. This reverses the old "no DELETE for money" rule at
+the owner's request; the code, the audit snapshot and the owner alert are what keep it from becoming a
+quiet way to close a cash shortfall.
+
+**Debts can carry a due date and can be collected by owner and doctor.** `Appointment.debtDueDate` /
+`Admission.debtDueDate` (`POST /debts/due`, anyone with `debts.view`); the reminder job sends the patient
+a `DEBT_DUE` notice on that day, and changing the date deletes the old notice so it fires again.
+`POST /debts/collect` (`debts.collect`: owner, receptionist, doctor) takes patient, doctor and service
+from the debt itself, caps the amount at the remaining debt and goes through `PaymentsService.create`,
+so cash lands in the collector's own shift. The owner still has no `payments.create` — collecting an
+already-rendered service's debt is not recording new money. A doctor sees and collects only their own
+patients' debts.
+
+**A doctor books their own patients.** `DOCTOR` holds `appointments.create` and `patients.create`;
+`appointments.service.create` rejects any `doctorId` other than the doctor's own, and a patient a doctor
+creates is attached to them as `primaryDoctorId` (otherwise `doctorScope` would hide the card they just
+made). No `appointments.edit` — completing still goes only through writing a visit.
+
+**Per-service percentage (`DoctorServiceRate`).** A doctor's percent pay defaults to
+`Staff.percentRate`; a row for a service overrides it. Both earnings figures (`staff.service`
+performance and `doctors.service` earnings) go through `common/doctor-earnings.ts` so they cannot
+disagree. The staff form only rewrites the list when the section was opened.
+
+**Self-registration asks for a login.** The registrant types the `nom@clinic-os.uz` login themselves
+(`RegisterDto.login`); a taken one is rejected before the Telegram step. It becomes the owner's email and
+`Subscription.ownerEmail`, which is what the platform panel shows; the bot repeats it after confirmation.
+Phone login keeps working. `LoginBackfillService` gives older self-registered owners (email without `@`)
+a login derived from the clinic name once, and tells them in Telegram.
+
+**The platform admin chooses how a clinic is deleted.** `POST /platform/tenants/:id/delete` keeps
+everything (`deletedAt`, restorable); `POST /platform/tenants/:id/purge` removes the clinic and every
+row with its `clinic_id` (tables are discovered from `information_schema`, retried on FK errors, one SQL
+statement), plus online prescriptions, restrictions and uploaded files. It requires typing the clinic
+name and the admin's password and refuses the platform's own record.
 
 **Days off (`src/days-off/`, `DayOff`) block booking; they never move appointments on their own.**
 `doctorId` null means the whole clinic is closed (a holiday), otherwise one doctor is off. `create` and
@@ -590,8 +636,8 @@ Row Level Security in the database (application-layer filtering is the only laye
 backups, no UI for reading the audit log, no self-service password recovery (a person must
 reset it for you — there is no mail service), the patient-feedback endpoints are deliberately closed
 until rate limiting exists (phone-number enumeration risk), and penalty rules are stored but
-never applied — the background job doesn't exist. Debt has no due dates or reminders: only the
-outstanding balance is tracked, deliberately — deadlines turn it into a payment-plan feature.
+never applied — the background job doesn't exist. Debt has a single due date, not a payment plan
+(no instalments).
 `check:permissions` compares permission names but knows nothing about module gating, so a module
 that is off is only caught by driving the app or by `test:crud`.
 

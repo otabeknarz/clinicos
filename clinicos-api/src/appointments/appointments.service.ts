@@ -141,7 +141,15 @@ export class AppointmentsService {
   }
 
   async create(dto: AppointmentInputDto) {
-    const { clinicId, userId } = this.ctx.require()
+    const { clinicId, userId, role, doctorId: ownDoctorId } = this.ctx.require()
+
+    /*
+      SHIFOKOR FAQAT O'ZIGA YOZADI. Kalendarda bo'sh vaqtni o'zi belgilaydi,
+      lekin hamkasbining jadvaliga bemor qo'sha olmaydi — u registratura ishi.
+    */
+    if (role === 'DOCTOR' && dto.doctorId !== ownDoctorId) {
+      throw new ForbiddenException('Faqat o‘zingizga qabul yoza olasiz')
+    }
 
     /*
       Bemor, shifokor va xizmat SHU klinikaniki ekanini tekshiramiz.
@@ -181,7 +189,8 @@ export class AppointmentsService {
       ancha yomon. `notifyDoctor` ichida ham hech qanday xato
       tashlanmaydi.
     */
-    void this.notifyDoctor(row)
+    /* Shifokor o'zi yozgan bo'lsa — o'ziga xabar yuborilmaydi */
+    if (role !== 'DOCTOR') void this.notifyDoctor(row)
     /*
       BEMORGA HAM — agar u bemor botiga ulangan bo'lsa. Ilgari bemor
       faqat 3 kun va 1 kun oldingi eslatmani olardi: bugunga yoki

@@ -54,6 +54,14 @@ export class PatientController {
     return this.patient.visits()
   }
 
+  // GET /patient/appointments  →  rejalashtirilgan (kelgusi) qabullar
+  @Get('appointments')
+  @Public()
+  @UseGuards(PatientGuard)
+  appointments() {
+    return this.patient.appointments()
+  }
+
   // GET /patient/debt
   @Get('debt')
   @Public()

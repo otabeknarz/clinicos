@@ -124,6 +124,8 @@ export function LoginPage() {
       : 'general') as (typeof CLINIC_DIRECTIONS)[number],
     city: '',
     staffCount: '' as '' | (typeof STAFF_COUNTS)[number],
+    /* Login nomi (`@clinic-os.uz` siz) — majburiy, odamning o'zi yozadi */
+    login: '',
     password: '',
   })
   const [regBusy, setRegBusy] = useState(false)
@@ -140,7 +142,12 @@ export function LoginPage() {
   const touch = (field: string) => setTouched((v) => (v[field] ? v : { ...v, [field]: true }))
   const [regError, setRegError] = useState('')
   /* Telegramda tasdiqlashni kutayotgan yozuv */
-  const [verify, setVerify] = useState<{ code: string; url: string; phone: string } | null>(
+  const [verify, setVerify] = useState<{
+    code: string
+    url: string
+    phone: string
+    login: string
+  } | null>(
     null,
   )
 
@@ -291,6 +298,7 @@ export function LoginPage() {
           ['fullName', 'registerName'],
           ['phone', 'registerPhone'],
           ['city', 'registerCity'],
+          ['login', 'registerLogin'],
           ['password', 'registerPassword'],
         ] as const
       ).find(([field]) => invalid[field])
@@ -309,6 +317,7 @@ export function LoginPage() {
         direction: reg.direction,
         city: reg.city.trim() || undefined,
         staffCount: reg.staffCount || undefined,
+        login: `${reg.login}@${PLATFORM_EMAIL_DOMAIN}`,
         password: reg.password,
       })
       /*
@@ -381,6 +390,7 @@ export function LoginPage() {
     fullName: reg.fullName.trim().length < 3,
     phone: phoneDigits !== 9,
     city: reg.city === '',
+    login: !/^[a-z0-9][a-z0-9._-]{2,39}$/.test(reg.login),
     password: reg.password.length < MIN_PASSWORD,
   }
 
@@ -626,6 +636,15 @@ export function LoginPage() {
                   <p className="auth-verify-text">
                     {t('login.verifyText', { phone: verify.phone })}
                   </p>
+                  {/*
+                    LOGIN SHU YERDA KO'RSATILADI — keyin qayta kirish uchun.
+                    Bot ham tasdiqlagach uni yozib yuboradi.
+                  */}
+                  {verify.login ? (
+                    <p className="auth-verify-text">
+                      {t('login.verifyLogin')} <b>{verify.login}</b>
+                    </p>
+                  ) : null}
                   <a
                     className="button auth-submit"
                     href={verify.url}
@@ -792,6 +811,48 @@ export function LoginPage() {
                   }))
                 }
               />
+
+              {/*
+                LOGIN — MAJBURIY VA ODAMNING O'ZI YOZADI. Keyingi safar shu
+                bilan kiradi, shuning uchun uni o'zi tanlashi kerak. Domen
+                maydon ichida kulrang turadi — faqat nom teriladi.
+              */}
+              <div className="form-field">
+                <label htmlFor="registerLogin">{t('login.registerLogin')}</label>
+                <div className="login-field">
+                  <input
+                    id="registerLogin"
+                    type="text"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoComplete="username"
+                    className={cn(red('login') && 'is-invalid')}
+                    aria-invalid={red('login') || undefined}
+                    placeholder={t('login.registerLoginPlaceholder')}
+                    onBlur={() => touch('login')}
+                    value={reg.login}
+                    onChange={(e) =>
+                      setReg((v) => ({
+                        ...v,
+                        login: e.target.value
+                          .toLowerCase()
+                          .split('@')[0]
+                          .replace(/[^a-z0-9._-]/g, '')
+                          .slice(0, 40),
+                      }))
+                    }
+                  />
+                  {reg.login ? (
+                    <span className="login-domain" aria-hidden="true">
+                      <i>{reg.login}</i>
+                      {`@${PLATFORM_EMAIL_DOMAIN}`}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="form-note">{t('login.registerLoginHint')}</p>
+              </div>
 
               <div className="form-field">
                 <label htmlFor="registerPassword">{t('login.password')}</label>

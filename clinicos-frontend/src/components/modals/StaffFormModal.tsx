@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
-import { Copy, Eye, EyeOff, KeyRound, RefreshCw } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronDown, Copy, Eye, EyeOff, KeyRound, RefreshCw } from 'lucide-react'
 
+import { getServiceRates, setServiceRates } from '@/api/doctors'
+import { listServices } from '@/api/services'
 import {
   createStaff,
   generatePassword,
@@ -24,7 +26,7 @@ import {
   emailLocalPart,
 } from '@/components/ui/EmailLocalInput'
 import { money, phoneToE164, weekdaysShort } from '@/lib/format'
-import { useAction } from '@/lib/useAsync'
+import { useAction, useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { SPECIALTIES } from '@/i18n/data'
 import { useToast } from '@/store/toast-context'
@@ -58,7 +60,7 @@ export function StaffFormModal({
   onSaved: () => void
   staff?: Staff | null
 }) {
-  const { t, tSpecialty } = useI18n()
+  const { t, tSpecialty, tService } = useI18n()
   const toast = useToast()
   const editing = Boolean(staff)
 
@@ -78,6 +80,12 @@ export function StaffFormModal({
   const [workRate, setWorkRate] = useState('1')
   const [payType, setPayType] = useState<PayType>('salary')
   const [percentRate, setPercentRate] = useState('30')
+  /*
+    XIZMAT BO'YICHA ALOHIDA FOIZ (faqat shifokorda). Bo'sh maydon —
+    umumiy foiz. Masalan umumiy 30%, operatsiyada 40%.
+  */
+  const [rates, setRates] = useState<Record<string, string>>({})
+  const [ratesOpen, setRatesOpen] = useState(false)
   const [salary, setSalary] = useState('')
 
   const [hiredAt, setHiredAt] = useState('')
@@ -122,6 +130,8 @@ export function StaffFormModal({
     setWorkRate(String(staff?.workRate ?? 1))
     setPayType(staff?.payType ?? 'salary')
     setPercentRate(String(staff?.percentRate || 30))
+    setRates({})
+    setRatesOpen(false)
     setSalary(staff ? String(staff.salary) : '')
     setHiredAt(staff?.hiredAt ?? toISODate(new Date()))
     setStatus(staff?.status ?? 'active')
@@ -205,6 +215,32 @@ export function StaffFormModal({
   }
   const valid = !Object.values(errors).some(Boolean)
 
+  /*
+    Foizlar ro'yxati bo'lim OCHILGANDA yuklanadi. Ochilmagan bo'lsa saqlashda
+    serverdagi ro'yxatga tegilmaydi (`ratesLoaded`) — aks holda formani
+    shunchaki saqlagan egasi bilmasdan barcha alohida foizlarni o'chirib
+    yuborardi.
+  */
+  const ratesLoaded = useRef(false)
+  const rateServices = useAsync(() => listServices('', 'all', 'active'), [ratesOpen], {
+    skip: !ratesOpen,
+  })
+  useEffect(() => {
+    if (!open) ratesLoaded.current = false
+  }, [open])
+  useEffect(() => {
+    if (!ratesOpen || ratesLoaded.current) return
+    const doctorId = staff?.doctorId
+    if (!doctorId) {
+      ratesLoaded.current = true
+      return
+    }
+    void getServiceRates(doctorId).then((rows) => {
+      setRates(Object.fromEntries(rows.map((r) => [r.serviceId, String(r.percent)])))
+      ratesLoaded.current = true
+    })
+  }, [ratesOpen, staff?.doctorId])
+
   const save = useAction(async () => {
     const payload = {
       fullName: fullName.trim(),
@@ -232,7 +268,21 @@ export function StaffFormModal({
       mustChangePassword: mustChange,
       notes: notes.trim(),
     }
-    return staff ? updateStaff(staff.id, payload) : createStaff(payload)
+    const saved = staff ? await updateStaff(staff.id, payload) : await createStaff(payload)
+
+    /* Shifokor yozuvi server tomonida ochiladi — id javobdan olinadi */
+    if (position === 'doctor' && payType !== 'salary' && saved.doctorId && ratesLoaded.current) {
+      await setServiceRates(
+        saved.doctorId,
+        Object.entries(rates)
+          .filter(([, value]) => value.trim() !== '')
+          .map(([serviceId, value]) => ({
+            serviceId,
+            percent: Math.min(100, Math.max(0, Number(value) || 0)),
+          })),
+      )
+    }
+    return saved
   })
 
   async function submit() {
@@ -516,6 +566,68 @@ export function StaffFormModal({
                   </button>
                 ))}
               </div>
+
+              {isDoctor ? (
+                <div className="mt-4 border-t border-separator pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setRatesOpen((v) => !v)}
+                    className="flex w-full items-center justify-between gap-3 text-left"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-subhead font-medium text-label">
+                        {t('staff.serviceRates')}
+                      </span>
+                      <span className="block text-caption text-label-tertiary">
+                        {t('staff.serviceRatesHint', { rate: staffShare })}
+                      </span>
+                    </span>
+                    <ChevronDown
+                      size={18}
+                      className={cn(
+                        'shrink-0 text-label-tertiary transition-transform',
+                        ratesOpen && 'rotate-180',
+                      )}
+                    />
+                  </button>
+
+                  {ratesOpen ? (
+                    <ul className="scroll-slim mt-3 max-h-64 divide-y divide-separator overflow-y-auto rounded-[10px] bg-sunken">
+                      {(rateServices.data ?? []).map((service) => (
+                        <li key={service.id} className="flex items-center gap-3 px-3 py-2">
+                          <span className="min-w-0 flex-1 truncate text-footnote text-label">
+                            {tService(service.name)}
+                          </span>
+                          <div className="relative w-20 shrink-0">
+                            <input
+                              inputMode="numeric"
+                              value={rates[service.id] ?? ''}
+                              placeholder={String(staffShare)}
+                              onChange={(e) =>
+                                setRates((current) => ({
+                                  ...current,
+                                  [service.id]: e.target.value.replace(/\D/g, '').slice(0, 3),
+                                }))
+                              }
+                              className={cn(
+                                'h-8 w-full rounded-[8px] bg-raised px-2.5 pr-6 text-footnote tnum text-label',
+                                'border border-transparent outline-none focus:border-accent',
+                                'placeholder:text-label-quaternary',
+                              )}
+                            />
+                            <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-caption text-label-tertiary">
+                              %
+                            </span>
+                          </div>
+                        </li>
+                      ))}
+                      {rateServices.loading ? (
+                        <li className="px-3 py-2 text-caption text-label-tertiary">…</li>
+                      ) : null}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           ) : null}
 

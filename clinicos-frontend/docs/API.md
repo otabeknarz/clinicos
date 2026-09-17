@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**238 ta endpoint.**
+**248 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -207,7 +207,7 @@ Sabab oddiy — birov boshqa odamning raqami bilan hisob ochib
 ketmasligi kerak, bepul SMS xizmati esa yo'q.
 
 ```ts
-register(input: RegisterInput): Promise<{ code: string url: string phone: string expiresInSec: number }>
+register(input: RegisterInput): Promise<{ code: string url: string phone: string /** Yasalgan login — `nom@clinic-os.uz` */ login: string expiresInSec: number }>
 ```
 
 ### `GET /auth/register/status`
@@ -268,6 +268,7 @@ ma'lumot. Serverda:
 
 
 import { apiContext, delay, matches, paginate, request, USE_MOCK } from './client'
+import { assertMockDeleteCode } from './deleteCode'
 import { getDb } from '@/mock/db'
 import type {
 AppointmentExpanded,
@@ -311,6 +312,7 @@ ma'lumot. Serverda:
 
 
 import { apiContext, delay, matches, paginate, request, USE_MOCK } from './client'
+import { assertMockDeleteCode } from './deleteCode'
 import { getDb } from '@/mock/db'
 import type {
 AppointmentExpanded,
@@ -352,7 +354,8 @@ query: { search, filter, page, pageSize },
 const { clinicId, scopeDoctorId } = apiContext()
 const db = getDb()
 
-let rows = db.patients.all(clinicId)
+// Ro'yxatdan o'chirilganlar ko'rinmaydi
+let rows = db.patients.all(clinicId).filter((p) => !p.deletedAt)
 
 // Shifokor faqat o'z bemorlarini ko'radi
 if (scopeDoctorId) {
@@ -418,181 +421,50 @@ createPatient(input: CreatePatientInput): Promise<Patient>
 updatePatient(id: ID, patch: Partial<CreatePatientInput>): Promise<Patient>
 ```
 
-### `DELETE /patients/:id`
+### `POST /patients/:id/delete`
 
 ```ts
-deletePatient(id: ID): Promise<void>
+deletePatient(id: ID, input: { code: string; mode: PatientDeleteMode }): Promise<void>
 ```
 
 ### `GET /patients/:id/visits`
 
 TIBBIY MA'LUMOT, `visits.view` talab qiladi
 
-Bemorlar.
+`hide`  — ro'yxatdan olib tashlash: tarix va to'lovlar joyida.
+`purge` — bemor va HAMMA yozuvlari: qabullar, tashriflar, to'lovlar.
 
-MAXFIYLIK: bemor yozuvi shaxsiy ma'lumot, tashrif yozuvi esa TIBBIY
-ma'lumot. Serverda:
-  - har bir so'rov klinika bo'yicha filtrlanadi;
-  - shifokor faqat o'ziga biriktirilgan yoki qabul qilgan bemorlarni
-    ko'radi (`scopeDoctorId` mantiqi server tomonda takrorlanadi);
-  - tibbiy yozuvni o'qish AuditLog'ga yoziladi.
+export type PatientDeleteMode = 'hide' | 'purge'
 
-
-import { apiContext, delay, matches, paginate, request, USE_MOCK } from './client'
-import { getDb } from '@/mock/db'
-import type {
-AppointmentExpanded,
-FollowUp,
-ID,
-Paginated,
-Patient,
-PatientStats,
-PatientWithStats,
-PaymentExpanded,
-VisitExpanded,
-} from '@/types/models'
-
-export type PatientFilter = 'all' | 'new' | 'returning' | 'active' | 'inactive'
-
-export interface PatientListQuery {
-search?: string
-filter?: PatientFilter
-page?: number
-pageSize?: number
-}
-
-------------------------------------------------------------------
-Ro'yxat
-------------------------------------------------------------------
-
-// GET /patients?search=&filter=&page=&pageSize=
-export async function listPatients(
-query: PatientListQuery = {},
-): Promise<Paginated<PatientWithStats>> {
-const { search = '', filter = 'all', page = 1, pageSize = 20 } = query
-
+// POST /patients/:id/delete
+export async function deletePatient(
+id: ID,
+input: { code: string; mode: PatientDeleteMode },
+): Promise<void> {
 if (!USE_MOCK) {
-return request<Paginated<PatientWithStats>>('GET', '/patients', {
-query: { search, filter, page, pageSize },
-})
-}
-
-const { clinicId, scopeDoctorId } = apiContext()
-const db = getDb()
-
-let rows = db.patients.all(clinicId)
-
-// Shifokor faqat o'z bemorlarini ko'radi
-if (scopeDoctorId) {
-const own = new Set(
-db.appointments
-.all(clinicId)
-.filter((a) => a.doctorId === scopeDoctorId)
-.map((a) => a.patientId),
-)
-rows = rows.filter((p) => own.has(p.id) || p.primaryDoctorId === scopeDoctorId)
-}
-
-if (search) {
-rows = rows.filter(
-(p) => matches(p.fullName, search) || matches(p.phone.replace(/\s/g, ''), search.replace(/\s/g, '')),
-)
-}
-
-// Statistikani HAR BIR bemor uchun alohida hisoblash 600+ bemorda
-// millionlab amalga olib keladi. Shuning uchun indekslarni bir marta
-// quramiz va keyin har bir bemorga tayyor qiymatni biriktiramiz.
-const index = buildStatsIndex(clinicId)
-const withStats = rows.map((p) => ({ ...p, stats: statsFromIndex(p.id, index) }))
-
-const filtered = withStats.filter((p) => {
-switch (filter) {
-case 'new':
-return p.stats.visitCount <= 1
-case 'returning':
-return p.stats.isReturning
-case 'active':
-return p.status === 'active'
-case 'inactive':
-return p.status === 'inactive'
-default:
-return true
-}
-})
-
-// Eng oxirgi tashrifi yangilari tepada
-filtered.sort((a, b) => (b.stats.lastVisitAt ?? '').localeCompare(a.stats.lastVisitAt ?? ''))
-
-return delay(paginate(filtered, page, pageSize))
-}
-
-------------------------------------------------------------------
-Bitta bemor
-------------------------------------------------------------------
-
-// GET /patients/:id
-export async function getPatient(id: ID): Promise<PatientWithStats | null> {
-if (!USE_MOCK) return request<PatientWithStats>('GET', `/patients/${id}`)
-
-const { clinicId } = apiContext()
-const patient = getDb().patients.find(id, clinicId)
-if (!patient) return delay(null)
-return delay(attachStats(patient, clinicId))
-}
-
-export interface CreatePatientInput {
-fullName: string
-phone: string
-birthDate: string
-gender: 'male' | 'female'
-address: string
-notes: string
-primaryDoctorId: ID | null
-}
-
-// POST /patients
-export async function createPatient(input: CreatePatientInput): Promise<Patient> {
-if (!USE_MOCK) return request<Patient>('POST', '/patients', { body: input })
-
-const { clinicId } = apiContext()
-const db = getDb()
-
-const patient: Patient = {
-id: db.patients.nextId('pat'),
-clinicId,
-fullName: input.fullName.trim(),
-phone: input.phone.trim(),
-birthDate: input.birthDate,
-gender: input.gender,
-address: input.address.trim(),
-notes: input.notes.trim(),
-status: 'active',
-primaryDoctorId: input.primaryDoctorId,
-createdAt: new Date().toISOString(),
-}
-
-db.patients.insert(patient)
-return delay(patient, 320)
-}
-
-// PATCH /patients/:id
-export async function updatePatient(id: ID, patch: Partial<CreatePatientInput>): Promise<Patient> {
-if (!USE_MOCK) return request<Patient>('PATCH', `/patients/${id}`, { body: patch })
-
-const { clinicId } = apiContext()
-const updated = getDb().patients.update(id, patch as Partial<Patient>, clinicId)
-if (!updated) throw new Error('Bemor topilmadi')
-return delay(updated, 280)
-}
-
-// DELETE /patients/:id
-export async function deletePatient(id: ID): Promise<void> {
-if (!USE_MOCK) {
-await request<void>('DELETE', `/patients/${id}`)
+await request<unknown>('POST', `/patients/${id}/delete`, { body: input })
 return
 }
+assertMockDeleteCode(input.code)
 const { clinicId } = apiContext()
-getDb().patients.remove(id, clinicId)
+const db = getDb()
+if (input.mode === 'hide') {
+db.patients.update(id, { deletedAt: new Date().toISOString() }, clinicId)
+} else {
+for (const p of db.payments.all(clinicId).filter((x) => x.patientId === id)) {
+db.payments.remove(p.id, clinicId)
+}
+for (const v of db.visits.all(clinicId).filter((x) => x.patientId === id)) {
+db.visits.remove(v.id, clinicId)
+}
+for (const a of db.appointments.all(clinicId).filter((x) => x.patientId === id)) {
+db.appointments.remove(a.id, clinicId)
+}
+for (const a of db.admissions.all(clinicId).filter((x) => x.patientId === id)) {
+db.admissions.remove(a.id, clinicId)
+}
+db.patients.remove(id, clinicId)
+}
 await delay(null, 260)
 }
 
@@ -861,6 +733,20 @@ Frontenddagi tekshiruv — faqat ko'rsatma, himoya emas.
 getDoctorEarnings(doctorId: ID, period: string): Promise<DoctorEarnings | null>
 ```
 
+### `GET /doctors/:id/service-rates`
+
+```ts
+getServiceRates(doctorId: ID): Promise<DoctorServiceRate[]>
+```
+
+### `POST /doctors/:id/service-rates`
+
+Ro'yxat butunlay almashtiriladi; ro'yxatda yo'q xizmat — umumiy foiz bilan
+
+```ts
+setServiceRates(doctorId: ID, rates: DoctorServiceRate[]): Promise<DoctorServiceRate[]>
+```
+
 ## Xizmatlar va narxlar
 
 `src/api/services.ts`
@@ -889,6 +775,16 @@ updateService(id: ID, patch: Partial<ServiceInput>): Promise<Service>
 
 ```ts
 deleteService(id: ID): Promise<void>
+```
+
+### `POST /services/:id/delete`
+
+Kod bilan o'chirish. Ishlatilmagan xizmat butunlay o'chadi, ishlatilgani
+ro'yxatdan (arxivdan ham) yashiriladi — eski qabul va to'lovlar nomini
+saqlaydi.
+
+```ts
+deleteServiceWithCode(id: ID, code: string): Promise<void>
 ```
 
 ### `GET /services/:id/price?patientId=&appointmentId=`
@@ -953,6 +849,15 @@ getPaymentSummary(): Promise<PaymentSummary>
 createPayment(input: PaymentInput): Promise<Payment>
 ```
 
+### `POST /payments/:id/delete`
+
+To'lovni o'chirish — faqat o'chirish kodi bilan. Tushumdan ayriladi,
+egasiga Telegramda xabar boradi, nusxasi audit jurnalida qoladi.
+
+```ts
+deletePayment(id: ID, input: { code: string; reason: string }): Promise<void>
+```
+
 ### `POST /payments/:id/refund`
 
 ```ts
@@ -961,109 +866,33 @@ refundPayment(id: ID): Promise<Payment>
 
 ### `GET /reports/revenue?from=&to=`
 
-Bugungi tushum — registratorga ham ko'rinadi
-today: number
+To'lovni o'chirish — faqat o'chirish kodi bilan. Tushumdan ayriladi,
+egasiga Telegramda xabar boradi, nusxasi audit jurnalida qoladi.
 
-DASTURCHIGA: haftalik va oylik summa faqat `revenue.view` ruxsati
-bor foydalanuvchiga yuborilsin. Interfeysda ular yashirilgan,
-lekin YASHIRISH HIMOYA EMAS — so'rovni brauzerdan ham yuborsa
-bo'ladi. Ruxsat yo'q bo'lsa bu maydonlar javobga umuman
-qo'shilmasin (null yoki yo'q bo'lsin).
-
-week: number
-month: number
-}
-
-------------------------------------------------------------------
-
-// GET /payments?search=&method=&status=&from=&to=&page=
-export async function listPayments(
-query: PaymentQuery = {},
-): Promise<Paginated<PaymentExpanded>> {
-const { page = 1, pageSize = 20 } = query
-
+// POST /payments/:id/delete
+export async function deletePayment(id: ID, input: { code: string; reason: string }): Promise<void> {
 if (!USE_MOCK) {
-return request<Paginated<PaymentExpanded>>('GET', '/payments', {
-query: { ...query, page, pageSize },
-})
+await request<unknown>('POST', `/payments/${id}/delete`, { body: input })
+return
 }
-
-const rows = expandPayments()
-.filter((p) => !query.method || query.method === 'all' || p.method === query.method)
-.filter((p) => !query.status || query.status === 'all' || p.status === query.status)
-.filter((p) => !query.from || p.paidAt >= query.from)
-.filter((p) => !query.to || p.paidAt <= query.to)
-.filter(
-(p) =>
-!query.search ||
-matches(p.patient.fullName, query.search) ||
-matches(p.doctor.fullName, query.search),
-)
-
-rows.sort((a, b) => b.paidAt.localeCompare(a.paidAt))
-return delay(paginate(rows, page, pageSize))
-}
-
-// GET /payments/summary  →  bugungi / haftalik / oylik daromad
-export async function getPaymentSummary(): Promise<PaymentSummary> {
-if (!USE_MOCK) return request<PaymentSummary>('GET', '/payments/summary')
-
-const { clinicId } = apiContext()
-const paid = getDb()
-.payments.all(clinicId)
-.filter((p) => p.status === 'paid')
-
-const now = new Date()
-const dayStart = startOfDay(now).getTime()
-const weekStart = startOfWeek(now).getTime()
-// Oyning boshida "shu oy" bir kunni bildiradi — shuning uchun
-// uchinchi ko'rsatkich aylanma 30 kunlik oyna.
-const monthStart = startOfDay(addDays(now, -29)).getTime()
-
-const sum = (since: number) =>
-paid
-.filter((p) => new Date(p.paidAt).getTime() >= since)
-.reduce((total, p) => total + p.amount, 0)
-
-return delay({ today: sum(dayStart), week: sum(weekStart), month: sum(monthStart) })
-}
-
-export interface PaymentInput {
-patientId: ID
-doctorId: ID
-serviceId: ID
-appointmentId: ID | null
-amount: number
-method: PaymentMethod
-status: PaymentStatus
-notes: string
-}
-
-// POST /payments
-export async function createPayment(input: PaymentInput): Promise<Payment> {
-if (!USE_MOCK) return request<Payment>('POST', '/payments', { body: input })
-
+assertMockDeleteCode(input.code)
 const { clinicId } = apiContext()
 const db = getDb()
-const now = new Date().toISOString()
-
-const payment: Payment = {
-id: db.payments.nextId('pay'),
+const payment = db.payments.find(id, clinicId)
+if (!payment) throw new Error('To‘lov topilmadi')
+db.payments.remove(id, clinicId)
+if (payment.appointmentId) {
+const left = db.payments
+.all(clinicId)
+.filter((p) => p.appointmentId === payment.appointmentId && p.status === 'paid')
+.reduce((sum, p) => sum + p.amount, 0)
+db.appointments.update(
+payment.appointmentId,
+{ paymentStatus: left > 0 ? 'partial' : 'unpaid' },
 clinicId,
-paidAt: now,
-createdBy: 'usr_reception_1',
-createdAt: now,
-...input,
+)
 }
-
-db.payments.insert(payment)
-
-// To'lov kiritilsa — bog'liq qabulning to'lov holati ham yangilanadi
-if (input.appointmentId && input.status === 'paid') {
-db.appointments.update(input.appointmentId, { paymentStatus: 'paid' }, clinicId)
-}
-
-return delay(payment, 300)
+await delay(null, 240)
 }
 
 // POST /payments/:id/refund
@@ -3430,6 +3259,15 @@ audit jurnalini yo'qotadigan `DELETE` yo'q va bo'lmasligi kerak.
 deleteTenant(id: ID, reason: string): Promise<Tenant>
 ```
 
+### `POST /platform/tenants/:id/purge`
+
+BUTUNLAY O'CHIRISH — klinika va uning barcha ma'lumoti bazadan yo'qoladi.
+Klinika nomini aynan yozish va adminning paroli shart. Qaytarib bo'lmaydi.
+
+```ts
+purgeTenant(id: ID, input: { confirmName: string; password: string }): Promise<{ purged: boolean; name: string; files: number }>
+```
+
 ### `POST /platform/tenants/:id/undelete`
 
 ```ts
@@ -3538,6 +3376,7 @@ import { getDb } from '@/mock/db'
 import { MAIN_CLINIC_ID } from '@/mock/seed'
 import type { Prescription } from './prescriptions'
 import type {
+CabinetAppointment,
 CabinetDebt,
 CabinetProfile,
 CabinetVisit,
@@ -3555,6 +3394,12 @@ getCabinetProfile(demoPatientId?: ID): Promise<CabinetProfile>
 
 ```ts
 listCabinetVisits(demoPatientId?: ID): Promise<CabinetVisit[]>
+```
+
+### `GET /patient/appointments`
+
+```ts
+listCabinetAppointments(demoPatientId?: ID): Promise<CabinetAppointment[]>
 ```
 
 ### `GET /patient/debt`
@@ -3671,6 +3516,49 @@ bo'lib qo'shiladi.
 
 ```ts
 waiveDebt(input: WaiveDebtInput): Promise<DebtWaiver>
+```
+
+### `POST /debts/due`
+
+Qarz to'lash muddati. `null` — muddatni olib tashlash.
+O'sha kuni bemorga botda eslatma boradi.
+
+```ts
+setDebtDue(input: DebtTarget & { dueDate: string | null }): Promise<{ dueDate: string | null; overdueDays: number | null }>
+```
+
+### `POST /debts/collect`
+
+Qarz bo'yicha to'lov. Bemor, shifokor va xizmat serverda qarzning
+o'zidan olinadi; summa qolgan qarzdan oshmaydi.
+
+```ts
+collectDebt(input: CollectDebtInput): Promise<Payment>
+```
+
+## deleteCode
+
+`src/api/deleteCode.ts`
+
+> O'CHIRISH KODI.
+> 
+> Bemor, xizmat yoki to'lovni o'chirish shu kod bilan tasdiqlanadi.
+> Kodni klinika egasi o'rnatadi (o'z paroli bilan). Server kodni
+> hech qachon qaytarmaydi — faqat o'rnatilganmi yoki yo'qmi.
+> 
+> Demo rejimda kod brauzerda saqlanadi: server yo'q, tekshiruvni
+> boshqa joyda qilib bo'lmaydi.
+
+### `GET /clinic/delete-code`
+
+```ts
+getDeleteCodeStatus(): Promise<{ isSet: boolean }>
+```
+
+### `POST /clinic/delete-code`
+
+```ts
+setDeleteCode(input: { password: string code: string }): Promise<{ isSet: boolean }>
 ```
 
 ## exports

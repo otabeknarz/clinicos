@@ -66,6 +66,18 @@ export class RegisterDto {
   @IsOptional() @IsIn(STAFF_COUNTS, { message: 'Klinika hajmini tanlang' })
   staffCount?: (typeof STAFF_COUNTS)[number]
 
+  /*
+    LOGIN — ODAMNING O'ZI YOZADI (`nom@clinic-os.uz`). Tizim yasab bermaydi:
+    keyin kirishda odam uni eslashi kerak, o'zi tanlagan nomni esa eslaydi.
+    Domen doim bir xil — forma faqat nom qismini so'raydi va to'liq manzilni
+    yuboradi.
+  */
+  @IsString()
+  @Matches(/^[a-z0-9][a-z0-9._-]{2,39}@clinic-os\.uz$/, {
+    message: 'Login 3–40 belgi: lotin harflari, raqam, nuqta yoki chiziqcha',
+  })
+  login!: string
+
   @IsString()
   @MinLength(8, { message: 'Parol kamida 8 belgi bo‘lsin' })
   @MaxLength(200)

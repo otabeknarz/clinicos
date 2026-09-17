@@ -2,14 +2,14 @@ import { Body, Controller, Get, Post } from '@nestjs/common'
 
 import { Audit } from '../common/audit.interceptor'
 import { RequirePermission } from '../common/guards/permissions.guard'
-import { WaiveDebtDto } from './debts.dto'
+import { CollectDebtDto, SetDebtDueDto, WaiveDebtDto } from './debts.dto'
 import { DebtsService } from './debts.service'
 
 /**
  * Qarzdorlik.
  *
- * Ko'rish — `payments.view`: egasida ham, registratorda ham bor.
- * Registrator qarzni ko'rmasa, uni undira olmaydi.
+ * Ko'rish — `debts.view`: egasi, registrator va shifokor (faqat o'z
+ * bemorlariniki). Undirish — `debts.collect`: uchalasida ham.
  *
  * Kechirish esa FAQAT egasida (`debts.waive`). Pulni oladigan odam
  * qarzni ham yopa olsa, pulni o'ziga olib "kechirdim" deb yozib
@@ -32,5 +32,20 @@ export class DebtsController {
   @Audit('waive', 'debt')
   waive(@Body() dto: WaiveDebtDto) {
     return this.debts.waive(dto)
+  }
+
+  // POST /debts/due  { appointmentId | admissionId, dueDate }
+  @Post('due')
+  @RequirePermission('debts.view')
+  setDue(@Body() dto: SetDebtDueDto) {
+    return this.debts.setDue(dto)
+  }
+
+  // POST /debts/collect  { appointmentId | admissionId, amount, method, notes, dueDate? }
+  @Post('collect')
+  @RequirePermission('debts.collect')
+  @Audit('collect', 'debt')
+  collect(@Body() dto: CollectDebtDto) {
+    return this.debts.collect(dto)
   }
 }

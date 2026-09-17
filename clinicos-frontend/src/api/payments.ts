@@ -8,6 +8,7 @@
  */
 
 import { apiContext, delay, matches, paginate, request, USE_MOCK } from './client'
+import { assertMockDeleteCode } from './deleteCode'
 import { pick } from './patients'
 import { getDb } from '@/mock/db'
 import {
@@ -120,6 +121,8 @@ export interface PaymentInput {
   method: PaymentMethod
   status: PaymentStatus
   notes: string
+  /** Qisman to'lovda — qolgan qarzni qachongacha to'laydi (YYYY-MM-DD) */
+  debtDueDate?: string
 }
 
 // POST /payments
@@ -147,6 +150,36 @@ export async function createPayment(input: PaymentInput): Promise<Payment> {
   }
 
   return delay(payment, 300)
+}
+
+/**
+ * To'lovni o'chirish — faqat o'chirish kodi bilan. Tushumdan ayriladi,
+ * egasiga Telegramda xabar boradi, nusxasi audit jurnalida qoladi.
+ */
+// POST /payments/:id/delete
+export async function deletePayment(id: ID, input: { code: string; reason: string }): Promise<void> {
+  if (!USE_MOCK) {
+    await request<unknown>('POST', `/payments/${id}/delete`, { body: input })
+    return
+  }
+  assertMockDeleteCode(input.code)
+  const { clinicId } = apiContext()
+  const db = getDb()
+  const payment = db.payments.find(id, clinicId)
+  if (!payment) throw new Error('To‘lov topilmadi')
+  db.payments.remove(id, clinicId)
+  if (payment.appointmentId) {
+    const left = db.payments
+      .all(clinicId)
+      .filter((p) => p.appointmentId === payment.appointmentId && p.status === 'paid')
+      .reduce((sum, p) => sum + p.amount, 0)
+    db.appointments.update(
+      payment.appointmentId,
+      { paymentStatus: left > 0 ? 'partial' : 'unpaid' },
+      clinicId,
+    )
+  }
+  await delay(null, 240)
 }
 
 // POST /payments/:id/refund

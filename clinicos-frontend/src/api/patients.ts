@@ -10,6 +10,7 @@
  */
 
 import { apiContext, delay, matches, paginate, request, USE_MOCK } from './client'
+import { assertMockDeleteCode } from './deleteCode'
 import { getDb } from '@/mock/db'
 import type {
   AppointmentExpanded,
@@ -51,7 +52,8 @@ export async function listPatients(
   const { clinicId, scopeDoctorId } = apiContext()
   const db = getDb()
 
-  let rows = db.patients.all(clinicId)
+  // Ro'yxatdan o'chirilganlar ko'rinmaydi
+  let rows = db.patients.all(clinicId).filter((p) => !p.deletedAt)
 
   // Shifokor faqat o'z bemorlarini ko'radi
   if (scopeDoctorId) {
@@ -156,14 +158,41 @@ export async function updatePatient(id: ID, patch: Partial<CreatePatientInput>):
   return delay(updated, 280)
 }
 
-// DELETE /patients/:id
-export async function deletePatient(id: ID): Promise<void> {
+/**
+ * `hide`  — ro'yxatdan olib tashlash: tarix va to'lovlar joyida.
+ * `purge` — bemor va HAMMA yozuvlari: qabullar, tashriflar, to'lovlar.
+ */
+export type PatientDeleteMode = 'hide' | 'purge'
+
+// POST /patients/:id/delete
+export async function deletePatient(
+  id: ID,
+  input: { code: string; mode: PatientDeleteMode },
+): Promise<void> {
   if (!USE_MOCK) {
-    await request<void>('DELETE', `/patients/${id}`)
+    await request<unknown>('POST', `/patients/${id}/delete`, { body: input })
     return
   }
+  assertMockDeleteCode(input.code)
   const { clinicId } = apiContext()
-  getDb().patients.remove(id, clinicId)
+  const db = getDb()
+  if (input.mode === 'hide') {
+    db.patients.update(id, { deletedAt: new Date().toISOString() }, clinicId)
+  } else {
+    for (const p of db.payments.all(clinicId).filter((x) => x.patientId === id)) {
+      db.payments.remove(p.id, clinicId)
+    }
+    for (const v of db.visits.all(clinicId).filter((x) => x.patientId === id)) {
+      db.visits.remove(v.id, clinicId)
+    }
+    for (const a of db.appointments.all(clinicId).filter((x) => x.patientId === id)) {
+      db.appointments.remove(a.id, clinicId)
+    }
+    for (const a of db.admissions.all(clinicId).filter((x) => x.patientId === id)) {
+      db.admissions.remove(a.id, clinicId)
+    }
+    db.patients.remove(id, clinicId)
+  }
   await delay(null, 260)
 }
 

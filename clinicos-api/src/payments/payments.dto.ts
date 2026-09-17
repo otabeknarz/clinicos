@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -93,6 +94,26 @@ export class PaymentInputDto {
   @IsString()
   @MaxLength(500)
   notes: string = ''
+
+  /*
+    QOLGAN QARZNI QACHONGACHA TO'LAYDI (YYYY-MM-DD). Faqat qisman to'lovda
+    ma'noli: to'liq to'langanda muddat o'zi tozalanadi.
+  */
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'Sana YYYY-MM-DD ko‘rinishida' })
+  debtDueDate?: string
+}
+
+/** To'lovni o'chirish — kod va sabab */
+export class DeletePaymentDto {
+  @IsString()
+  @MaxLength(20)
+  code!: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  reason: string = ''
 }
 
 export class RevenueQueryDto {

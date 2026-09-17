@@ -433,6 +433,19 @@ export class ArchiveDto {
   reason!: string
 }
 
+/**
+ * Klinikani BUTUNLAY o'chirish. Ikki tasdiq: klinika nomini aynan yozish
+ * (tasodifiy bosishga qarshi) va adminning o'z paroli (ochiq qolgan
+ * kompyuterga qarshi).
+ */
+export class PurgeTenantDto {
+  @IsString() @MaxLength(300)
+  confirmName!: string
+
+  @IsString() @MaxLength(200)
+  password!: string
+}
+
 /** So'rovlar ro'yxati uchun filtr */
 export class LeadQueryDto extends PageQueryDto {
   @IsOptional() @IsString() @MaxLength(100)

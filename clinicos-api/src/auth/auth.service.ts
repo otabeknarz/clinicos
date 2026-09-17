@@ -16,6 +16,7 @@ import { toApiClinic } from '../clinic/clinic.service'
 import { RequestContext } from '../common/request-context'
 import { defaultTrialClosed, isPermissionBlocked, moduleOf, TRIAL_DAYS } from '../common/modules'
 import { looksLikePhone, normalizePhone } from '../common/phone'
+import { loginBase, platformEmail } from '../common/login-slug'
 import { IMPERSONATION_PERMISSIONS, resolvePermissions } from '../common/permissions'
 import { DISABLED_BY_KIND } from '../common/modules'
 import { RestrictionsService } from '../common/restrictions.service'
@@ -371,8 +372,27 @@ export class AuthService {
     }
 
     const code = `reg${randomBytes(9).toString('base64url')}`
+    /*
+      LOGINNI ODAM O'ZI YOZADI. Band bo'lsa shu yerda aytiladi — Telegram
+      qadamidan OLDIN, aks holda raqamni tasdiqlagandan keyin "login band"
+      degan xabar chiqib, hamma narsani qaytadan boshlashga to'g'ri kelardi.
+    */
+    const login = dto.login.trim().toLowerCase()
+    const loginTaken =
+      [...this.pending.values()].some(
+        (value) => value.login === login && value.dto.phone !== phone,
+      ) ||
+      Boolean(
+        await this.db
+          .acrossAllClinics()
+          .user.findFirst({ where: { email: login }, select: { id: true } }),
+      )
+    if (loginTaken) {
+      throw new BadRequestException('Bu login band — boshqasini yozing')
+    }
     this.pending.set(code, {
       dto: { ...dto, phone },
+      login,
       expiresAt: Date.now() + PENDING_TTL_MS,
       session: null,
       chatId: null,
@@ -383,6 +403,7 @@ export class AuthService {
       code,
       url: `https://t.me/${username}?start=${code}`,
       phone,
+      login,
       expiresInSec: Math.round(PENDING_TTL_MS / 1000),
     }
   }
@@ -429,12 +450,14 @@ export class AuthService {
     if (normalizePhone(sharedPhone) !== pending.dto.phone) {
       return { ok: false as const, reason: 'mismatch' as const }
     }
-    if (pending.session) return { ok: true as const, clinicName: pending.dto.clinicName }
+    if (pending.session) {
+      return { ok: true as const, clinicName: pending.dto.clinicName, login: pending.login }
+    }
 
-    const session = await this.createClinic(pending.dto, chatId)
-    this.pending.set(code, { ...pending, session })
+    const { session, login } = await this.createClinic(pending.dto, chatId, pending.login)
+    this.pending.set(code, { ...pending, session, login })
 
-    return { ok: true as const, clinicName: pending.dto.clinicName }
+    return { ok: true as const, clinicName: pending.dto.clinicName, login }
   }
 
   /**
@@ -460,7 +483,26 @@ export class AuthService {
   }
 
   /** Klinika, egasi, obuna va sotuv so'rovi — bitta tranzaksiyada */
-  private async createClinic(dto: RegisterDto, telegramUserId: string) {
+  /**
+   * Band bo'lmagan login: `nom`, `nom2`, `nom3`... Tekshiruv butun tizim
+   * bo'yicha (email klinika ichida noyob, lekin login bir xil bo'lsa kirish
+   * ikki hisobga to'g'ri kelardi) va kutayotgan ro'yxatlar bo'yicha ham.
+   */
+  async uniqueLogin(name: string): Promise<string> {
+    const base = loginBase(name)
+    const waiting = new Set([...this.pending.values()].map((value) => value.login))
+    for (let n = 1; n < 500; n++) {
+      const candidate = platformEmail(n === 1 ? base : `${base}${n}`)
+      if (waiting.has(candidate)) continue
+      const taken = await this.db
+        .acrossAllClinics()
+        .user.findFirst({ where: { email: candidate }, select: { id: true } })
+      if (!taken) return candidate
+    }
+    return platformEmail(`${base}.${randomBytes(3).toString('hex')}`)
+  }
+
+  private async createClinic(dto: RegisterDto, telegramUserId: string, reservedLogin: string) {
     const phone = normalizePhone(dto.phone)
     const fullName = dto.fullName.trim()
     const clinicName = dto.clinicName.trim()
@@ -491,8 +533,21 @@ export class AuthService {
     const trialEnds = new Date(now)
     trialEnds.setDate(trialEnds.getDate() + policy.days)
 
-    /* Kirish uchun email kerak emas, lekin ustun bo'sh qolmasligi kerak */
-    const login = phone
+    /*
+      LOGIN — `nom@clinic-os.uz`, platforma admini ochgan klinikalar bilan
+      bir xil ko'rinishda. Telefon bilan kirish ham ishlayveradi.
+    */
+    /*
+      Kutish paytida (15 daqiqagacha) kimdir shu loginni egallab olgan
+      bo'lsa — unga raqam qo'shiladi (`nom2`). Bot haqiqiy loginni yozib
+      yuboradi, ya'ni odam uni baribir biladi.
+    */
+    const stillFree = !(await this.db
+      .acrossAllClinics()
+      .user.findFirst({ where: { email: reservedLogin }, select: { id: true } }))
+    const login = stillFree
+      ? reservedLogin
+      : await this.uniqueLogin(reservedLogin.split('@')[0])
 
     /*
       APTEKA — ALOHIDA YO'L. Tizim aptekalarga ham sotiladi va ular
@@ -522,7 +577,7 @@ export class AuthService {
           data: {
             clinicId: clinic.id,
             fullName,
-            email: phone,
+            email: login,
             phone,
             passwordHash: await argon2.hash(dto.password),
             role: 'PHARMACY_OWNER',
@@ -535,7 +590,7 @@ export class AuthService {
             clinicId: clinic.id,
             fullName,
             phone,
-            login: phone,
+            login,
             role: 'PHARMACY_OWNER',
             salary: 0,
             workdays: [1, 2, 3, 4, 5, 6],
@@ -557,7 +612,7 @@ export class AuthService {
             trialEndsAt: trialEnds,
             nextInvoiceAt: trialEnds,
             ownerName: fullName,
-            ownerEmail: '',
+            ownerEmail: login,
             ownerPhone: phone,
             city: dto.city?.trim() ?? '',
           },
@@ -580,7 +635,7 @@ export class AuthService {
       })
 
       await this.audit.recordLogin({ clinicId: pharmacyOwner.clinicId, userId: pharmacyOwner.id })
-      return this.buildSession(pharmacyOwner.id)
+      return { session: await this.buildSession(pharmacyOwner.id), login }
     }
 
     const owner = await this.db.acrossAllClinics().$transaction(async (tx) => {
@@ -653,7 +708,7 @@ export class AuthService {
           trialEndsAt: trialEnds,
           nextInvoiceAt: trialEnds,
           ownerName: fullName,
-          ownerEmail: '',
+          ownerEmail: login,
           ownerPhone: phone,
           city: dto.city?.trim() ?? '',
         },
@@ -676,7 +731,7 @@ export class AuthService {
     })
 
     await this.audit.recordLogin({ clinicId: owner.clinicId, userId: owner.id })
-    return this.buildSession(owner.id)
+    return { session: await this.buildSession(owner.id), login }
   }
 
   private async buildSession(
@@ -846,6 +901,8 @@ const DUMMY_HASH =
 /** Tasdiqlashni kutayotgan ro'yxatdan o'tish */
 interface PendingRegistration {
   dto: RegisterDto
+  /** Yasalgan login (`nom@clinic-os.uz`) */
+  login: string
   expiresAt: number
   /** Tasdiqlangach tayyor bo'ladi va brauzer bir marta olib ketadi */
   session: Awaited<ReturnType<AuthService['me']>> | null

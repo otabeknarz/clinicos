@@ -3,6 +3,7 @@ import { Service, ServiceLoyaltyTier } from '@prisma/client'
 
 import { toApi, toApiDateTime, toDb } from '../common/api-enum'
 import { RequestContext } from '../common/request-context'
+import { DeleteCodeService } from '../delete-code/delete-code.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { ServiceInputDto, ServiceListQueryDto } from './services.dto'
 
@@ -13,6 +14,7 @@ export class ServicesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
+    private readonly codes: DeleteCodeService,
   ) {}
 
   private get db() {
@@ -25,6 +27,8 @@ export class ServicesService {
     const rows = await this.db.service.findMany({
       where: {
         AND: [
+          /* Kod bilan o'chirilgani hech qayerda ko'rinmaydi */
+          { deletedAt: null },
           search ? { name: { contains: search, mode: 'insensitive' } } : {},
           query.category === 'all' ? {} : { category: query.category },
           query.status === 'all' ? {} : { status: toDb(query.status) },
@@ -166,6 +170,27 @@ export class ServicesService {
 
     await this.db.service.delete({ where: { id } })
     return { archived: false }
+  }
+
+  async removeWithCode(id: string, code: string) {
+    await this.codes.assert(code)
+    await this.assertExists(id)
+
+    const [used, booked] = await Promise.all([
+      this.db.payment.count({ where: { serviceId: id } }),
+      this.db.appointment.count({ where: { serviceId: id } }),
+    ])
+
+    if (used > 0 || booked > 0) {
+      await this.db.service.update({
+        where: { id },
+        data: { deletedAt: new Date(), status: 'ARCHIVED' },
+      })
+      return { deleted: true, keptHistory: true }
+    }
+
+    await this.db.service.delete({ where: { id } })
+    return { deleted: true, keptHistory: false }
   }
 
   /**

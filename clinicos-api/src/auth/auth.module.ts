@@ -5,6 +5,7 @@ import { PassportModule } from '@nestjs/passport'
 
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
+import { LoginBackfillService } from './login-backfill.service'
 import { JwtStrategy } from './jwt.strategy'
 
 @Module({
@@ -27,7 +28,7 @@ import { JwtStrategy } from './jwt.strategy'
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, LoginBackfillService],
   /*
     `PlatformModule` klinika paneliga kirish uchun sessiya
     yasaydi. Token yasashni o'zi takrorlamasin — muddat va

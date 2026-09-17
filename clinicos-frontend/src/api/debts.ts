@@ -12,14 +12,33 @@
 
 import { apiContext, delay, request, USE_MOCK } from './client'
 import { getDb } from '@/mock/db'
-import { startOfDay } from '@/lib/dates'
-import type { DebtList, DebtWaiver, ID, VisitDebt, WardDebt } from '@/types/models'
+import { startOfDay, toISODate } from '@/lib/dates'
+import type {
+  DebtList,
+  DebtWaiver,
+  ID,
+  Payment,
+  PaymentMethod,
+  VisitDebt,
+  WardDebt,
+} from '@/types/models'
+
+/** Muddat holati — server `dueInfo` bilan bir xil */
+function dueInfo(dueDate: string | null | undefined): {
+  dueDate: string | null
+  overdueDays: number | null
+} {
+  if (!dueDate) return { dueDate: null, overdueDays: null }
+  const today = new Date(`${toISODate(new Date())}T00:00:00Z`).getTime()
+  const due = new Date(`${dueDate}T00:00:00Z`).getTime()
+  return { dueDate, overdueDays: Math.round((today - due) / 86_400_000) }
+}
 
 // GET /debts
 export async function listDebts(): Promise<DebtList> {
   if (!USE_MOCK) return request<DebtList>('GET', '/debts')
 
-  const { clinicId } = apiContext()
+  const { clinicId, scopeDoctorId } = apiContext()
   const db = getDb()
   const now = Date.now()
 
@@ -51,7 +70,9 @@ export async function listDebts(): Promise<DebtList> {
       (a) =>
         a.status === 'completed' &&
         a.paymentStatus !== 'paid' &&
-        !waivedAppointments.has(a.id),
+        !waivedAppointments.has(a.id) &&
+        // Shifokor faqat o'z bemorlarinikini ko'radi
+        (!scopeDoctorId || a.doctorId === scopeDoctorId),
     )
     .map((a) => {
       const service = services.get(a.serviceId)
@@ -82,6 +103,7 @@ export async function listDebts(): Promise<DebtList> {
         serviceName: service.name,
         completedAt: since,
         daysOverdue: days(since),
+        ...dueInfo(a.debtDueDate),
         total,
         paid,
         remaining,
@@ -98,7 +120,8 @@ export async function listDebts(): Promise<DebtList> {
     .filter(
       (a) =>
         (a.status === 'active' || a.status === 'discharged') &&
-        !waivedAdmissions.has(a.id),
+        !waivedAdmissions.has(a.id) &&
+        (!scopeDoctorId || a.doctorId === scopeDoctorId),
     )
     .map((a) => {
       /*
@@ -139,6 +162,7 @@ export async function listDebts(): Promise<DebtList> {
         roomNumber: rooms.get(a.roomId)?.number ?? '—',
         admittedAt: a.admittedAt,
         daysOverdue: days(a.admittedAt),
+        ...dueInfo(a.debtDueDate),
         total,
         paid,
         remaining,
@@ -190,4 +214,89 @@ export async function waiveDebt(input: WaiveDebtInput): Promise<DebtWaiver> {
 
   db.debtWaivers.insert(waiver)
   return delay(waiver, 260)
+}
+
+export interface DebtTarget {
+  appointmentId?: ID
+  admissionId?: ID
+}
+
+/**
+ * Qarz to'lash muddati. `null` — muddatni olib tashlash.
+ * O'sha kuni bemorga botda eslatma boradi.
+ */
+// POST /debts/due
+export async function setDebtDue(
+  input: DebtTarget & { dueDate: string | null },
+): Promise<{ dueDate: string | null; overdueDays: number | null }> {
+  if (!USE_MOCK) {
+    return request('POST', '/debts/due', { body: input })
+  }
+  const { clinicId } = apiContext()
+  const db = getDb()
+  if (input.appointmentId) {
+    db.appointments.update(input.appointmentId, { debtDueDate: input.dueDate }, clinicId)
+  } else if (input.admissionId) {
+    db.admissions.update(input.admissionId, { debtDueDate: input.dueDate }, clinicId)
+  }
+  return delay(dueInfo(input.dueDate), 200)
+}
+
+export interface CollectDebtInput extends DebtTarget {
+  amount: number
+  method: PaymentMethod
+  notes: string
+  /** Qisman to'lovda qolganini qachongacha to'laydi */
+  dueDate?: string
+}
+
+/**
+ * Qarz bo'yicha to'lov. Bemor, shifokor va xizmat serverda qarzning
+ * o'zidan olinadi; summa qolgan qarzdan oshmaydi.
+ */
+// POST /debts/collect
+export async function collectDebt(input: CollectDebtInput): Promise<Payment> {
+  if (!USE_MOCK) return request<Payment>('POST', '/debts/collect', { body: input })
+
+  const { clinicId } = apiContext()
+  const db = getDb()
+  const list = await listDebts()
+  const debt = input.appointmentId
+    ? list.visits.find((d) => d.appointmentId === input.appointmentId)
+    : list.ward.find((d) => d.admissionId === input.admissionId)
+  if (!debt) throw new Error('Qarz topilmadi')
+  if (input.amount > debt.remaining) {
+    throw new Error(`Summa qolgan qarzdan oshib ketdi (${debt.remaining} so‘m)`)
+  }
+
+  const now = new Date().toISOString()
+  const payment: Payment = {
+    id: db.payments.nextId('pay'),
+    clinicId,
+    patientId: debt.patientId,
+    doctorId: 'doctorId' in debt ? debt.doctorId : '',
+    serviceId: 'serviceId' in debt ? debt.serviceId : '',
+    appointmentId: 'appointmentId' in debt ? debt.appointmentId : null,
+    amount: input.amount,
+    method: input.method,
+    status: 'paid',
+    paidAt: now,
+    notes: input.notes,
+    createdBy: 'usr_reception_1',
+    createdAt: now,
+  }
+  db.payments.insert(payment)
+
+  if (input.appointmentId) {
+    const full = input.amount >= debt.remaining
+    db.appointments.update(
+      input.appointmentId,
+      {
+        paymentStatus: full ? 'paid' : 'partial',
+        debtDueDate: full ? null : (input.dueDate ?? undefined),
+      },
+      clinicId,
+    )
+  }
+  return delay(payment, 280)
 }

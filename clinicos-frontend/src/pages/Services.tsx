@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 
-import { deleteService, listServices } from '@/api/services'
+import { deleteServiceWithCode, listServices } from '@/api/services'
+import { DeleteWithCodeModal } from '@/components/modals/DeleteWithCodeModal'
 import { ServiceFormModal } from '@/components/modals/ServiceFormModal'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
 import { IconButton } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { SearchInput } from '@/components/ui/Form'
-import { ConfirmDialog } from '@/components/ui/Modal'
 import { EmptyState, ErrorState } from '@/components/ui/States'
 import { DataTable } from '@/components/ui/Table'
 import type { Column } from '@/components/ui/Table'
@@ -16,7 +16,7 @@ import { FilterPills } from '@/components/ui/Tabs'
 import { SERVICE_CATEGORIES } from '@/i18n/data'
 import { money } from '@/lib/format'
 import { SERVICE_LABEL, SERVICE_TONE } from '@/lib/status'
-import { useAction, useAsync, useDebounced } from '@/lib/useAsync'
+import { useAsync, useDebounced } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
 import { useToast } from '@/store/toast-context'
@@ -38,16 +38,6 @@ export function ServicesPage() {
     () => listServices(debounced, category),
     [debounced, category],
   )
-
-  const remove = useAction(async (id: string) => deleteService(id))
-
-  async function confirmDelete() {
-    if (!deleting) return
-    await remove.run(deleting.id)
-    toast.success(t('toast.deleted'))
-    setDeleting(null)
-    reload()
-  }
 
   const manage = can('services.manage')
 
@@ -228,11 +218,23 @@ export function ServicesPage() {
         onSaved={reload}
       />
 
-      <ConfirmDialog
+      <DeleteWithCodeModal
         open={Boolean(deleting)}
         onClose={() => setDeleting(null)}
-        onConfirm={confirmDelete}
-        pending={remove.pending}
+        title={t('serviceDelete.title')}
+        description={
+          <p className="text-footnote text-label-secondary">
+            <span className="font-medium text-label">{deleting ? tService(deleting.name) : ''}</span>
+            {' — '}
+            {t('serviceDelete.hint')}
+          </p>
+        }
+        onConfirm={async ({ code }) => {
+          if (!deleting) return
+          await deleteServiceWithCode(deleting.id, code)
+          toast.success(t('toast.deleted'))
+          reload()
+        }}
       />
     </>
   )

@@ -25,6 +25,7 @@ export const TENANT_MODELS = new Set<string>([
   'DayOff',
   'DebtWaiver',
   'Doctor',
+  'DoctorServiceRate',
   'ExportLink',
   'Feedback',
   'FeedbackImage',

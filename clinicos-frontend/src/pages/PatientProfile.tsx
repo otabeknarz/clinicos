@@ -18,7 +18,9 @@ import {
   getPatientPayments,
   getPatientVisits,
 } from '@/api/patients'
+import type { PatientDeleteMode } from '@/api/patients'
 import { AppointmentFormModal } from '@/components/modals/AppointmentFormModal'
+import { DeleteWithCodeModal } from '@/components/modals/DeleteWithCodeModal'
 import { PatientFormModal } from '@/components/modals/PatientFormModal'
 
 /* Tashrif formasi og'ir (rasm yuklash) — faqat kerak bo'lganda yuklanadi */
@@ -29,7 +31,6 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Badge } from '@/components/ui/Badge'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
-import { ConfirmDialog } from '@/components/ui/Modal'
 import { CardSkeleton, EmptyState, ErrorState } from '@/components/ui/States'
 import { Tabs } from '@/components/ui/Tabs'
 import { cn } from '@/lib/cn'
@@ -50,7 +51,7 @@ import {
   PAYMENT_LABEL,
   PAYMENT_TONE,
 } from '@/lib/status'
-import { useAction, useAsync } from '@/lib/useAsync'
+import { useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
 import type { VisitExpanded } from '@/types/models'
@@ -72,17 +73,10 @@ export function PatientProfilePage() {
 
   const { data: patient, loading, error, reload } = useAsync(() => getPatient(id), [id])
 
-  const remove = useAction(async () => deletePatient(id))
-
   if (loading) return <CardSkeleton className="min-h-64" />
   if (error) return <ErrorState onRetry={reload} />
   if (!patient) return <EmptyState title={t('state.notFound.title')} />
 
-  async function handleDelete() {
-    await remove.run()
-    toast.success(t('toast.deleted'))
-    navigate('/patients')
-  }
 
   return (
     <>
@@ -110,6 +104,7 @@ export function PatientProfilePage() {
             <Badge tone={PATIENT_TONE[patient.status]} dot>
               {t(PATIENT_LABEL[patient.status])}
             </Badge>
+            {patient.deletedAt ? <Badge tone="bad">{t('patientDelete.hiddenBadge')}</Badge> : null}
           </span>
         }
         actions={
@@ -181,11 +176,29 @@ export function PatientProfilePage() {
         presetPatientId={id}
       />
 
-      <ConfirmDialog
+      <DeleteWithCodeModal<PatientDeleteMode>
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
-        onConfirm={handleDelete}
-        pending={remove.pending}
+        title={t('patientDelete.title')}
+        description={patient.fullName}
+        options={[
+          {
+            value: 'hide',
+            label: t('patientDelete.hide'),
+            hint: t('patientDelete.hideHint'),
+          },
+          {
+            value: 'purge',
+            label: t('patientDelete.purge'),
+            hint: t('patientDelete.purgeHint'),
+            danger: true,
+          },
+        ]}
+        onConfirm={async ({ code, option }) => {
+          await deletePatient(id, { code, mode: option ?? 'hide' })
+          toast.success(t('toast.deleted'))
+          navigate('/patients')
+        }}
       />
     </>
   )

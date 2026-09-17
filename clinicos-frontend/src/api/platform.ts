@@ -1559,6 +1559,26 @@ export async function deleteTenant(id: ID, reason: string): Promise<Tenant> {
   return delay(updated, 280)
 }
 
+/**
+ * BUTUNLAY O'CHIRISH — klinika va uning barcha ma'lumoti bazadan yo'qoladi.
+ * Klinika nomini aynan yozish va adminning paroli shart. Qaytarib bo'lmaydi.
+ */
+// POST /platform/tenants/:id/purge
+export async function purgeTenant(
+  id: ID,
+  input: { confirmName: string; password: string },
+): Promise<{ purged: boolean; name: string; files: number }> {
+  if (!USE_MOCK) {
+    return request('POST', `/platform/tenants/${id}/purge`, { body: input })
+  }
+  const db = getDb()
+  const tenant = db.tenants.allAcrossTenants().find((t) => t.id === id)
+  if (!tenant) throw new Error('Klinika topilmadi')
+  if (tenant.name.trim() !== input.confirmName.trim()) throw new Error('Klinika nomi mos kelmadi')
+  db.tenants.updateAcrossTenants(id, { deletedAt: new Date().toISOString(), deletedReason: 'purge' })
+  return delay({ purged: true, name: tenant.name, files: 0 }, 300)
+}
+
 // POST /platform/tenants/:id/undelete
 export async function undeleteTenant(id: ID): Promise<Tenant> {
   if (!USE_MOCK) {

@@ -8,11 +8,13 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   Max,
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator'
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -136,4 +138,27 @@ export class UpdateDoctorDto {
 
   @IsOptional() @IsDateString()
   hiredAt?: string
+}
+
+export class ServiceRateItemDto {
+  @IsUUID()
+  serviceId!: string
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  percent!: number
+}
+
+/**
+ * Shifokorning xizmat bo'yicha foizlari — ro'yxat BUTUNLAY almashtiriladi.
+ * Ro'yxatda yo'q xizmat umumiy foiz bilan hisoblanadi.
+ */
+export class ServiceRatesDto {
+  @IsArray()
+  @ArrayMaxSize(500)
+  @ValidateNested({ each: true })
+  @Type(() => ServiceRateItemDto)
+  rates!: ServiceRateItemDto[]
 }

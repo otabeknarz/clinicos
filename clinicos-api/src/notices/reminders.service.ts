@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common'
 
-import { escapeHtml, whenInWords } from '../common/telegram-text'
+import { dayKeyToDb, localDayKey } from '../common/day-key'
+import { escapeHtml, money, whenInWords } from '../common/telegram-text'
 import { PrismaService } from '../prisma/prisma.service'
 import { TelegramService } from '../telegram/telegram.service'
 
@@ -65,6 +66,8 @@ export class RemindersService implements OnModuleInit, OnModuleDestroy {
       await this.send(3, 'REMINDER')
       /* Bir kun qolganda — oxirgisi */
       await this.send(1, 'REMINDER_SOON')
+      /* Qarz to'lash muddati bugun bo'lganlar */
+      await this.sendDebtDue()
     } catch (error) {
       /* Fon vazifasi ilovani yiqitmaydi */
       this.log.warn(`Eslatma yuborilmadi: ${String(error)}`)
@@ -167,6 +170,84 @@ export class RemindersService implements OnModuleInit, OnModuleDestroy {
         })
       } catch {
         /* Noyoblik cheklovi: eslatma allaqachon yozilgan — normal holat */
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 40))
+    }
+  }
+
+  /**
+   * QARZ MUDDATI KELDI.
+   *
+   * Registrator qarzga muddat qo'yadi ("15-sentabrgacha to'laydi"). O'sha
+   * kuni bemorga bitta xabar boradi: qancha va nima uchun. Muddat
+   * o'zgartirilsa eski xabar yozuvi o'chiriladi (`debts.service`), ya'ni
+   * yangi kunda xabar yana bir marta boradi.
+   *
+   * Statsionar qarzi bu yerda YO'Q: bemor xabari qabulga bog'lanadi
+   * (`PatientNotice.appointmentId`), yotqizishda esa bunday bog'lanish yo'q.
+   * Muddat va "muddati o'tgan" belgisi qarzlar ro'yxatida baribir ko'rinadi.
+   */
+  private async sendDebtDue(): Promise<void> {
+    const db = this.prisma.acrossAllClinics()
+    const today = dayKeyToDb(localDayKey(new Date()))
+
+    const rows = await db.appointment.findMany({
+      where: {
+        debtDueDate: today,
+        status: 'COMPLETED',
+        paymentStatus: { not: 'PAID' },
+        debtWaiver: { is: null },
+        notices: { none: { kind: 'DEBT_DUE' } },
+        clinic: { isActive: true, deletedAt: null },
+      },
+      select: {
+        id: true,
+        clinicId: true,
+        patient: { select: { id: true, telegramUserId: true } },
+        service: { select: { name: true, price: true, priceMode: true } },
+        visit: { select: { price: true } },
+        payments: { where: { status: 'PAID' }, select: { amount: true } },
+        clinic: { select: { name: true, phone: true } },
+      },
+    })
+
+    for (const row of rows) {
+      /* Qarz formulasi `debts.service` bilan bir xil */
+      const total = row.service.priceMode === 'DOCTOR_SET' ? row.visit?.price : row.service.price
+      if (total === null || total === undefined) continue
+      const remaining = total - row.payments.reduce((sum, p) => sum + p.amount, 0)
+      if (remaining <= 0) continue
+
+      const lines = [
+        `<b>${escapeHtml(row.clinic.name)}</b>`,
+        '',
+        'Bugun qarzingizni to‘lash muddati.',
+        `${escapeHtml(row.service.name)} — ${money(remaining)}`,
+      ]
+      if (row.clinic.phone) lines.push('', `Savol bo‘lsa: ${escapeHtml(row.clinic.phone)}`)
+      const text = lines.join('\n')
+
+      let delivered = false
+      if (row.patient.telegramUserId) {
+        await this.telegram.send(row.patient.telegramUserId, text, undefined, 'patient')
+        delivered = true
+      }
+
+      try {
+        await db.patientNotice.create({
+          data: {
+            clinicId: row.clinicId,
+            patientId: row.patient.id,
+            appointmentId: row.id,
+            kind: 'DEBT_DUE',
+            text: plain(text),
+            createdByName: 'Tizim',
+            delivered,
+          },
+        })
+      } catch {
+        /* Noyoblik cheklovi — allaqachon yuborilgan */
       }
 
       await new Promise((resolve) => setTimeout(resolve, 40))

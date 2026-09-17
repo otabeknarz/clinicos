@@ -315,6 +315,7 @@ const MODULE_BY_PERMISSION: Partial<Record<Permission, string>> = {
   'payments.view': 'payments',
   'payments.create': 'payments',
   'payments.refund': 'payments',
+  'payments.delete': 'payments',
   'staff.view': 'staff',
   'staff.manage': 'staff',
   'settings.view': 'settings',
@@ -346,6 +347,7 @@ const MODULE_BY_PERMISSION: Partial<Record<Permission, string>> = {
   'calendar.view': 'calendar',
   'debts.view': 'debts',
   'debts.waive': 'debts',
+  'debts.collect': 'debts',
   'revenue.view': 'revenue',
   'finance.view': 'finance',
   'finance.create': 'finance',
@@ -448,6 +450,8 @@ export interface RegisterInput {
   direction: (typeof CLINIC_DIRECTIONS)[number]
   city?: string
   staffCount?: (typeof STAFF_COUNTS)[number]
+  /** To'liq login: `nom@clinic-os.uz` — odamning o'zi yozadi */
+  login: string
   password: string
 }
 
@@ -464,6 +468,8 @@ export async function register(input: RegisterInput): Promise<{
   code: string
   url: string
   phone: string
+  /** Yasalgan login — `nom@clinic-os.uz` */
+  login: string
   expiresInSec: number
 }> {
   if (!USE_MOCK) {
@@ -481,6 +487,7 @@ export async function register(input: RegisterInput): Promise<{
     code: 'demo',
     url: 'https://t.me/clinicos_bot',
     phone: input.phone,
+    login: input.login,
     expiresInSec: 900,
   })
 }

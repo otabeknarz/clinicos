@@ -1,6 +1,7 @@
 /** Xizmatlar katalogi. */
 
 import { apiContext, delay, matches, request, USE_MOCK } from './client'
+import { assertMockDeleteCode } from './deleteCode'
 import { getDb } from '@/mock/db'
 import type {
   ID,
@@ -24,6 +25,7 @@ export async function listServices(
 
   const rows = getDb()
     .services.all(apiContext().clinicId)
+    .filter((s) => !s.deletedAt)
     .filter((s) => matches(s.name, search))
     .filter((s) => category === 'all' || s.category === category)
     .filter((s) => status === 'all' || s.status === status)
@@ -83,6 +85,31 @@ export async function deleteService(id: ID): Promise<void> {
     return
   }
   getDb().services.remove(id, apiContext().clinicId)
+  await delay(null, 220)
+}
+
+/**
+ * Kod bilan o'chirish. Ishlatilmagan xizmat butunlay o'chadi, ishlatilgani
+ * ro'yxatdan (arxivdan ham) yashiriladi — eski qabul va to'lovlar nomini
+ * saqlaydi.
+ */
+// POST /services/:id/delete
+export async function deleteServiceWithCode(id: ID, code: string): Promise<void> {
+  if (!USE_MOCK) {
+    await request<unknown>('POST', `/services/${id}/delete`, { body: { code } })
+    return
+  }
+  assertMockDeleteCode(code)
+  const { clinicId } = apiContext()
+  const db = getDb()
+  const used =
+    db.payments.all(clinicId).some((p) => p.serviceId === id) ||
+    db.appointments.all(clinicId).some((a) => a.serviceId === id)
+  if (used) {
+    db.services.update(id, { deletedAt: new Date().toISOString(), status: 'archived' }, clinicId)
+  } else {
+    db.services.remove(id, clinicId)
+  }
   await delay(null, 220)
 }
 

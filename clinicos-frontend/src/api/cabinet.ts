@@ -18,6 +18,7 @@ import { getDb } from '@/mock/db'
 import { MAIN_CLINIC_ID } from '@/mock/seed'
 import type { Prescription } from './prescriptions'
 import type {
+  CabinetAppointment,
   CabinetDebt,
   CabinetProfile,
   CabinetVisit,
@@ -103,6 +104,37 @@ export async function listCabinetVisits(demoPatientId?: ID): Promise<CabinetVisi
     })
 
   return delay(rows, 240)
+}
+
+// GET /patient/appointments
+export async function listCabinetAppointments(demoPatientId?: ID): Promise<CabinetAppointment[]> {
+  if (!USE_MOCK) {
+    return request<CabinetAppointment[]>('GET', '/patient/appointments', { session: 'patient' })
+  }
+
+  const db = getDb()
+  const patient = requirePatient(demoPatientId)
+  const doctors = new Map(db.doctors.all(MAIN_CLINIC_ID).map((d) => [d.id, d]))
+  const services = new Map(db.services.all(MAIN_CLINIC_ID).map((s) => [s.id, s]))
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const rows = db.appointments
+    .all(MAIN_CLINIC_ID)
+    .filter((a) => a.patientId === patient.id)
+    .filter((a) => a.status === 'scheduled' || a.status === 'confirmed' || a.status === 'checked_in')
+    .filter((a) => new Date(a.startsAt).getTime() >= today.getTime())
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+    .map((a) => ({
+      id: a.id,
+      startsAt: a.startsAt,
+      durationMinutes: a.durationMinutes,
+      status: a.status,
+      doctorName: doctors.get(a.doctorId)?.fullName ?? '',
+      serviceName: services.get(a.serviceId)?.name ?? '',
+    }))
+
+  return delay(rows, 200)
 }
 
 // GET /patient/debt

@@ -6,12 +6,18 @@ import {
 import { Prisma } from '@prisma/client'
 
 import { toApi, toApiDateTime, toDb } from '../common/api-enum'
+import { AuditService } from '../common/audit.service'
+import { dayKeyToDb } from '../common/day-key'
 import { paginated } from '../common/pagination'
 import { RequestContext } from '../common/request-context'
+import { escapeHtml, money } from '../common/telegram-text'
 import { WARD_KEY, WARD_LABEL, wardBalance } from '../common/ward-revenue'
+import { DeleteCodeService } from '../delete-code/delete-code.service'
 import { PrismaService } from '../prisma/prisma.service'
 import { ServicesService } from '../services/services.service'
+import { OwnerAlertsService } from '../telegram/owner-alerts.service'
 import {
+  DeletePaymentDto,
   PaymentInputDto,
   PaymentQueryDto,
   RevenueQueryDto,
@@ -28,9 +34,14 @@ type Expanded = Prisma.PaymentGetPayload<{ include: typeof EXPAND }>
 /**
  * TO'LOVLAR.
  *
- * ENG MUHIM QOIDA: to'lov yozuvi O'ZGARMAYDI va O'CHIRILMAYDI.
- * Tahrirlash yoki o'chirish endpointi yo'q va bo'lmasligi kerak.
+ * ENG MUHIM QOIDA: to'lov yozuvi O'ZGARMAYDI. Tahrirlash endpointi yo'q.
  * Xato bo'lsa — qaytarish (refund) yoziladi, eskisi joyida qoladi.
+ *
+ * YAGONA ISTISNO — o'chirish kodi bilan butunlay o'chirish (`remove`).
+ * Klinika egasining qarori: xato kiritilgan yoki sinov to'lovi hisobotda
+ * qolmasin. Kodni egasi o'rnatadi, o'chirilgan to'lovning to'liq nusxasi
+ * audit jurnalida qoladi va egasiga Telegramda xabar boradi — ya'ni
+ * "jimgina o'chirib, farqni yopish" baribir ko'rinadi.
  *
  * NEGA: butun firibgarlikka qarshi mantiq shunga tayanadi.
  * Shifokor tashrifni yozadi, registrator pulni yozadi, tizim
@@ -44,6 +55,9 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
     private readonly services: ServicesService,
+    private readonly codes: DeleteCodeService,
+    private readonly audit: AuditService,
+    private readonly alerts: OwnerAlertsService,
   ) {}
 
   private get db() {
@@ -190,11 +204,34 @@ export class PaymentsService {
           _sum: { amount: true },
         })
         const total = paid._sum.amount ?? 0
+        const fullyPaid = total >= preview.price
         await tx.appointment.update({
           where: { id: dto.appointmentId },
           data: {
-            paymentStatus:
-              total >= preview.price ? 'PAID' : total > 0 ? 'PARTIAL' : 'UNPAID',
+            paymentStatus: fullyPaid ? 'PAID' : total > 0 ? 'PARTIAL' : 'UNPAID',
+            /* Qarz yopildi — muddat ham yo'q. Qisman bo'lsa yangi muddat */
+            debtDueDate: fullyPaid
+              ? null
+              : dto.debtDueDate
+                ? dayKeyToDb(dto.debtDueDate)
+                : undefined,
+          },
+        })
+        if (fullyPaid || dto.debtDueDate) {
+          /* Muddat o'zgardi — "muddat keldi" xabari yangi kunda qayta borsin */
+          await tx.patientNotice.deleteMany({
+            where: { appointmentId: dto.appointmentId, kind: 'DEBT_DUE' },
+          })
+        }
+      }
+
+      if (dto.admissionId) {
+        const left = preview.price - dto.amount
+        await tx.admission.update({
+          where: { id: dto.admissionId },
+          data: {
+            debtDueDate:
+              left <= 0 ? null : dto.debtDueDate ? dayKeyToDb(dto.debtDueDate) : undefined,
           },
         })
       }
@@ -321,6 +358,82 @@ export class PaymentsService {
     })
 
     return toApiPayment(row)
+  }
+
+  /**
+   * TO'LOVNI O'CHIRISH — o'chirish kodi bilan.
+   *
+   * Yozuv bazadan o'chadi va tushumdan ayriladi. Qabulning to'lov holati
+   * qolgan to'lovlardan qayta hisoblanadi — aks holda qabul "to'langan"
+   * bo'lib qolar, qarz esa ko'rinmay qolardi.
+   */
+  async remove(id: string, dto: DeletePaymentDto) {
+    await this.codes.assert(dto.code)
+    const { clinicId, userId } = this.ctx.require()
+
+    const current = await this.db.payment.findFirst({ where: { id }, include: EXPAND })
+    if (!current) throw new NotFoundException('To‘lov topilmadi')
+
+    await this.db.$transaction(async (tx) => {
+      await tx.payment.delete({ where: { id } })
+
+      if (current.appointmentId) {
+        const paid = await tx.payment.aggregate({
+          where: { appointmentId: current.appointmentId, status: 'PAID' },
+          _sum: { amount: true },
+        })
+        const appointment = await tx.appointment.findFirst({
+          where: { id: current.appointmentId },
+          select: {
+            service: { select: { price: true, priceMode: true } },
+            visit: { select: { price: true } },
+          },
+        })
+        if (appointment) {
+          const total = paid._sum.amount ?? 0
+          const price =
+            appointment.service.priceMode === 'DOCTOR_SET'
+              ? (appointment.visit?.price ?? null)
+              : appointment.service.price
+          await tx.appointment.update({
+            where: { id: current.appointmentId },
+            data: {
+              paymentStatus:
+                price !== null && total > 0 && total >= price
+                  ? 'PAID'
+                  : total > 0
+                    ? 'PARTIAL'
+                    : 'UNPAID',
+            },
+          })
+        }
+      }
+    })
+
+    await this.audit.record({
+      action: 'purge',
+      entityType: 'payment',
+      entityId: id,
+      meta: { payment: toApiPayment(current), reason: dto.reason },
+    })
+
+    const actor = await this.codes.actorName()
+    void this.alerts.send(
+      clinicId,
+      [
+        '<b>To‘lov o‘chirildi</b>',
+        `${escapeHtml(current.patient.fullName)} — ${money(current.amount)}`,
+        current.service ? escapeHtml(current.service.name) : 'Statsionar',
+        `To‘langan kuni: ${current.paidAt.toLocaleDateString('ru-RU')}`,
+        dto.reason ? `Sabab: ${escapeHtml(dto.reason)}` : '',
+        `Kim: ${escapeHtml(actor)}`,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      { skipUserId: userId },
+    )
+
+    return { deleted: true }
   }
 
   /**

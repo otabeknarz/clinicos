@@ -12,6 +12,7 @@ import { atTime, toISODate } from '@/lib/dates'
 import { money } from '@/lib/format'
 import { useAction, useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
+import { useAuth } from '@/store/auth-context'
 import { useToast } from '@/store/toast-context'
 import type { Appointment } from '@/types/models'
 
@@ -40,6 +41,12 @@ export function AppointmentFormModal({
 }) {
   const { t, tSpecialty, tService } = useI18n()
   const toast = useToast()
+  const { session } = useAuth()
+  /*
+    SHIFOKOR O'ZIGA YOZADI — tanlov yo'q, server ham boshqa shifokorni rad
+    etadi. Registrator va egasi uchun forma avvalgidek.
+  */
+  const ownDoctorId = session?.user.role === 'doctor' ? session.user.doctorId : null
 
   const [patientId, setPatientId] = useState('')
   const [doctorId, setDoctorId] = useState('')
@@ -53,12 +60,12 @@ export function AppointmentFormModal({
     if (!open) return
     setTouched(false)
     setPatientId(presetPatientId ?? '')
-    setDoctorId(presetDoctorId ?? '')
+    setDoctorId(ownDoctorId ?? presetDoctorId ?? '')
     setServiceId('')
     setDate(presetDate ?? toISODate(new Date()))
     setStartTime(presetTime ?? '09:00')
     setNotes('')
-  }, [open, presetPatientId, presetDoctorId, presetDate, presetTime])
+  }, [open, presetPatientId, presetDoctorId, presetDate, presetTime, ownDoctorId])
 
   const { data: doctors } = useAsync(() => listDoctorsShort(), [])
   const { data: services } = useAsync(() => listServices('', 'all', 'active'), [])
@@ -141,8 +148,9 @@ export function AppointmentFormModal({
             value={doctorId}
             error={touched ? errors.doctor : undefined}
             onChange={(e) => setDoctorId(e.target.value)}
+            disabled={Boolean(ownDoctorId)}
             options={(doctors ?? [])
-              .filter((d) => d.status === 'active')
+              .filter((d) => d.status === 'active' || d.id === ownDoctorId)
               .map((d) => ({
                 value: d.id,
                 label: `${d.fullName} — ${tSpecialty(d.specialty)}`,

@@ -44,6 +44,8 @@ export type Permission =
   | 'payments.view'
   | 'payments.create'
   | 'payments.refund'
+  /* To'lovni butunlay o'chirish — faqat o'chirish kodi bilan */
+  | 'payments.delete'
   /* Qarzdorlik — to'lovlardan ALOHIDA ruxsat: ilgari ikkalasi
      `payments.view` da edi va qarzdorlikni tarifdan chiqarib
      bo'lmasdi — uni o'chirsak to'lovlar ham yopilardi.
@@ -51,6 +53,8 @@ export type Permission =
      birinchi bo'sh qatorgacha o'qiydi. */
   | 'debts.view'
   | 'debts.waive'
+  /* Qarzni undirish — qarzlar ro'yxatidan to'lov olish */
+  | 'debts.collect'
   | 'revenue.view'
   | 'analytics.view'
   /* Ma'lumot almashish — Excel va Google Sheets. Bo'limni KO'RISH
@@ -130,6 +134,13 @@ export const OWNER_PERMISSIONS: readonly Permission[] = [
   'dashboard.view',
   'patients.view',
   'patients.viewMedical',
+  /*
+    Tahrirlash va o'chirish egasida bor, YARATISH esa yo'q. Xato yozilgan
+    ism yoki raqamni tuzatish pulga tegmaydi. O'chirish esa o'chirish kodi
+    bilan va har biri egasiga Telegramda xabar bo'lib boradi.
+  */
+  'patients.edit',
+  'patients.delete',
   'appointments.view',
   'calendar.view',
   'doctors.view',
@@ -149,6 +160,14 @@ export const OWNER_PERMISSIONS: readonly Permission[] = [
     bo'lib qo'shiladi, eskisi joyida qoladi.
   */
   'payments.refund',
+  'payments.delete',
+  /*
+    QARZNI UNDIRISH egasida ham bor (klinika egasining qarori). Oddiy
+    to'lov (`payments.create`) esa yo'q: yangi pul registrator orqali
+    kiradi. Qarz — allaqachon ko'rsatilgan xizmatning puli, uning summasi
+    va chegarasi serverda qarzdan hisoblanadi.
+  */
+  'debts.collect',
   /*
     Qarzni kechirish ham FAQAT egasida.
 
@@ -217,7 +236,11 @@ export const RECEPTIONIST_PERMISSIONS: readonly Permission[] = [
   'services.view',
   'payments.view',
   'debts.view',
+  'debts.collect',
   'payments.create',
+  /* Bemor va to'lovni o'chirish — faqat egasi bergan kod bilan */
+  'patients.delete',
+  'payments.delete',
   'ward.view',
   'ward.manage',
   'attendance.view',
@@ -280,10 +303,24 @@ export const DOCTOR_PERMISSIONS: readonly Permission[] = [
   'dashboard.view',
   'patients.view',
   'patients.viewMedical',
+  /*
+    SHIFOKOR O'ZI BEMOR YOZADI — faqat O'ZIGA (`appointments.service`
+    boshqa shifokorni rad etadi). Yangi bemorni ham ochadi: u o'z-o'zidan
+    shu shifokorga biriktiriladi. Tahrirlash va holat o'zgartirish yo'q —
+    qabulni yakunlashning yagona yo'li tashrif yozish bo'lib qoladi.
+  */
+  'patients.create',
+  'appointments.create',
   'appointments.view',
   'calendar.view',
   'visits.view',
   'visits.create',
+  /*
+    QARZ — faqat O'Z bemorlariniki (`debts.service` shifokor bo'yicha
+    cheklaydi). Bemor qarzini shifokorga to'lab ketsa, u tizimga yozadi.
+  */
+  'debts.view',
+  'debts.collect',
   'ward.view',
   'services.view',
   'feedback.view',

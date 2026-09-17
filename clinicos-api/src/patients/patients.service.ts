@@ -4,8 +4,17 @@ import { Prisma } from '@prisma/client'
 import { toApi, toApiDate, toApiDateTime } from '../common/api-enum'
 import { paginated } from '../common/pagination'
 import { RequestContext } from '../common/request-context'
+import { AuditService } from '../common/audit.service'
+import { escapeHtml, money } from '../common/telegram-text'
+import { DeleteCodeService } from '../delete-code/delete-code.service'
 import { PrismaService } from '../prisma/prisma.service'
-import { CreatePatientDto, PatientListQueryDto, UpdatePatientDto } from './patients.dto'
+import { OwnerAlertsService } from '../telegram/owner-alerts.service'
+import {
+  CreatePatientDto,
+  DeletePatientDto,
+  PatientListQueryDto,
+  UpdatePatientDto,
+} from './patients.dto'
 import { PatientStats, toApiPatient, toApiPatientWithStats } from './patients.mapper'
 
 /** Necha tashrifdan keyin bemor "qaytgan" hisoblanadi */
@@ -16,6 +25,9 @@ export class PatientsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ctx: RequestContext,
+    private readonly codes: DeleteCodeService,
+    private readonly audit: AuditService,
+    private readonly alerts: OwnerAlertsService,
   ) {}
 
   private get db() {
@@ -47,6 +59,8 @@ export class PatientsService {
     const where: Prisma.PatientWhereInput = {
       AND: [
         this.doctorScope(),
+        /* Ro'yxatdan o'chirilganlar ko'rinmaydi */
+        { deletedAt: null },
         search
           ? {
               OR: [
@@ -164,20 +178,50 @@ export class PatientsService {
   }
 
   async create(dto: CreatePatientDto) {
-    const { clinicId } = this.ctx.require()
+    const { clinicId, role, doctorId } = this.ctx.require()
+
+    /*
+      SHIFOKOR OCHGAN BEMOR — o'ziga biriktiriladi. Shifokor faqat o'z
+      bemorlarini ko'radi (`doctorScope`): biriktirilmasa, u hozirgina
+      ochgan kartani ro'yxatda topa olmasdi.
+    */
+    const primaryDoctorId =
+      role === 'DOCTOR' && doctorId ? (dto.primaryDoctorId ?? doctorId) : dto.primaryDoctorId
+
+    const data = {
+      fullName: dto.fullName.trim(),
+      phone: dto.phone.trim(),
+      birthDate: new Date(dto.birthDate),
+      gender: dto.gender === 'male' ? ('MALE' as const) : ('FEMALE' as const),
+      address: dto.address,
+      notes: dto.notes,
+      primaryDoctorId,
+      telegramUserId: await this.telegramFor(dto.phone),
+    }
+
+    /*
+      RO'YXATDAN O'CHIRILGAN BEMOR QAYTIB KELDI. Telefon raqami klinikada
+      yagona, ya'ni yangi karta ochib bo'lmaydi — eski karta tiklanadi va
+      yangi ma'lumot bilan yangilanadi. Tarixi ham o'zi bilan qaytadi.
+    */
+    const hidden = await this.db.patient.findFirst({
+      where: { phone: data.phone, deletedAt: { not: null } },
+      select: { id: true },
+    })
+    if (hidden) {
+      const row = await this.db.patient.update({
+        where: { id: hidden.id },
+        data: { ...data, deletedAt: null, status: 'ACTIVE' },
+      })
+      return toApiPatient(row)
+    }
+
     try {
       const row = await this.db.patient.create({
         data: {
           // Filtr buni baribir bosib yozadi — tip talab qilgani uchun turibdi
           clinicId,
-          fullName: dto.fullName.trim(),
-          phone: dto.phone.trim(),
-          birthDate: new Date(dto.birthDate),
-          gender: dto.gender === 'male' ? 'MALE' : 'FEMALE',
-          address: dto.address,
-          notes: dto.notes,
-          primaryDoctorId: dto.primaryDoctorId,
-          telegramUserId: await this.telegramFor(dto.phone),
+          ...data,
         },
       })
       return toApiPatient(row)
@@ -231,9 +275,99 @@ export class PatientsService {
     }
   }
 
-  async remove(id: string) {
-    await this.assertExists(id)
-    await this.db.patient.delete({ where: { id } })
+  /**
+   * BEMORNI O'CHIRISH — o'chirish kodi bilan.
+   *
+   * `hide`  — faqat ro'yxatdan. Tarix, to'lovlar va tushum joyida.
+   * `purge` — hammasi: to'lovlar, qabullar (tashriflari bilan), statsionar,
+   *           eslatmalar. Tushum va hisobotlardan AYRILADI.
+   *
+   * Pul yozuvlari odatda o'zgarmaydi. Bu yagona istisno: xato ochilgan yoki
+   * sinov kartasi butun tarixi bilan yo'qolishi kerak bo'lganda. Shuning
+   * uchun kod shart, audit jurnaliga nima o'chgani yoziladi va egasiga
+   * Telegramda xabar boradi.
+   */
+  async remove(id: string, dto: DeletePatientDto) {
+    await this.codes.assert(dto.code)
+
+    const { clinicId, userId } = this.ctx.require()
+    const fullName = await this.codes.actorName()
+    const patient = await this.db.patient.findFirst({
+      where: { id },
+      select: { id: true, fullName: true, phone: true },
+    })
+    if (!patient) throw new NotFoundException('Bemor topilmadi')
+
+    if (dto.mode === 'hide') {
+      await this.db.patient.update({ where: { id }, data: { deletedAt: new Date() } })
+      void this.alerts.send(
+        clinicId,
+        [
+          '<b>Bemor ro‘yxatdan o‘chirildi</b>',
+          `${escapeHtml(patient.fullName)} · ${escapeHtml(patient.phone)}`,
+          'Tarixi va to‘lovlari saqlandi.',
+          `Kim: ${escapeHtml(fullName)}`,
+        ].join('\n'),
+        { skipUserId: userId },
+      )
+      return { mode: 'hide' as const }
+    }
+
+    const summary = await this.db.$transaction(async (tx) => {
+      const payments = await tx.payment.aggregate({
+        where: { patientId: id, status: 'PAID' },
+        _sum: { amount: true },
+        _count: { _all: true },
+      })
+      const admissions = await tx.admission.findMany({
+        where: { patientId: id },
+        select: { id: true, bedId: true, status: true },
+      })
+
+      /* To'lovlar birinchi: ular qabulga ham, yotqizishga ham bog'langan */
+      await tx.payment.deleteMany({ where: { patientId: id } })
+
+      /* Band yotoq bo'shatiladi — aks holda palatada "egasiz" band joy qoladi */
+      const busyBeds = admissions
+        .filter((a) => a.status === 'ACTIVE' || a.status === 'PLANNED')
+        .map((a) => a.bedId)
+      if (busyBeds.length > 0) {
+        await tx.bed.updateMany({ where: { id: { in: busyBeds } }, data: { status: 'FREE' } })
+      }
+      await tx.admission.deleteMany({ where: { patientId: id } })
+
+      const appointments = await tx.appointment.count({ where: { patientId: id } })
+      /* Qabullar, tashriflar, nazoratlar, eslatmalar — kaskad bilan */
+      await tx.patient.delete({ where: { id } })
+
+      return {
+        paymentsCount: payments._count._all,
+        paymentsSum: payments._sum.amount ?? 0,
+        admissions: admissions.length,
+        appointments,
+      }
+    })
+
+    await this.audit.record({
+      action: 'purge',
+      entityType: 'patient',
+      entityId: id,
+      meta: { fullName: patient.fullName, phone: patient.phone, ...summary },
+    })
+
+    void this.alerts.send(
+      clinicId,
+      [
+        '<b>Bemor butunlay o‘chirildi</b>',
+        `${escapeHtml(patient.fullName)} · ${escapeHtml(patient.phone)}`,
+        `Qabullar: ${summary.appointments}, to‘lovlar: ${summary.paymentsCount} (${money(summary.paymentsSum)})`,
+        'Summa tushumdan ayrildi.',
+        `Kim: ${escapeHtml(fullName)}`,
+      ].join('\n'),
+      { skipUserId: userId },
+    )
+
+    return { mode: 'purge' as const, ...summary }
   }
 
   /* --- Bemor kartasidagi ro'yxatlar --- */

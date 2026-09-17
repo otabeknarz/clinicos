@@ -8,6 +8,7 @@ import { Staff } from '@prisma/client'
 import * as argon2 from 'argon2'
 
 import { toApi, toApiDate, toApiDateTime, toDb } from '../common/api-enum'
+import { percentEarnings } from '../common/doctor-earnings'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
 import { ResetPasswordDto, StaffInputDto, StaffQueryDto } from './staff.dto'
@@ -109,7 +110,8 @@ export class StaffService {
       }),
       doctorIds.length
         ? this.db.payment.groupBy({
-            by: ['doctorId'],
+            /* Xizmat kesimida — foiz xizmatga qarab farq qilishi mumkin */
+            by: ['doctorId', 'serviceId'],
             where: {
               doctorId: { in: doctorIds },
               status: 'PAID',
@@ -147,7 +149,24 @@ export class StaffService {
     )
 
     const bonusByStaff = new Map(bonuses.map((b) => [b.staffId, b._sum.amount ?? 0]))
-    const revenueByDoctor = new Map(revenue.map((r) => [r.doctorId, r._sum.amount ?? 0]))
+    const revenueByDoctor = new Map<string, { serviceId: string | null; amount: number }[]>()
+    for (const r of revenue) {
+      const list = revenueByDoctor.get(r.doctorId) ?? []
+      list.push({ serviceId: r.serviceId, amount: r._sum.amount ?? 0 })
+      revenueByDoctor.set(r.doctorId, list)
+    }
+    const rateRows = doctorIds.length
+      ? await this.db.doctorServiceRate.findMany({
+          where: { doctorId: { in: doctorIds } },
+          select: { doctorId: true, serviceId: true, percent: true },
+        })
+      : []
+    const ratesByDoctor = new Map<string, Map<string, number>>()
+    for (const r of rateRows) {
+      const map = ratesByDoctor.get(r.doctorId) ?? new Map<string, number>()
+      map.set(r.serviceId, r.percent)
+      ratesByDoctor.set(r.doctorId, map)
+    }
 
     const attByStaff = new Map<
       string,
@@ -188,17 +207,22 @@ export class StaffService {
         ? Math.max(0, Math.min(100, attendancePct - Math.round(att.lateMinutes / 60)))
         : 0
 
+      const doctorPayments = staff.doctorId ? (revenueByDoctor.get(staff.doctorId) ?? []) : []
       const generatedRevenue = staff.doctorId
-        ? (revenueByDoctor.get(staff.doctorId) ?? 0)
+        ? doctorPayments.reduce((sum, p) => sum + p.amount, 0)
         : null
 
       const payType = toApi(staff.payType)
       const baseSalary =
         payType === 'percent' ? 0 : Math.round((staff.salary * staff.workRate) / 100)
-      const percentEarnings =
+      const percentShare =
         payType === 'salary' || generatedRevenue === null
           ? 0
-          : Math.round((generatedRevenue * staff.percentRate) / 100)
+          : percentEarnings(
+              doctorPayments,
+              staff.percentRate,
+              ratesByDoctor.get(staff.doctorId!) ?? new Map(),
+            )
       const bonusThisPeriod = bonusByStaff.get(staff.id) ?? 0
 
       /*
@@ -240,8 +264,8 @@ export class StaffService {
             }
           : null,
         generatedRevenue,
-        percentEarnings,
-        totalEarnings: baseSalary + percentEarnings + bonusThisPeriod,
+        percentEarnings: percentShare,
+        totalEarnings: baseSalary + percentShare + bonusThisPeriod,
       }
     }
 

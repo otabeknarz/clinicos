@@ -5,6 +5,7 @@ import { listUsers } from '@/api/auth'
 import { getClinic, updateClinic } from '@/api/clinic'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ProfileTab } from './settings/ProfileTab'
+import { DeleteCodeCard } from './settings/DeleteCodeCard'
 import { ScheduleTab } from './settings/ScheduleTab'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
@@ -182,6 +183,12 @@ function ClinicTab() {
         <Button onClick={submit} loading={save.pending}>
           {t('action.save')}
         </Button>
+      ) : null}
+
+      {editable ? (
+        <div className="pt-4">
+          <DeleteCodeCard />
+        </div>
       ) : null}
     </div>
   )

@@ -14,6 +14,7 @@ import { RequirePermission } from '../common/guards/permissions.guard'
 import { IdParamDto } from '../patients/patients.dto'
 import {
   ArchiveDto,
+  PurgeTenantDto,
   BillingTermDto,
   ChangePlanDto,
   ImpersonateDto,
@@ -305,6 +306,21 @@ export class PlatformController {
   @Audit('delete', 'Clinic')
   deleteTenant(@Param() params: IdParamDto, @Body() dto: ArchiveDto) {
     return this.platform.deleteTenant(params.id, dto)
+  }
+
+  /*
+    POST /platform/tenants/:id/purge  { confirmName, password }
+
+    BUTUNLAY O'CHIRISH — "o'chirish"dan farqi: klinika va uning HAMMA
+    ma'lumoti (bemorlar, tashriflar, to'lovlar, xodimlar, loginlar, fayllar)
+    bazadan yo'qoladi. Qaytarib bo'lmaydi. Admin har safar ikkisidan birini
+    tanlaydi: ma'lumot qolsin (`/delete`) yoki butunlay (`/purge`).
+  */
+  @Post('tenants/:id/purge')
+  @RequirePermission('platform.manage')
+  @Audit('purge', 'Clinic')
+  purgeTenant(@Param() params: IdParamDto, @Body() dto: PurgeTenantDto) {
+    return this.platform.purgeTenant(params.id, dto)
   }
 
   // POST /platform/tenants/:id/undelete

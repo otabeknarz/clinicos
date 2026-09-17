@@ -22,6 +22,8 @@ export function toApiPatient(row: Patient) {
     notes: row.notes,
     status: toApi(row.status),
     primaryDoctorId: row.primaryDoctorId,
+    /* Ro'yxatdan o'chirilgan bo'lsa — karta ochiladi, lekin belgi bilan */
+    deletedAt: toApiDateTime(row.deletedAt),
     createdAt: toApiDateTime(row.createdAt)!,
   }
 }

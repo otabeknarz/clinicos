@@ -150,9 +150,38 @@ async function main() {
     direction: 'dental',
     city: 'Toshkent shahri',
     staffCount: '1-5',
+    login: `sinov.stom${RUN}@clinic-os.uz`,
     password: 'sinov-parol-123',
   } as any)
   check('havola qaytdi', started.url.includes('start=reg'), started.url)
+  check('login javobda', started.login === `sinov.stom${RUN}@clinic-os.uz`, started.login)
+
+  /* Band login — Telegram qadamidan OLDIN rad */
+  let loginTakenRejected = false
+  try {
+    await auth.startRegistration({
+      clinicName: 'Band login',
+      fullName: 'Boshqa Odam',
+      phone: '+998971234560',
+      position: 'owner',
+      direction: 'general',
+      login: `boshqa.odam${RUN}@clinic-os.uz`,
+      password: 'sinov-parol-123',
+    } as any)
+    const again = await auth.startRegistration({
+      clinicName: 'Band login 2',
+      fullName: 'Uchinchi Odam',
+      phone: '+998971234561',
+      position: 'owner',
+      direction: 'general',
+      login: `sinov.stom${RUN}@clinic-os.uz`,
+      password: 'sinov-parol-123',
+    } as any)
+    void again
+  } catch {
+    loginTakenRejected = true
+  }
+  check('kutilayotgan login boshqa raqamga berilmaydi', loginTakenRejected)
   check('raqam bir ko‘rinishga keltirildi', started.phone === phone, started.phone)
 
   const before = await prisma.clinic.count({ where: { name: `Sinov Stom ${RUN}` } })
@@ -225,6 +254,9 @@ async function main() {
 
   const owner = await prisma.user.findFirst({ where: { clinicId: clinic?.id, role: 'OWNER' } })
   check('egasi Telegramga ulangan', owner?.telegramUserId === telegramId)
+  check('egasi o‘zi yozgan login bilan', owner?.email === `sinov.stom${RUN}@clinic-os.uz`, owner?.email)
+  check('admin panel uchun ownerEmail', clinic?.subscription?.ownerEmail === `sinov.stom${RUN}@clinic-os.uz`, clinic?.subscription?.ownerEmail)
+  check('bot loginni yozib yubordi', sent.some((m) => m.text.includes(`sinov.stom${RUN}@clinic-os.uz`)))
   const lead = await prisma.lead.findFirst({ where: { createdClinicId: clinic?.id } })
   check('sotuv so‘rovi tushdi', lead?.position === 'owner' && lead?.staffCount === '1-5' && lead?.city === 'Toshkent shahri')
 
@@ -249,6 +281,8 @@ async function main() {
   /* ================================================================ */
   const trialLogin = await login(phone, 'sinov-parol-123')
   check('telefon bilan kirildi', Boolean(trialLogin.token), short(trialLogin))
+  const byLogin = await login(`sinov.stom${RUN}@clinic-os.uz`, 'sinov-parol-123')
+  check('login bilan ham kirildi', Boolean(byLogin.token), short(byLogin))
   check('sinov tasmasi uchun kun soni bor', (trialLogin.trial?.daysLeft ?? 0) >= 13, short(trialLogin.trial))
   const trialReasons = (trialLogin.restrictions ?? []).filter((r: any) => r.reason === 'trial').map((r: any) => r.module)
   check('sinovda tushum yopiq', trialReasons.includes('revenue'), short(trialReasons))
@@ -454,6 +488,7 @@ async function main() {
     position: 'pharmacist',
     direction: 'pharmacy',
     city: 'Toshkent shahri',
+    login: `sinov.dorixona${RUN}@clinic-os.uz`,
     password: 'sinov-parol-123',
   } as any)
   await tg.webhook(

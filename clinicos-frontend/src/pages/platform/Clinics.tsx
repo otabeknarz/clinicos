@@ -18,6 +18,7 @@ import {
   archiveTenant,
   createTenant,
   deleteTenant,
+  purgeTenant,
   listBillingTerms,
   listPlans,
   listTenants,
@@ -1242,20 +1243,47 @@ function DeleteModal({
 }) {
   const { t } = useI18n()
   const toast = useToast()
+  /*
+    HAR SAFAR SO'RALADI: ma'lumot bazada qolsinmi yoki butunlay o'chsinmi.
+    Sukut — "qolsin": tasodifiy bosishda qaytarib bo'lmaydigan variant
+    tanlangan bo'lib turmasin.
+  */
+  const [mode, setMode] = useState<'keep' | 'purge'>('keep')
   const [reason, setReason] = useState('')
+  const [confirmName, setConfirmName] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
+  function reset() {
+    setMode('keep')
+    setReason('')
+    setConfirmName('')
+    setPassword('')
+    setError('')
+  }
+
+  const nameMatches = tenant !== null && confirmName.trim() === tenant.name.trim()
+  const canSubmit =
+    mode === 'keep' ? reason.trim().length >= 5 : nameMatches && password.length > 0
+
   async function submit() {
-    if (!tenant || reason.trim().length < 5) return
+    if (!tenant || !canSubmit) return
     setSaving(true)
+    setError('')
     try {
-      await deleteTenant(tenant.id, reason.trim())
-      toast.success(t('toast.saved'))
+      if (mode === 'keep') {
+        await deleteTenant(tenant.id, reason.trim())
+        toast.success(t('toast.saved'))
+      } else {
+        await purgeTenant(tenant.id, { confirmName: confirmName.trim(), password })
+        toast.success(t('platform.purged', { name: tenant.name }))
+      }
       onDone()
       onClose()
-      setReason('')
-    } catch {
-      toast.error(t('toast.error'))
+      reset()
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : t('toast.error'))
     } finally {
       setSaving(false)
     }
@@ -1264,34 +1292,105 @@ function DeleteModal({
   return (
     <Modal
       open={tenant !== null}
-      onClose={onClose}
+      onClose={() => {
+        onClose()
+        reset()
+      }}
       title={t('platform.deleteTitle')}
       footer={
         <>
-          <Button variant="gray" onClick={onClose}>
+          <Button
+            variant="gray"
+            onClick={() => {
+              onClose()
+              reset()
+            }}
+          >
             {t('action.cancel')}
           </Button>
-          <Button
-            variant="danger"
-            loading={saving}
-            disabled={reason.trim().length < 5}
-            onClick={submit}
-          >
-            {t('platform.delete')}
+          <Button variant="danger" loading={saving} disabled={!canSubmit} onClick={submit}>
+            {mode === 'keep' ? t('platform.delete') : t('platform.purge')}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
-        <p className="text-subhead text-label">{tenant?.name}</p>
-        <TextArea
-          label={t('platform.deleteReason')}
-          hint={t('platform.deleteReasonHint')}
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={3}
-        />
-        <p className="text-caption text-label-tertiary">{t('platform.deleteWarning')}</p>
+        <p className="text-subhead font-medium text-label">{tenant?.name}</p>
+
+        <div className="grid gap-2">
+          {(
+            [
+              { value: 'keep', label: t('platform.deleteKeep'), hint: t('platform.deleteKeepHint') },
+              { value: 'purge', label: t('platform.purge'), hint: t('platform.purgeHint') },
+            ] as const
+          ).map((option) => {
+            const active = mode === option.value
+            const danger = option.value === 'purge'
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  setMode(option.value)
+                  setError('')
+                }}
+                className={cn(
+                  'rounded-[12px] px-4 py-3 text-left ring-1 transition-colors',
+                  active
+                    ? danger
+                      ? 'bg-bad-soft ring-bad/50'
+                      : 'bg-accent-soft ring-accent/40'
+                    : 'bg-sunken ring-transparent hover:ring-separator',
+                )}
+              >
+                <p
+                  className={cn(
+                    'text-subhead font-medium',
+                    active ? (danger ? 'text-bad' : 'text-accent') : 'text-label',
+                  )}
+                >
+                  {option.label}
+                </p>
+                <p className="mt-0.5 text-caption text-label-secondary">{option.hint}</p>
+              </button>
+            )
+          })}
+        </div>
+
+        {mode === 'keep' ? (
+          <>
+            <TextArea
+              label={t('platform.deleteReason')}
+              hint={t('platform.deleteReasonHint')}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+            />
+            {error ? <p className="text-caption text-bad">{error}</p> : null}
+            <p className="text-caption text-label-tertiary">{t('platform.deleteWarning')}</p>
+          </>
+        ) : (
+          <>
+            <TextInput
+              label={t('platform.purgeConfirmName', { name: tenant?.name ?? '' })}
+              value={confirmName}
+              autoComplete="off"
+              error={confirmName && !nameMatches ? t('platform.purgeNameMismatch') : undefined}
+              onChange={(e) => setConfirmName(e.target.value)}
+            />
+            <TextInput
+              label={t('platform.purgePassword')}
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              error={error || undefined}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                setError('')
+              }}
+            />
+          </>
+        )}
       </div>
     </Modal>
   )

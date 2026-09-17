@@ -10,6 +10,7 @@ import {
   Query,
 } from '@nestjs/common'
 
+import { Audit } from '../common/audit.interceptor'
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { RequestContext } from '../common/request-context'
 import { IdParamDto } from '../patients/patients.dto'
@@ -19,6 +20,7 @@ import {
   DoctorListQueryDto,
   DoctorRangeQueryDto,
   EarningsQueryDto,
+  ServiceRatesDto,
 } from './doctors.dto'
 import { DoctorsService } from './doctors.service'
 
@@ -95,6 +97,21 @@ export class DoctorsController {
   @Get(':id/earnings')
   earnings(@Param() params: IdParamDto, @Query() query: EarningsQueryDto) {
     return this.doctors.earnings(params.id, query)
+  }
+
+  // GET /doctors/:id/service-rates  →  [{ serviceId, percent }]
+  @Get(':id/service-rates')
+  @RequirePermission('staff.view')
+  serviceRates(@Param() params: IdParamDto) {
+    return this.doctors.serviceRates(params.id)
+  }
+
+  // POST /doctors/:id/service-rates  { rates: [{ serviceId, percent }] }
+  @Post(':id/service-rates')
+  @RequirePermission('staff.manage')
+  @Audit('update', 'doctor_service_rates')
+  setServiceRates(@Param() params: IdParamDto, @Body() dto: ServiceRatesDto) {
+    return this.doctors.setServiceRates(params.id, dto)
   }
 
   // POST /doctors

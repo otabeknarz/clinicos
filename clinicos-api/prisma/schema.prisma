@@ -45,6 +45,10 @@ model Clinic {
   /// Aks holda har yangi modul barcha klinikada o'chiq bo'lib qolardi.
   disabledModules String[] @map("disabled_modules")
 
+  /// O'CHIRISH KODI (bcrypt xeshi). Bemor, xizmat yoki to'lovni o'chirish shu
+  /// kod bilan tasdiqlanadi. Bo'sh bo'lsa o'chirish umuman yopiq.
+  deleteCodeHash String? @map("delete_code_hash")
+
   /// Klinika yoki apteka. Izohi `ClinicKind` da.
   kind ClinicKind @default(CLINIC)
 
@@ -90,6 +94,7 @@ model Clinic {
   shiftClosures     ShiftClosure[]
   financeEntries    FinanceEntry[]
   daysOff           DayOff[]
+  doctorServiceRates DoctorServiceRate[]
   feedback          Feedback[]
   chatGroups        ChatGroup[]
   chatMessages      ChatMessage[]
@@ -299,6 +304,7 @@ model Doctor {
   clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   user         User?
   daysOff      DayOff[]
+  serviceRates DoctorServiceRate[]
   appointments Appointment[]
   visits       Visit[]
   payments     Payment[]
@@ -360,6 +366,10 @@ model Patient {
   /// ustun butun bazada NOYOB EMAS — kabinetga kirishda klinika
   /// tanlanadi.
   telegramUserId String? @map("telegram_user_id")
+
+  /// Ro'yxatdan o'chirilgan (yashirilgan) payt. Tarix — qabul, tashrif, to'lov —
+  /// joyida qoladi. Butunlay o'chirish esa qatorning o'zini o'chiradi.
+  deletedAt DateTime? @map("deleted_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -437,6 +447,9 @@ model Service {
   minPrice Int? @map("min_price")
   maxPrice Int? @map("max_price")
 
+  /// Ro'yxatdan o'chirilgan payt — arxivdan farqi: arxivda ham ko'rinmaydi
+  deletedAt DateTime? @map("deleted_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -444,6 +457,7 @@ model Service {
   appointments Appointment[]
   payments     Payment[]
   loyaltyTiers ServiceLoyaltyTier[]
+  doctorRates  DoctorServiceRate[]
 
   @@index([clinicId, status])
   @@map("services")
@@ -514,6 +528,9 @@ model Appointment {
   completedAt  DateTime? @map("completed_at")
   cancelledAt  DateTime? @map("cancelled_at")
   cancelReason String?   @map("cancel_reason")
+
+  /// Qarzni qachongacha to'lashi kerak. Bo'sh — muddat qo'yilmagan.
+  debtDueDate DateTime? @map("debt_due_date") @db.Date
 
   createdById String   @map("created_by")
   createdBy   User     @relation("AppointmentCreatedBy", fields: [createdById], references: [id])
@@ -1208,6 +1225,9 @@ model Admission {
   /// Kunlik narx joylashtirish paytida muzlatiladi — palata narxi
   /// keyin o'zgarsa, yotgan bemorning hisobi o'zgarmasligi kerak.
   dailyRate Int             @map("daily_rate")
+
+  /// Qarzni qachongacha to'lashi kerak. Bo'sh — muddat qo'yilmagan.
+  debtDueDate DateTime? @map("debt_due_date") @db.Date
   notes     String          @default("")
 
   createdById String   @map("created_by")
@@ -2040,6 +2060,8 @@ enum PatientNoticeKind {
   BOOKED
   /// Qabul boshqa kunga yoki boshqa shifokorga ko'chirilganda
   RESCHEDULED
+  /// Qarz to'lash muddati kelganda
+  DEBT_DUE
 }
 
 model PatientNotice {
@@ -2470,4 +2492,29 @@ model DayOff {
   @@index([clinicId, date])
   @@index([clinicId, doctorId, date])
   @@map("days_off")
+}
+
+/// SHIFOKORNING XIZMAT BO'YICHA FOIZI.
+///
+/// `Staff.percentRate` — umumiy foiz. Ba'zi xizmatda ulush boshqacha bo'ladi
+/// (operatsiyada 40%, konsultatsiyada 20%): shu jadvalda qatori bor xizmat
+/// o'z foizi bilan, qolganlari umumiy foiz bilan hisoblanadi.
+model DoctorServiceRate {
+  id        String @id @default(uuid())
+  clinicId  String @map("clinic_id")
+  doctorId  String @map("doctor_id")
+  serviceId String @map("service_id")
+
+  percent Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  clinic  Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  doctor  Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, serviceId])
+  @@index([clinicId])
+  @@map("doctor_service_rates")
 }

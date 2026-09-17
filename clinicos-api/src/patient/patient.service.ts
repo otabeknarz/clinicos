@@ -113,6 +113,46 @@ export class PatientService {
   }
 
   /**
+   * REJALASHTIRILGAN QABULLAR — bugundan boshlab, eng yaqini tepada.
+   *
+   * Bosh sahifada faqat bittasi (eng yaqini) turadi. Bemor bir necha
+   * qabulga yozilgan bo'lishi mumkin (tish davolash bosqichlari, takroriy
+   * ko'rik) — hammasi shu ro'yxatda. Bugungi o'tib ketgan vaqt ham
+   * ko'rinadi: bemor navbatda o'tirgan bo'lishi mumkin.
+   */
+  async appointments() {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const rows = await this.db.appointment.findMany({
+      where: {
+        patientId: this.patientId,
+        startsAt: { gte: today },
+        status: { in: ['SCHEDULED', 'CONFIRMED', 'CHECKED_IN'] },
+      },
+      orderBy: { startsAt: 'asc' },
+      take: 50,
+      select: {
+        id: true,
+        startsAt: true,
+        durationMinutes: true,
+        status: true,
+        doctor: { select: { fullName: true } },
+        service: { select: { name: true } },
+      },
+    })
+
+    return rows.map((row) => ({
+      id: row.id,
+      startsAt: toApiDateTime(row.startsAt)!,
+      durationMinutes: row.durationMinutes,
+      status: toApi(row.status),
+      doctorName: row.doctor.fullName,
+      serviceName: row.service.name,
+    }))
+  }
+
+  /**
    * Tashriflar tarixi.
    *
    * `Visit.notes` ATAYLAB QAYTMAYDI. U shifokorning ichki

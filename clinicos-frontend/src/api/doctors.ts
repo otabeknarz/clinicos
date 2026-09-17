@@ -13,6 +13,7 @@ import type {
   PatientWithStats,
   Bonus,
   DoctorEarnings,
+  DoctorServiceRate,
 } from '@/types/models'
 
 // GET /doctors?search=
@@ -316,4 +317,45 @@ export async function getDoctorEarnings(
     },
     180,
   )
+}
+
+/* ------------------------------------------------------------------ */
+/* Xizmat bo'yicha foiz                                                */
+/* ------------------------------------------------------------------ */
+
+const RATES_KEY = 'clinicos.mock.serviceRates'
+
+function mockRates(): Record<string, DoctorServiceRate[]> {
+  try {
+    return JSON.parse(localStorage.getItem(RATES_KEY) ?? '{}') as Record<string, DoctorServiceRate[]>
+  } catch {
+    return {}
+  }
+}
+
+// GET /doctors/:id/service-rates
+export async function getServiceRates(doctorId: ID): Promise<DoctorServiceRate[]> {
+  if (!USE_MOCK) return request<DoctorServiceRate[]>('GET', `/doctors/${doctorId}/service-rates`)
+  return delay(mockRates()[doctorId] ?? [], 80)
+}
+
+/** Ro'yxat butunlay almashtiriladi; ro'yxatda yo'q xizmat — umumiy foiz bilan */
+// POST /doctors/:id/service-rates
+export async function setServiceRates(
+  doctorId: ID,
+  rates: DoctorServiceRate[],
+): Promise<DoctorServiceRate[]> {
+  if (!USE_MOCK) {
+    return request<DoctorServiceRate[]>('POST', `/doctors/${doctorId}/service-rates`, {
+      body: { rates },
+    })
+  }
+  const all = mockRates()
+  all[doctorId] = rates
+  try {
+    localStorage.setItem(RATES_KEY, JSON.stringify(all))
+  } catch {
+    /* Demo */
+  }
+  return delay(rates, 200)
 }

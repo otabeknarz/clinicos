@@ -118,3 +118,20 @@ export class IdParamDto {
   @Type(() => String)
   id!: string
 }
+
+/**
+ * Bemorni o'chirish.
+ *
+ *   hide  — ro'yxatdan olib tashlanadi; qabul, tashrif va to'lovlari joyida,
+ *           tushum o'zgarmaydi.
+ *   purge — bemor va unga tegishli HAMMA narsa o'chadi: qabullar, tashriflar,
+ *           to'lovlar, statsionar. Tushum va hisobotlardan ham ayriladi.
+ */
+export class DeletePatientDto {
+  @IsString()
+  @MaxLength(20)
+  code!: string
+
+  @IsIn(['hide', 'purge'])
+  mode!: 'hide' | 'purge'
+}

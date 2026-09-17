@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, UserPlus, Users } from 'lucide-react'
+import { Pencil, Search, Trash2, UserPlus, Users } from 'lucide-react'
 
-import { listPatients } from '@/api/patients'
-import type { PatientFilter } from '@/api/patients'
+import { deletePatient, listPatients } from '@/api/patients'
+import type { PatientDeleteMode, PatientFilter } from '@/api/patients'
+import { DeleteWithCodeModal } from '@/components/modals/DeleteWithCodeModal'
 import { PatientFormModal } from '@/components/modals/PatientFormModal'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
+import { Button, IconButton } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { SearchInput } from '@/components/ui/Form'
 import { DataTable, Pagination } from '@/components/ui/Table'
@@ -20,6 +21,7 @@ import { PATIENT_LABEL, PATIENT_TONE } from '@/lib/status'
 import { useAsync, useDebounced } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
+import { useToast } from '@/store/toast-context'
 import type { PatientWithStats } from '@/types/models'
 
 const PAGE_SIZE = 15
@@ -28,8 +30,11 @@ export function PatientsPage() {
   const { t } = useI18n()
   const { can } = useAuth()
   const navigate = useNavigate()
+  const toast = useToast()
 
   const [search, setSearch] = useState('')
+  const [editing, setEditing] = useState<PatientWithStats | null>(null)
+  const [deleting, setDeleting] = useState<PatientWithStats | null>(null)
   const [filter, setFilter] = useState<PatientFilter>('all')
   const [page, setPage] = useState(1)
   const [formOpen, setFormOpen] = useState(false)
@@ -113,6 +118,43 @@ export function PatientsPage() {
         </Badge>
       ),
     },
+    ...(can('patients.edit') || can('patients.delete')
+      ? [
+          {
+            key: 'actions',
+            header: '',
+            align: 'right' as const,
+            width: 'w-24',
+            render: (row: PatientWithStats) => (
+              <div className="flex justify-end gap-1">
+                {can('patients.edit') ? (
+                  <IconButton
+                    label={t('action.edit')}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditing(row)
+                    }}
+                  >
+                    <Pencil size={15} />
+                  </IconButton>
+                ) : null}
+                {can('patients.delete') ? (
+                  <IconButton
+                    label={t('action.delete')}
+                    className="hover:text-bad"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setDeleting(row)
+                    }}
+                  >
+                    <Trash2 size={15} />
+                  </IconButton>
+                ) : null}
+              </div>
+            ),
+          },
+        ]
+      : []),
   ]
 
   return (
@@ -211,6 +253,35 @@ export function PatientsPage() {
         open={formOpen}
         onClose={() => setFormOpen(false)}
         onSaved={(patient) => navigate(`/patients/${patient.id}`)}
+      />
+
+      <PatientFormModal
+        open={editing !== null}
+        patient={editing}
+        onClose={() => setEditing(null)}
+        onSaved={reload}
+      />
+
+      <DeleteWithCodeModal<PatientDeleteMode>
+        open={deleting !== null}
+        onClose={() => setDeleting(null)}
+        title={t('patientDelete.title')}
+        description={deleting?.fullName}
+        options={[
+          { value: 'hide', label: t('patientDelete.hide'), hint: t('patientDelete.hideHint') },
+          {
+            value: 'purge',
+            label: t('patientDelete.purge'),
+            hint: t('patientDelete.purgeHint'),
+            danger: true,
+          },
+        ]}
+        onConfirm={async ({ code, option }) => {
+          if (!deleting) return
+          await deletePatient(deleting.id, { code, mode: option ?? 'hide' })
+          toast.success(t('toast.deleted'))
+          reload()
+        }}
       />
     </>
   )

@@ -1,19 +1,10 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common'
 
 import { Audit } from '../common/audit.interceptor'
 import { RequirePermission } from '../common/guards/permissions.guard'
 import {
   CreatePatientDto,
+  DeletePatientDto,
   IdParamDto,
   PatientListQueryDto,
   UpdatePatientDto,
@@ -59,19 +50,19 @@ export class PatientsController {
     return this.patients.update(params.id, dto)
   }
 
-  // DELETE /patients/:id
   /*
-    DELETE /patients/:id
+    POST /patients/:id/delete  { code, mode: 'hide' | 'purge' }
 
-    `patients.delete` sukut bo'yicha hech kimda yo'q — bemor
-    yozuvini o'chirish qaytarib bo'lmaydigan amal. Kerak bo'lsa
-    egasi aniq bir odamga qo'shimcha ruxsat sifatida beradi.
+    O'CHIRISH KODI BILAN. `patients.delete` egasi va registratorda bor,
+    lekin kodni egasi o'rnatadi — kodsiz hech kim o'chira olmaydi.
+    POST, DELETE emas: tanada kod va rejim keladi.
   */
-  @Delete(':id')
-  @HttpCode(204)
+  @Post(':id/delete')
+  @HttpCode(200)
   @RequirePermission('patients.delete')
-  remove(@Param() params: IdParamDto) {
-    return this.patients.remove(params.id)
+  @Audit('delete', 'patient')
+  remove(@Param() params: IdParamDto, @Body() dto: DeletePatientDto) {
+    return this.patients.remove(params.id, dto)
   }
 
   /*

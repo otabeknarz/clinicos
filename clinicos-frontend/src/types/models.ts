@@ -89,9 +89,11 @@ export type Permission =
   | 'payments.view'
   | 'payments.create'
   | 'payments.refund'
+  | 'payments.delete'
   /* Qarzdorlik — to'lovlardan alohida, tarifda cheklanishi uchun */
   | 'debts.view'
   | 'debts.waive'
+  | 'debts.collect'
   | 'revenue.view'
   | 'analytics.view'
   /* Ma'lumot almashish — Excel va Google Sheets. Bo'limni KO'RISH
@@ -981,6 +983,8 @@ export interface Patient {
   status: PatientStatus
   /** Doimiy biriktirilgan shifokor (bo'lishi shart emas) */
   primaryDoctorId: ID | null
+  /** Ro'yxatdan o'chirilgan payt — karta ochiladi, lekin ro'yxatda yo'q */
+  deletedAt?: ISODateTime | null
   createdAt: ISODateTime
 }
 
@@ -1037,6 +1041,8 @@ export interface LoyaltyTier {
 export type ServicePriceMode = 'fixed' | 'doctor_set'
 
 export interface Service {
+  /** Kod bilan ro'yxatdan o'chirilgan payt */
+  deletedAt?: ISODateTime | null
   id: ID
   clinicId: ID
   name: string
@@ -1101,6 +1107,8 @@ export type AppointmentStatus =
 export type AppointmentPaymentStatus = 'unpaid' | 'paid' | 'partial'
 
 export interface Appointment {
+  /** Qarz to'lash muddati (to'lanmagan qabulda) */
+  debtDueDate?: ISODate | null
   id: ID
   clinicId: ID
   patientId: ID
@@ -1465,6 +1473,7 @@ export type AdmissionStatus = 'planned' | 'active' | 'discharged'
  * o'zgarsa, o'tgan oyning hisoboti o'zgarib ketmasligi kerak.
  */
 export interface Admission {
+  debtDueDate?: ISODate | null
   id: ID
   clinicId: ID
   patientId: ID
@@ -2713,6 +2722,10 @@ export interface VisitDebt {
   completedAt: ISODateTime
   /** Ko'rik yakunlanganidan beri necha kun */
   daysOverdue: number
+  /** Qachongacha to'lashi kerak — qo'yilmagan bo'lsa null */
+  dueDate: ISODate | null
+  /** Muddatdan necha kun o'tdi (manfiy — hali bor, 0 — bugun) */
+  overdueDays: number | null
   total: UZS
   paid: UZS
   remaining: UZS
@@ -2726,6 +2739,8 @@ export interface WardDebt {
   roomNumber: string
   admittedAt: ISODateTime
   daysOverdue: number
+  dueDate: ISODate | null
+  overdueDays: number | null
   total: UZS
   paid: UZS
   remaining: UZS
@@ -2796,6 +2811,16 @@ export interface CabinetProfile {
  * yoziladigan joy. Bemorga ochilsa, shifokor u yerga rostini yozishni
  * to'xtatadi va yozuvning ma'nosi qolmaydi.
  */
+/** Bemor kabineti: rejalashtirilgan qabul */
+export interface CabinetAppointment {
+  id: ID
+  startsAt: ISODateTime
+  durationMinutes: number
+  status: AppointmentStatus
+  doctorName: string
+  serviceName: string
+}
+
 export interface CabinetVisit {
   id: ID
   visitedAt: ISODateTime
@@ -2945,4 +2970,10 @@ export interface DayOffResult {
 export interface BulkMoveResult {
   moved: Appointment[]
   skipped: { id: ID; patientName: string; time: string; reason: string }[]
+}
+
+/** Shifokorning xizmat bo'yicha alohida foizi */
+export interface DoctorServiceRate {
+  serviceId: ID
+  percent: number
 }

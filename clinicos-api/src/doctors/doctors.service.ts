@@ -2,9 +2,15 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { Doctor } from '@prisma/client'
 
 import { toApi, toApiDate, toApiDateTime, toDb } from '../common/api-enum'
+import { percentEarnings } from '../common/doctor-earnings'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
-import { DoctorInputDto, DoctorRangeQueryDto, EarningsQueryDto } from './doctors.dto'
+import {
+  DoctorInputDto,
+  DoctorRangeQueryDto,
+  EarningsQueryDto,
+  ServiceRatesDto,
+} from './doctors.dto'
 
 @Injectable()
 export class DoctorsService {
@@ -304,11 +310,20 @@ export class DoctorsService {
 
     const staff = await this.db.staff.findFirst({ where: { doctorId } })
 
-    const [revenue, completed, bonuses] = await Promise.all([
+    const [revenue, byService, rateRows, completed, bonuses] = await Promise.all([
       this.db.payment.aggregate({
         where: { doctorId, status: 'PAID', paidAt: { gte: from, lte: to } },
         _sum: { amount: true },
         _count: { _all: true },
+      }),
+      this.db.payment.groupBy({
+        by: ['serviceId'],
+        where: { doctorId, status: 'PAID', paidAt: { gte: from, lte: to } },
+        _sum: { amount: true },
+      }),
+      this.db.doctorServiceRate.findMany({
+        where: { doctorId },
+        select: { serviceId: true, percent: true },
       }),
       this.db.appointment.count({
         where: { doctorId, status: 'COMPLETED', startsAt: { gte: from, lte: to } },
@@ -330,8 +345,15 @@ export class DoctorsService {
     // Yarim stavkada oylik ham yarim
     const baseSalary =
       payType === 'percent' ? 0 : Math.round((salary * workRate) / 100)
-    const percentEarnings =
-      payType === 'salary' ? 0 : Math.round((generatedRevenue * percentRate) / 100)
+    /* Xizmat bo'yicha alohida foiz bo'lsa — o'shanisi (`common/doctor-earnings.ts`) */
+    const percentShare =
+      payType === 'salary'
+        ? 0
+        : percentEarnings(
+            byService.map((r) => ({ serviceId: r.serviceId, amount: r._sum.amount ?? 0 })),
+            percentRate,
+            new Map(rateRows.map((r) => [r.serviceId, r.percent])),
+          )
 
     const bonusTotal = bonuses.reduce((sum, b) => sum + b.amount, 0)
 
@@ -344,7 +366,7 @@ export class DoctorsService {
       percentRate,
       baseSalary,
       generatedRevenue,
-      percentEarnings,
+      percentEarnings: percentShare,
       bonuses: bonuses.map((b) => ({
         id: b.id,
         clinicId: b.clinicId,
@@ -361,7 +383,7 @@ export class DoctorsService {
         paidAt: toApiDateTime(b.paidAt),
       })),
       bonusTotal,
-      total: baseSalary + percentEarnings + bonusTotal,
+      total: baseSalary + percentShare + bonusTotal,
       completedAppointments: completed,
       averageCheck: revenue._count._all
         ? Math.round(generatedRevenue / revenue._count._all)
@@ -375,6 +397,48 @@ export class DoctorsService {
       select: { id: true },
     })
     if (!found) throw new NotFoundException('Shifokor topilmadi')
+  }
+
+  /* ---------------- Xizmat bo'yicha foiz ---------------- */
+
+  async serviceRates(doctorId: string) {
+    await this.assertExists(doctorId)
+    const rows = await this.db.doctorServiceRate.findMany({
+      where: { doctorId },
+      select: { serviceId: true, percent: true },
+    })
+    return rows
+  }
+
+  /**
+   * Foizlar butunlay almashtiriladi — forma to'liq ro'yxatni yuboradi.
+   * Begona klinika xizmati filtrdan o'tmaydi va "topilmadi" bo'ladi.
+   */
+  async setServiceRates(doctorId: string, dto: ServiceRatesDto) {
+    const { clinicId } = this.ctx.require()
+    await this.assertExists(doctorId)
+
+    const unique = new Map(dto.rates.map((r) => [r.serviceId, r.percent]))
+    if (unique.size > 0) {
+      const found = await this.db.service.count({ where: { id: { in: [...unique.keys()] } } })
+      if (found !== unique.size) throw new NotFoundException('Xizmat topilmadi')
+    }
+
+    await this.db.$transaction(async (tx) => {
+      await tx.doctorServiceRate.deleteMany({ where: { doctorId } })
+      if (unique.size > 0) {
+        await tx.doctorServiceRate.createMany({
+          data: [...unique.entries()].map(([serviceId, percent]) => ({
+            clinicId,
+            doctorId,
+            serviceId,
+            percent,
+          })),
+        })
+      }
+    })
+
+    return this.serviceRates(doctorId)
   }
 }
 
