@@ -78,7 +78,13 @@ export class AuthService {
       shu sababdan bazadagi bilan solishtirishdan oldin bir
       ko'rinishga keltiriladi.
     */
-    const typed = email.trim()
+    /*
+      KO'RINMAS BELGILAR OLIB TASHLANADI. Login va parol ko'pincha Telegram
+      yoki boshqa joydan nusxalanadi va chetida bo'shliq yoki ko'rinmas
+      belgi (U+200B, U+FEFF) qoladi. Ko'zga hammasi to'g'ri ko'rinadi, kirish
+      esa "email yoki parol noto'g'ri" deydi.
+    */
+    const typed = stripInvisible(email).trim()
     const asPhone = looksLikePhone(typed) ? normalizePhone(typed) : null
     /*
       BITTA EMAIL BILAN BIR NECHTA HISOB BO'LISHI MUMKIN.
@@ -122,9 +128,15 @@ export class AuthService {
     })
 
     const matched: typeof candidates = []
+    /* Avval aynan terilgani, keyin chetidagi bo'shliq/ko'rinmas belgisiz */
+    const cleanPassword = stripInvisible(password).trim()
+    const variants = cleanPassword && cleanPassword !== password ? [password, cleanPassword] : [password]
     for (const candidate of candidates) {
-      if (await argon2.verify(candidate.passwordHash, password).catch(() => false)) {
-        matched.push(candidate)
+      for (const variant of variants) {
+        if (await argon2.verify(candidate.passwordHash, variant).catch(() => false)) {
+          matched.push(candidate)
+          break
+        }
       }
     }
 
@@ -952,4 +964,9 @@ const POSITION_TITLES: Record<string, string> = {
   administrator: 'Administrator',
   doctor: 'Shifokor',
   other: 'Rahbariyat',
+}
+
+/** Nusxalashda qo'shilib qoladigan ko'rinmas belgilar */
+function stripInvisible(value: string): string {
+  return value.replace(/[​-‍⁠﻿ ]/g, (ch) => (ch === ' ' ? ' ' : ''))
 }
