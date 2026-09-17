@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AccountsModal } from './AccountsModal'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Ban, KeyRound, MapPin, Pause, Pencil, Phone, Play } from 'lucide-react'
 
@@ -25,7 +26,6 @@ import { useI18n } from '@/i18n'
 import { useAuth } from '@/store/auth-context'
 import {
   EditPharmacyModal,
-  ResetPharmacyOwnerModal,
   SuspendPharmacyModal,
 } from './PharmacyModals'
 
@@ -190,8 +190,9 @@ export function PlatformPharmacyDetailPage() {
         onClose={() => setSuspending(false)}
         onDone={refresh}
       />
-      <ResetPharmacyOwnerModal
-        pharmacy={resetting ? data : null}
+      <AccountsModal
+        tenant={resetting ? data : null}
+        withDeleteCode={false}
         onClose={() => setResetting(false)}
       />
     </>

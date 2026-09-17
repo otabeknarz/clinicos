@@ -500,8 +500,18 @@ export class PlatformService {
    * bo'lmaydi. Ochiq saqlansa, baza yoki admin paneli bir marta sizib
    * chiqishi barcha klinikalarning barcha hisoblarini ochib qo'yardi.
    */
+  /**
+   * Klinika yoki apteka id'si. Platforma qo'lda ochgan aptekada obuna yozuvi
+   * yo'q — shuning uchun avval klinikaning o'zi, keyin obuna id'si qidiriladi.
+   */
+  private async clinicIdFor(id: string): Promise<string> {
+    const clinic = await this.db.clinic.findUnique({ where: { id }, select: { id: true } })
+    if (clinic) return clinic.id
+    return (await this.requireSubscription(id)).clinicId
+  }
+
   async accounts(tenantId: string) {
-    const sub = await this.requireSubscription(tenantId)
+    const sub = { clinicId: await this.clinicIdFor(tenantId) }
     const [users, clinic] = await Promise.all([
       this.db.user.findMany({
         where: { clinicId: sub.clinicId, role: { not: 'SUPERADMIN' } },
@@ -530,7 +540,7 @@ export class PlatformService {
    * adminga qo'ng'iroq qilardi.
    */
   async setAccountPassword(tenantId: string, userId: string, password: string) {
-    const sub = await this.requireSubscription(tenantId)
+    const sub = { clinicId: await this.clinicIdFor(tenantId) }
     const user = await this.db.user.findFirst({
       where: { id: userId, clinicId: sub.clinicId, role: { not: 'SUPERADMIN' } },
       select: { id: true },
@@ -549,7 +559,7 @@ export class PlatformService {
   }
 
   async setTenantDeleteCode(tenantId: string, code: string) {
-    const sub = await this.requireSubscription(tenantId)
+    const sub = { clinicId: await this.clinicIdFor(tenantId) }
     await this.db.clinic.update({
       where: { id: sub.clinicId },
       data: { deleteCodeHash: await argon2.hash(code) },
@@ -558,7 +568,7 @@ export class PlatformService {
   }
 
   async resetDeleteCode(tenantId: string) {
-    const sub = await this.requireSubscription(tenantId)
+    const sub = { clinicId: await this.clinicIdFor(tenantId) }
     await this.db.clinic.update({
       where: { id: sub.clinicId },
       data: { deleteCodeHash: null },

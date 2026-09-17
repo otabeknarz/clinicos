@@ -1161,7 +1161,7 @@ export const dict: Dict = {
   'pharmacies.attn.idle': '{name}: нет продаж {days} дн.',
   'pharmacies.attn.idleNever': '{name}: ещё не было ни одной продажи',
   'pharmacies.edit': 'Изменить',
-  'pharmacies.resetOwner': 'Сбросить пароль руководителя',
+  'pharmacies.resetOwner': 'Логины и пароли',
   'pharmacies.suspend': 'Приостановить',
   'pharmacies.activate': 'Возобновить',
   'pharmacies.newTitle': 'Новая аптека',

@@ -1200,7 +1200,7 @@ export const dict: Dict = {
   'pharmacies.attn.idle': '{name}: {days} kundan beri savdo yo‘q',
   'pharmacies.attn.idleNever': '{name}: hali birorta ham savdo qilinmagan',
   'pharmacies.edit': 'Tahrirlash',
-  'pharmacies.resetOwner': 'Rahbar parolini tiklash',
+  'pharmacies.resetOwner': 'Loginlar va parollar',
   'pharmacies.suspend': 'To‘xtatish',
   'pharmacies.activate': 'Yoqish',
   'pharmacies.newTitle': 'Yangi apteka',
