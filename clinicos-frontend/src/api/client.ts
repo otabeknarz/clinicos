@@ -223,17 +223,40 @@ export async function request<T>(
   const token = options.session === 'patient' ? patientToken : authToken
   if (token) headers.Authorization = `Bearer ${token}`
 
-  let response: Response
-  try {
-    response = await fetch(url.toString(), {
-      method,
-      headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
-      signal: options.signal,
-      credentials: 'include',
-    })
-  } catch {
-    throw new ApiError('Serverga ulanib bo‘lmadi', 0)
+  /*
+    QISQA UZILISHDA QAYTA URINISH — faqat GET.
+
+    Server yangilanayotganda yoki tarmoq bir zum uzilganda so'rov 502/503/504
+    yoki umuman javobsiz qaytadi. Ilgari sahifa darrov "Xatolik yuz berdi"
+    ko'rsatardi, holbuki bir-ikki soniyadan keyin hammasi ishlardi.
+    POST/PATCH QAYTARILMAYDI: server so'rovni bajarib, javob yo'lda
+    yo'qolgan bo'lishi mumkin — to'lov ikki marta yozilib qolardi.
+  */
+  const retries = method === 'GET' ? 3 : 0
+  let response: Response | null = null
+  for (let attempt = 0; ; attempt++) {
+    try {
+      response = await fetch(url.toString(), {
+        method,
+        headers,
+        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        signal: options.signal,
+        credentials: 'include',
+      })
+      if (attempt < retries && [502, 503, 504].includes(response.status)) {
+        await pause(1500 * (attempt + 1), options.signal)
+        continue
+      }
+      break
+    } catch (error) {
+      if (options.signal?.aborted) throw error
+      if (attempt < retries) {
+        await pause(1500 * (attempt + 1), options.signal)
+        continue
+      }
+      rememberError(0, method, path)
+      throw new ApiError('Serverga ulanib bo‘lmadi', 0)
+    }
   }
 
   if (response.status === 204) return undefined as T
@@ -242,6 +265,7 @@ export async function request<T>(
   const payload: unknown = text ? safeJson(text) : null
 
   if (!response.ok) {
+    rememberError(response.status, method, path)
     const err = payload as { message?: string; errors?: Record<string, string> } | null
     throw new ApiError(
       err?.message ?? `So‘rov muvaffaqiyatsiz (${response.status})`,
@@ -251,6 +275,28 @@ export async function request<T>(
   }
 
   return payload as T
+}
+
+/**
+ * OXIRGI XATO — xato oynasida kichik texnik yozuv uchun ("502 · GET /debts").
+ * "Xatolik yuz berdi" o'zi hech narsani aytmaydi; mijoz skrinshot yuborganda
+ * sababini shu yozuvdan bilamiz.
+ */
+export let lastApiError: { status: number; method: string; path: string; at: number } | null = null
+
+function rememberError(status: number, method: string, path: string) {
+  lastApiError = { status, method, path: path.split('?')[0], at: Date.now() }
+}
+
+/** Qayta urinishdan oldin kutish — sahifadan chiqilsa to'xtaydi */
+function pause(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms)
+    signal?.addEventListener('abort', () => {
+      clearTimeout(timer)
+      reject(new DOMException('Aborted', 'AbortError'))
+    })
+  })
 }
 
 /**

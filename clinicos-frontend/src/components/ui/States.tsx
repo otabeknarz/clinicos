@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { AlertTriangle, Inbox, Lock, RotateCw, SearchX } from 'lucide-react'
 
+import { lastApiError } from '@/api/client'
 import { Button } from './Button'
 import { cn } from '@/lib/cn'
 import { useI18n } from '@/i18n'
@@ -68,7 +69,7 @@ function Shell({
 }: {
   icon: ReactNode
   title: string
-  description?: string
+  description?: ReactNode
   action?: ReactNode
   className?: string
 }) {
@@ -133,11 +134,22 @@ export function ErrorState({
   className?: string
 }) {
   const { t } = useI18n()
+  /* So'nggi 30 soniyadagi xato — texnik yozuv (sababni topish uchun) */
+  const recent = lastApiError && Date.now() - lastApiError.at < 30_000 ? lastApiError : null
   return (
     <Shell
       icon={<AlertTriangle size={24} strokeWidth={1.75} />}
       title={t('state.error.title')}
-      description={message ?? t('state.error.desc')}
+      description={
+        <>
+          {message ?? t('state.error.desc')}
+          {recent ? (
+            <span className="mt-1 block text-caption tnum text-label-quaternary">
+              {recent.status || 'network'} · {recent.method} {recent.path}
+            </span>
+          ) : null}
+        </>
+      }
       action={
         onRetry ? (
           <Button variant="tinted" icon={<RotateCw size={15} />} onClick={onRetry}>

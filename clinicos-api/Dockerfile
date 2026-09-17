@@ -40,6 +40,15 @@ ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
 
+# TAYYORLIK TEKSHIRUVI. Coolify yangi konteynerni shu tekshiruv o'tgandan
+# keyingina ishga qo'yadi va eskisini shundan keyin to'xtatadi. Tekshiruvsiz
+# eski konteyner darrov to'xtatilardi va yangi versiya migratsiya qilib
+# ko'tarilguncha (20–40 soniya) har bir so'rov xato qaytarardi.
+# `curl` yo'q (slim image) — Node'ning o'z `fetch` i ishlatiladi.
+# `start-period` — migratsiya va ishga tushish uchun vaqt.
+HEALTHCHECK --interval=5s --timeout=4s --start-period=90s --retries=5 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 

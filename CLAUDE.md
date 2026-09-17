@@ -138,6 +138,10 @@ and `clinicos-s3`. Two things that are easy to undo by accident:
 - `docker-entrypoint.sh` runs `prisma migrate deploy` on **every** boot — never `migrate dev`,
   which is a development command and will recreate the database. Seeding and the first records
   are *not* in the entrypoint; they are a one-off `npm run bootstrap` by hand.
+- **The API image carries a `HEALTHCHECK` against `GET /health`.** Without it Coolify stopped the old
+  container as soon as the new one started, and every deploy showed "Xatolik yuz berdi" on every page for
+  the 20–40 s that migrations and boot take. The frontend also retries a GET up to three times on
+  network errors and 502/503/504 — never a POST, which may already have been applied.
 - The API's env vars are **runtime**, not build-time. Made build-time, `JWT_SECRET` would be
   baked into the image history.
 

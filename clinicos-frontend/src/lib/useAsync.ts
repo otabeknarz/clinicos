@@ -61,6 +61,28 @@ export function useAsync<T>(
     }
   }, [run])
 
+  /*
+    XATODAN O'ZI TIKLANISH. iPad/iPhone Safari fon rejimidagi tabni
+    to'xtatadi: qaytganda yarim yo'lda qolgan so'rovlar uzilib, sahifa
+    "Xatolik yuz berdi" bo'lib qolardi va faqat yangilash yordam berardi.
+    Endi sahifa ekranga qaytganda yoki internet tiklanganda xato holatidagi
+    ma'lumot o'zi qayta so'raladi.
+  */
+  useEffect(() => {
+    if (!error) return
+    const retry = () => {
+      if (document.visibilityState === 'visible') run()
+    }
+    document.addEventListener('visibilitychange', retry)
+    window.addEventListener('online', retry)
+    window.addEventListener('focus', retry)
+    return () => {
+      document.removeEventListener('visibilitychange', retry)
+      window.removeEventListener('online', retry)
+      window.removeEventListener('focus', retry)
+    }
+  }, [error, run])
+
   return { data, loading, error, reload: run, setData }
 }
 

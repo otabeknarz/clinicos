@@ -22,6 +22,7 @@ import { DebtsModule } from './debts/debts.module'
 import { FinanceModule } from './finance/finance.module'
 import { DaysOffModule } from './days-off/days-off.module'
 import { DeleteCodeModule } from './delete-code/delete-code.module'
+import { HealthController } from './health/health.controller'
 import { ExportModule } from './export/export.module'
 import { ImportModule } from './import/import.module'
 import { FaceModule } from './face/face.module'
@@ -49,6 +50,8 @@ import { PatientModule } from './patient/patient.module'
 import { TelegramModule } from './telegram/telegram.module'
 
 @Module({
+  /* Coolify tayyorlik tekshiruvi — `health/health.controller.ts` */
+  controllers: [HealthController],
   imports: [
     TelegramModule,
     PatientModule,
