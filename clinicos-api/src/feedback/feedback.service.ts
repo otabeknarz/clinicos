@@ -14,6 +14,7 @@ import {
   ReplyDto,
   StatsQueryDto,
 } from './feedback.dto'
+import { localDayKey } from '../common/day-key'
 
 /** Fikr shifokorga necha kundan keyin ko'rinadi — tasodifiy oraliq */
 const REVEAL_MIN_DAYS = 1
@@ -285,7 +286,7 @@ export class FeedbackService {
     // Kun bo'yicha o'rtacha
     const byDay = new Map<string, { sum: number; count: number }>()
     for (const r of rows) {
-      const key = r.createdAt.toISOString().slice(0, 10)
+      const key = localDayKey(r.createdAt)
       const acc = byDay.get(key) ?? { sum: 0, count: 0 }
       acc.sum += r.rating
       acc.count += 1

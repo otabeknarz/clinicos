@@ -822,7 +822,7 @@ export class AppointmentsService {
     rows.sort((a, b) => b.total - a.total)
 
     return {
-      days: days.map((d) => d.toISOString().slice(0, 10)),
+      days: days.map((d) => localDayKey(d)),
       rows,
       maxCount,
     }

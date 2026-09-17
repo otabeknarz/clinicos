@@ -8,6 +8,7 @@ import { Staff } from '@prisma/client'
 import * as argon2 from 'argon2'
 
 import { toApi, toApiDate, toApiDateTime, toDb } from '../common/api-enum'
+import { dbDateToKey, localDayKey } from '../common/day-key'
 import { percentEarnings } from '../common/doctor-earnings'
 import { RequestContext } from '../common/request-context'
 import { PrismaService } from '../prisma/prisma.service'
@@ -716,9 +717,8 @@ export class StaffService {
       where: { staffId: staff.id, date: { gte: from, lte: to } },
       select: { date: true, status: true, lateMinutes: true },
     })
-    const byDate = new Map(
-      marks.map((m) => [m.date.toISOString().slice(0, 10), m]),
-    )
+    /* `date` ustuni DATE — UTC yarim tunda saqlanadi, kaliti UTC bo'yicha */
+    const byDate = new Map(marks.map((m) => [dbDateToKey(m.date), m]))
 
     const days: {
       date: string
@@ -729,7 +729,14 @@ export class StaffService {
 
     for (let d = 1; d <= to.getDate(); d++) {
       const date = new Date(year, monthNumber - 1, d)
-      const key = date.toISOString().slice(0, 10)
+      /*
+        MAHALLIY KUN KALITI. Ilgari `toISOString()` edi: Toshkentda (UTC+5)
+        mahalliy yarim tun UTC bo'yicha KECHAGI kun, ya'ni har bir kun
+        yorlig'i bir kunga orqaga surilardi — dushanbaning "ish kuni" belgisi
+        yakshanba katagida chiqib, belgilanmagan kunlar ish kuni ko'rinardi.
+        Demo rejimda ko'rinmasdi: u yerda brauzer mahalliy sanani ishlatadi.
+      */
+      const key = localDayKey(date)
       const mark = byDate.get(key)
       days.push({
         date: key,

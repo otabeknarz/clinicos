@@ -7,7 +7,7 @@ import { Prisma } from '@prisma/client'
 
 import { toApi, toApiDateTime, toDb } from '../common/api-enum'
 import { AuditService } from '../common/audit.service'
-import { dayKeyToDb } from '../common/day-key'
+import { dayKeyToDb, localDayKey } from '../common/day-key'
 import { paginated } from '../common/pagination'
 import { RequestContext } from '../common/request-context'
 import { escapeHtml, money } from '../common/telegram-text'
@@ -463,7 +463,7 @@ export class PaymentsService {
     // Kun bo'yicha
     const byDay = new Map<string, number>()
     for (const row of rows) {
-      const key = row.paidAt.toISOString().slice(0, 10)
+      const key = localDayKey(row.paidAt)
       byDay.set(key, (byDay.get(key) ?? 0) + row.amount)
     }
     const overTime = [...byDay.entries()]

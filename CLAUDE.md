@@ -583,6 +583,11 @@ Path alias `@/` → `src/`, configured in both `vite.config.ts` and `tsconfig.ap
 
 ## Traps
 
+- **Never key a day with `date.toISOString().slice(0, 10)`.** For a local-midnight `Date` in Tashkent that
+  is *yesterday* in UTC, so every label shifts one day back — the staff work-schedule showed Monday's
+  "workday" on Sunday's cell, and daily revenue/feedback/ward/load charts were off by a day. Use
+  `localDayKey()` for instants and local days, `dbDateToKey()` for `@db.Date` columns (`common/day-key.ts`).
+  Demo mode never showed it because the mock uses the browser's local date.
 - **Day boundaries are the server's local midnight.** `startOfDay`/`endOfDay` use
   `setHours(0,0,0,0)`, so the reception dashboard's "today", daily attendance, shift closure,
   cash control and ward day counting all follow the *container's* timezone. `TZ=Asia/Tashkent`

@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common'
 import { WARD_KEY, WARD_LABEL } from '../common/ward-revenue'
 import { PrismaService } from '../prisma/prisma.service'
 import { RangeDto, RevenuePeriodDto } from './analytics.dto'
+import { localDayKey } from '../common/day-key'
 
 /**
  * TAHLIL.
@@ -89,10 +90,10 @@ export class AnalyticsService {
 
     const byDay = new Map<string, number>()
     for (let i = 0; i < days; i++) {
-      byDay.set(addDays(from, i).toISOString().slice(0, 10), 0)
+      byDay.set(localDayKey(addDays(from, i)), 0)
     }
     for (const r of rows) {
-      const key = r.paidAt.toISOString().slice(0, 10)
+      const key = localDayKey(r.paidAt)
       byDay.set(key, (byDay.get(key) ?? 0) + r.amount)
     }
 
@@ -286,11 +287,11 @@ function series(
   const byDay = new Map<string, number>()
   const cursor = startOfDay(from)
   while (cursor <= to && byDay.size < 400) {
-    byDay.set(cursor.toISOString().slice(0, 10), 0)
+    byDay.set(localDayKey(cursor), 0)
     cursor.setDate(cursor.getDate() + 1)
   }
   dates.forEach((d, i) => {
-    const key = d.toISOString().slice(0, 10)
+    const key = localDayKey(d)
     if (byDay.has(key)) byDay.set(key, (byDay.get(key) ?? 0) + valueAt(i))
   })
   return [...byDay.entries()].map(([label, value]) => ({ label, value }))

@@ -103,6 +103,10 @@ async function main() {
 
   await db.auditLog.deleteMany()
   await db.notification.deleteMany()
+  /* Keyin qo'shilgan jadvallar: foydalanuvchi va shifokorga bog'langan */
+  await db.financeEntry.deleteMany()
+  await db.dayOff.deleteMany()
+  await db.doctorServiceRate.deleteMany()
 
   // Xodim foydalanuvchiga bog'langan — u avval ketadi
   await db.staff.deleteMany()

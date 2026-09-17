@@ -15,6 +15,7 @@ import {
   RoomInputDto,
   WardRangeDto,
 } from './ward.dto'
+import { localDayKey } from '../common/day-key'
 
 const ADMISSION_EXPAND = {
   patient: { select: { id: true, fullName: true, phone: true } },
@@ -451,7 +452,7 @@ export class WardService {
       }
     })
 
-    return { days: days.map((d) => d.toISOString().slice(0, 10)), rows }
+    return { days: days.map((d) => localDayKey(d)), rows }
   }
 
   async stats(query: WardRangeDto) {
@@ -517,7 +518,7 @@ export class WardService {
         (a) => a.admittedAt <= endOfDay(day) && (a.dischargedAt ?? now) >= startOfDay(day),
       ).length
       return {
-        label: day.toISOString().slice(0, 10),
+        label: localDayKey(day),
         value: totalBeds ? Math.round((count / totalBeds) * 1000) / 10 : 0,
       }
     })
