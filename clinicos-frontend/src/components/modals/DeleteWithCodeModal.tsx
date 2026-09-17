@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { KeyRound, ShieldAlert } from 'lucide-react'
 
-import { getDeleteCodeStatus } from '@/api/deleteCode'
+import { getDeleteCodeStatus, setDeleteCode } from '@/api/deleteCode'
 import { Button } from '@/components/ui/Button'
 import { TextArea, TextInput } from '@/components/ui/Form'
 import { Modal } from '@/components/ui/Modal'
 import { cn } from '@/lib/cn'
 import { useAsync } from '@/lib/useAsync'
 import { useI18n } from '@/i18n'
+import { useAuth } from '@/store/auth-context'
 
 export interface DeleteOption<T extends string> {
   value: T
@@ -50,7 +51,9 @@ export function DeleteWithCodeModal<T extends string = string>({
   onConfirm: (input: { code: string; option: T | null; reason: string }) => Promise<void>
 }) {
   const { t } = useI18n()
+  const { can } = useAuth()
   const [code, setCode] = useState('')
+  const [repeat, setRepeat] = useState('')
   const [reason, setReason] = useState('')
   const [option, setOption] = useState<T | null>(null)
   const [error, setError] = useState('')
@@ -61,6 +64,7 @@ export function DeleteWithCodeModal<T extends string = string>({
   useEffect(() => {
     if (!open) return
     setCode('')
+    setRepeat('')
     setReason('')
     setError('')
     setOption(options?.[0]?.value ?? null)
@@ -68,14 +72,23 @@ export function DeleteWithCodeModal<T extends string = string>({
   }, [open])
 
   const notSet = status.data ? !status.data.isSet : false
+  /*
+    KOD HALI YO'Q VA OYNANI EGASI OCHDI — kod shu yerda yaratiladi va darhol
+    ishlatiladi. Keyingi o'chirishlarda o'sha kod so'raladi. Kodni boshqa
+    xodim yarata olmaydi: u egasidan so'raydi.
+  */
+  const creating = notSet && can('settings.manage')
+  const blocked = notSet && !creating
   const selected = options?.find((o) => o.value === option)
   const danger = options ? Boolean(selected?.danger) : true
+  const codeOk = creating ? /^\d{4,8}$/.test(code) && repeat === code : code.trim().length >= 4
 
   async function submit() {
-    if (code.trim().length < 4 || pending) return
+    if (!codeOk || blocked || pending) return
     setPending(true)
     setError('')
     try {
+      if (creating) await setDeleteCode({ code })
       await onConfirm({ code: code.trim(), option, reason: reason.trim() })
       onClose()
     } catch (e) {
@@ -99,10 +112,10 @@ export function DeleteWithCodeModal<T extends string = string>({
           <Button
             variant={danger ? 'danger' : 'filled'}
             loading={pending}
-            disabled={notSet || code.trim().length < 4}
+            disabled={blocked || !codeOk}
             onClick={submit}
           >
-            {confirmLabel ?? t('action.delete')}
+            {creating ? t('deleteCode.createAndDelete') : (confirmLabel ?? t('action.delete'))}
           </Button>
         </>
       }
@@ -152,17 +165,53 @@ export function DeleteWithCodeModal<T extends string = string>({
           />
         ) : null}
 
-        {notSet ? (
+        {blocked ? (
           <div className="flex gap-3 rounded-[12px] bg-warn-soft px-4 py-3 text-warn">
             <ShieldAlert size={18} className="mt-0.5 shrink-0" />
-            <p className="text-footnote">{t('deleteCode.notSet')}</p>
+            <p className="text-footnote">{t('deleteCode.notSetStaff')}</p>
+          </div>
+        ) : creating ? (
+          <div className="space-y-3 rounded-[12px] bg-accent-soft p-3.5">
+            <p className="text-footnote text-label">{t('deleteCode.createHint')}</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextInput
+                label={t('deleteCode.new')}
+                type="password"
+                inputMode="numeric"
+                autoComplete="off"
+                name="new-delete-code"
+                data-1p-ignore
+                maxLength={8}
+                value={code}
+                hint={t('deleteCode.format')}
+                error={error || undefined}
+                onChange={(e) => {
+                  setCode(e.target.value.replace(/\D/g, ''))
+                  setError('')
+                }}
+              />
+              <TextInput
+                label={t('deleteCode.repeat')}
+                type="password"
+                inputMode="numeric"
+                autoComplete="off"
+                name="repeat-delete-code"
+                data-1p-ignore
+                maxLength={8}
+                value={repeat}
+                error={repeat && repeat !== code ? t('deleteCode.mismatch') : undefined}
+                onChange={(e) => setRepeat(e.target.value.replace(/\D/g, ''))}
+              />
+            </div>
           </div>
         ) : (
           <TextInput
             label={t('deleteCode.label')}
             type="password"
             inputMode="numeric"
-            autoComplete="one-time-code"
+            autoComplete="off"
+            name="delete-code"
+            data-1p-ignore
             maxLength={8}
             icon={<KeyRound size={16} />}
             value={code}

@@ -9,6 +9,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -434,16 +435,13 @@ export class ArchiveDto {
 }
 
 /**
- * Klinikani BUTUNLAY o'chirish. Ikki tasdiq: klinika nomini aynan yozish
- * (tasodifiy bosishga qarshi) va adminning o'z paroli (ochiq qolgan
- * kompyuterga qarshi).
+ * Klinikani BUTUNLAY o'chirish — tasdiq: klinika nomini aynan yozish
+ * (tasodifiy bosishga qarshi). Parol so'ralmaydi: brauzer parol maydonini
+ * ko'rib, nom maydoniga admin loginini o'zi yozib qo'yardi.
  */
 export class PurgeTenantDto {
   @IsString() @MaxLength(300)
   confirmName!: string
-
-  @IsString() @MaxLength(200)
-  password!: string
 }
 
 /** So'rovlar ro'yxati uchun filtr */
@@ -467,4 +465,27 @@ export class LeadUpdateDto {
 
   @IsOptional() @IsString() @MaxLength(2000)
   note?: string
+}
+
+/** `/platform/tenants/:id/accounts/:userId/...` */
+export class AccountParamDto {
+  @IsUUID('4', { message: 'Noto‘g‘ri id' })
+  id!: string
+
+  @IsUUID('4', { message: 'Noto‘g‘ri id' })
+  userId!: string
+}
+
+/** Admin qo'ygan yangi parol */
+export class AccountPasswordDto {
+  @IsString()
+  @MinLength(8, { message: 'Parol kamida 8 belgi bo‘lsin' })
+  @MaxLength(200)
+  password!: string
+}
+
+/** Admin qo'ygan yangi o'chirish kodi */
+export class TenantDeleteCodeDto {
+  @Matches(/^\d{4,8}$/, { message: 'Kod 4–8 ta raqamdan iborat bo‘lishi kerak' })
+  code!: string
 }

@@ -246,6 +246,91 @@ export async function updateTenant(id: ID, patch: TenantUpdateInput): Promise<Te
  * mavjud sessiyalari uziladi va u kirgach almashtirishga
  * majbur bo'ladi.
  */
+export interface TenantAccount {
+  id: ID
+  fullName: string
+  login: string
+  phone: string
+  role: string
+  isActive: boolean
+}
+
+/** Klinikaning loginlari (parolsiz) va o'chirish kodi holati */
+// GET /platform/tenants/:id/accounts
+export async function listTenantAccounts(
+  id: ID,
+): Promise<{ users: TenantAccount[]; deleteCodeSet: boolean }> {
+  if (!USE_MOCK) return request('GET', `/platform/tenants/${id}/accounts`)
+  const tenant = getDb().tenants.allAcrossTenants().find((t) => t.id === id)
+  let codeSet = false
+  try {
+    codeSet = Boolean(localStorage.getItem('clinicos.mock.deleteCode'))
+  } catch {
+    /* Demo */
+  }
+  return delay(
+    {
+      users: tenant
+        ? [
+            {
+              id: `acc_${id}`,
+              fullName: tenant.ownerName,
+              login: tenant.ownerEmail,
+              phone: tenant.phone,
+              role: 'owner',
+              isActive: true,
+            },
+          ]
+        : [],
+      deleteCodeSet: codeSet,
+    },
+    150,
+  )
+}
+
+/** Unutilgan parol o'rniga yangisi — eski parol ko'rsatilmaydi */
+// POST /platform/tenants/:id/accounts/:userId/password
+export async function setTenantAccountPassword(
+  id: ID,
+  userId: ID,
+  password: string,
+): Promise<{ updated: boolean }> {
+  if (!USE_MOCK) {
+    return request('POST', `/platform/tenants/${id}/accounts/${userId}/password`, {
+      body: { password },
+    })
+  }
+  return delay({ updated: true }, 200)
+}
+
+/** Admin yangi o'chirish kodi qo'yadi */
+// POST /platform/tenants/:id/delete-code
+export async function setTenantDeleteCode(id: ID, code: string): Promise<{ deleteCodeSet: boolean }> {
+  if (!USE_MOCK) {
+    return request('POST', `/platform/tenants/${id}/delete-code`, { body: { code } })
+  }
+  try {
+    localStorage.setItem('clinicos.mock.deleteCode', code)
+  } catch {
+    /* Demo */
+  }
+  return delay({ deleteCodeSet: true }, 200)
+}
+
+/** O'chirish kodini bekor qilish — egasi keyingi o'chirishda yangisini yaratadi */
+// POST /platform/tenants/:id/reset-delete-code
+export async function resetDeleteCode(id: ID): Promise<{ reset: boolean }> {
+  if (!USE_MOCK) {
+    return request<{ reset: boolean }>('POST', `/platform/tenants/${id}/reset-delete-code`)
+  }
+  try {
+    localStorage.removeItem('clinicos.mock.deleteCode')
+  } catch {
+    /* Demo */
+  }
+  return delay({ reset: true }, 200)
+}
+
 // POST /platform/tenants/:id/reset-owner-password
 export async function resetOwnerPassword(id: ID): Promise<OwnerPasswordReset> {
   if (!USE_MOCK) {
@@ -1561,12 +1646,12 @@ export async function deleteTenant(id: ID, reason: string): Promise<Tenant> {
 
 /**
  * BUTUNLAY O'CHIRISH — klinika va uning barcha ma'lumoti bazadan yo'qoladi.
- * Klinika nomini aynan yozish va adminning paroli shart. Qaytarib bo'lmaydi.
+ * Klinika nomini aynan yozish shart. Qaytarib bo'lmaydi.
  */
 // POST /platform/tenants/:id/purge
 export async function purgeTenant(
   id: ID,
-  input: { confirmName: string; password: string },
+  input: { confirmName: string },
 ): Promise<{ purged: boolean; name: string; files: number }> {
   if (!USE_MOCK) {
     return request('POST', `/platform/tenants/${id}/purge`, { body: input })

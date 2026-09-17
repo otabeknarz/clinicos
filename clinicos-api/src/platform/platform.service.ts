@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common'
@@ -494,6 +493,79 @@ export class PlatformService {
    * parolni almashtirishga majbur bo'ladi — ya'ni bexabar
    * qolmaydi.
    */
+  /**
+   * KLINIKA LOGINLARI — admin unutilgan parolni almashtirib beradi.
+   *
+   * Parolning o'zi ko'rsatilmaydi: u bazada argon2 xesh, uni qaytarib
+   * bo'lmaydi. Ochiq saqlansa, baza yoki admin paneli bir marta sizib
+   * chiqishi barcha klinikalarning barcha hisoblarini ochib qo'yardi.
+   */
+  async accounts(tenantId: string) {
+    const sub = await this.requireSubscription(tenantId)
+    const [users, clinic] = await Promise.all([
+      this.db.user.findMany({
+        where: { clinicId: sub.clinicId, role: { not: 'SUPERADMIN' } },
+        orderBy: [{ isActive: 'desc' }, { createdAt: 'asc' }],
+        select: { id: true, fullName: true, email: true, phone: true, role: true, isActive: true },
+      }),
+      this.db.clinic.findUnique({ where: { id: sub.clinicId }, select: { deleteCodeHash: true } }),
+    ])
+    return {
+      users: users.map((u) => ({
+        id: u.id,
+        fullName: u.fullName,
+        login: u.email,
+        phone: u.phone,
+        role: u.role.toLowerCase(),
+        isActive: u.isActive,
+      })),
+      deleteCodeSet: Boolean(clinic?.deleteCodeHash),
+    }
+  }
+
+  /**
+   * Admin yangi parol qo'yadi. Eski sessiyalar uziladi (`passwordChangedAt`).
+   * `mustChangePassword` yoqilmaydi: admin parolni odamga aytadi va u shu bilan
+   * ishlayveradi — aks holda telefonda "parolni almashtiring" deb yana
+   * adminga qo'ng'iroq qilardi.
+   */
+  async setAccountPassword(tenantId: string, userId: string, password: string) {
+    const sub = await this.requireSubscription(tenantId)
+    const user = await this.db.user.findFirst({
+      where: { id: userId, clinicId: sub.clinicId, role: { not: 'SUPERADMIN' } },
+      select: { id: true },
+    })
+    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi')
+
+    await this.db.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: await argon2.hash(password),
+        passwordChangedAt: new Date(),
+        mustChangePassword: false,
+      },
+    })
+    return { updated: true }
+  }
+
+  async setTenantDeleteCode(tenantId: string, code: string) {
+    const sub = await this.requireSubscription(tenantId)
+    await this.db.clinic.update({
+      where: { id: sub.clinicId },
+      data: { deleteCodeHash: await argon2.hash(code) },
+    })
+    return { deleteCodeSet: true }
+  }
+
+  async resetDeleteCode(tenantId: string) {
+    const sub = await this.requireSubscription(tenantId)
+    await this.db.clinic.update({
+      where: { id: sub.clinicId },
+      data: { deleteCodeHash: null },
+    })
+    return { reset: true }
+  }
+
   async resetOwnerPassword(tenantId: string) {
     const sub = await this.requireSubscription(tenantId)
 
@@ -625,8 +697,6 @@ export class PlatformService {
    * aks holda admin panelga hech kim kira olmay qolardi.
    */
   async purgeTenant(id: string, dto: PurgeTenantDto) {
-    const { userId } = this.ctx.require()
-
     const clinic = await this.db.clinic.findUnique({
       where: { id },
       select: { id: true, name: true },
@@ -636,15 +706,6 @@ export class PlatformService {
     if (dto.confirmName.trim() !== clinic.name.trim()) {
       throw new BadRequestException('Klinika nomi mos kelmadi')
     }
-
-    const admin = await this.db.user.findUnique({
-      where: { id: userId },
-      select: { passwordHash: true },
-    })
-    const ok = admin
-      ? await argon2.verify(admin.passwordHash, dto.password).catch(() => false)
-      : false
-    if (!ok) throw new ForbiddenException('Parol noto‘g‘ri')
 
     const platformUsers = await this.db.user.count({
       where: { clinicId: id, role: 'SUPERADMIN' },

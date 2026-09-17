@@ -55,14 +55,25 @@ export class DeleteCodeService {
   async set(dto: SetDeleteCodeDto) {
     const { clinicId, userId } = this.ctx.require()
 
-    const user = await this.prisma.acrossAllClinics().user.findUnique({
-      where: { id: userId },
-      select: { passwordHash: true },
+    const clinic = await this.prisma.acrossAllClinics().clinic.findUnique({
+      where: { id: clinicId },
+      select: { deleteCodeHash: true },
     })
-    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi')
 
-    const ok = await argon2.verify(user.passwordHash, dto.password).catch(() => false)
-    if (!ok) throw new ForbiddenException('Parol noto‘g‘ri')
+    /*
+      BIRINCHI KOD — PAROLSIZ: egasi uni birinchi o'chirish oynasining o'zida
+      yaratadi. ALMASHTIRISH esa parol bilan: ochiq qolgan kompyuterdan
+      kodni o'zgartirib, keyin hamma narsani o'chirib bo'lmasin.
+    */
+    if (clinic?.deleteCodeHash) {
+      const user = await this.prisma.acrossAllClinics().user.findUnique({
+        where: { id: userId },
+        select: { passwordHash: true },
+      })
+      if (!user) throw new NotFoundException('Foydalanuvchi topilmadi')
+      const ok = await argon2.verify(user.passwordHash, dto.password ?? '').catch(() => false)
+      if (!ok) throw new ForbiddenException('Parol noto‘g‘ri')
+    }
 
     await this.prisma.acrossAllClinics().clinic.update({
       where: { id: clinicId },

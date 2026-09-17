@@ -34,12 +34,21 @@ export function Modal({
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
 
+  /*
+    `onClose` REF ORQALI. Chaqiruvchi ko'pincha har renderda yangi funksiya
+    beradi (`onClose={() => ...}`). U effekt bog'liqligida turganda har bir
+    harf terilganda effekt qayta ishlab, fokusni oynadagi BIRINCHI maydonga
+    qaytarardi — kursor terilayotgan joydan sakrab ketardi.
+  */
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
   // Escape bilan yopish + fon skrollini to'xtatish
   useEffect(() => {
     if (!open) return
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onCloseRef.current()
     }
     document.addEventListener('keydown', onKey)
 
@@ -59,7 +68,7 @@ export function Modal({
       document.body.style.overflow = previousOverflow
       clearTimeout(timer)
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 

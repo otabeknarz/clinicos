@@ -1,6 +1,6 @@
 # ClinicOS — Backend shartnomasi
 
-**248 ta endpoint.**
+**252 ta endpoint.**
 
 Bu hujjat **avtomatik generatsiya qilinadi**, manba — `src/api/` papkasi.
 Frontend backendga faqat o'sha papka orqali murojaat qiladi; boshqa
@@ -2854,18 +2854,39 @@ createTenant(input: TenantCreateInput): Promise<TenantCreated>
 updateTenant(id: ID, patch: TenantUpdateInput): Promise<Tenant>
 ```
 
+### `GET /platform/tenants/:id/accounts`
+
+Klinikaning loginlari (parolsiz) va o'chirish kodi holati
+
+```ts
+listTenantAccounts(id: ID): Promise<{ users: TenantAccount[]; deleteCodeSet: boolean }>
+```
+
+### `POST /platform/tenants/:id/accounts/:userId/password`
+
+Unutilgan parol o'rniga yangisi — eski parol ko'rsatilmaydi
+
+```ts
+setTenantAccountPassword(id: ID, userId: ID, password: string): Promise<{ updated: boolean }>
+```
+
+### `POST /platform/tenants/:id/delete-code`
+
+Admin yangi o'chirish kodi qo'yadi
+
+```ts
+setTenantDeleteCode(id: ID, code: string): Promise<{ deleteCodeSet: boolean }>
+```
+
+### `POST /platform/tenants/:id/reset-delete-code`
+
+O'chirish kodini bekor qilish — egasi keyingi o'chirishda yangisini yaratadi
+
+```ts
+resetDeleteCode(id: ID): Promise<{ reset: boolean }>
+```
+
 ### `POST /platform/tenants/:id/reset-owner-password`
-
-Klinika egasining parolini tiklash.
-
-NEGA PLATFORMA ORQALI: klinika egasi `Staff` yozuvi emas,
-shuning uchun xodimlar bo'limidagi tiklash unga yetmaydi.
-Pochta xizmati ham yo'q — ya'ni egasi parolini unutsa,
-tizimga qaytadigan boshqa yo'l qolmaydi.
-
-Vaqtinchalik parol javobda BIR MARTA keladi. Egasining
-mavjud sessiyalari uziladi va u kirgach almashtirishga
-majbur bo'ladi.
 
 ```ts
 resetOwnerPassword(id: ID): Promise<OwnerPasswordReset>
@@ -3262,10 +3283,10 @@ deleteTenant(id: ID, reason: string): Promise<Tenant>
 ### `POST /platform/tenants/:id/purge`
 
 BUTUNLAY O'CHIRISH — klinika va uning barcha ma'lumoti bazadan yo'qoladi.
-Klinika nomini aynan yozish va adminning paroli shart. Qaytarib bo'lmaydi.
+Klinika nomini aynan yozish shart. Qaytarib bo'lmaydi.
 
 ```ts
-purgeTenant(id: ID, input: { confirmName: string; password: string }): Promise<{ purged: boolean; name: string; files: number }>
+purgeTenant(id: ID, input: { confirmName: string }): Promise<{ purged: boolean; name: string; files: number }>
 ```
 
 ### `POST /platform/tenants/:id/undelete`
@@ -3558,7 +3579,7 @@ getDeleteCodeStatus(): Promise<{ isSet: boolean }>
 ### `POST /clinic/delete-code`
 
 ```ts
-setDeleteCode(input: { password: string code: string }): Promise<{ isSet: boolean }>
+setDeleteCode(input: { /** Faqat mavjud kodni almashtirishda */ password?: string code: string }): Promise<{ isSet: boolean }>
 ```
 
 ## exports

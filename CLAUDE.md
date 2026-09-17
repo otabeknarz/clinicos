@@ -444,8 +444,14 @@ accountant could only be given the receptionist role (the whole patient base) or
 (`StaffPosition`) are a separate axis: a guard or cook is a staff row with no login at all.
 
 **The deletion code (`src/delete-code/`, `Clinic.deleteCodeHash`) is the only path to destroying
-clinic data.** The owner sets a 4–8 digit code in Settings → Clinic, confirmed with their own password;
-it is stored as an argon2 hash and never returned. Deleting a payment (`payments.delete`), a patient
+clinic data.** The owner creates a 4–8 digit code the first time they delete something (right in the
+delete dialog, no password) or in Settings → Clinic; *changing* an existing code requires their password.
+It is stored as an argon2 hash and never returned — the platform admin cannot show it; they cancel it
+(`POST /platform/tenants/:id/reset-delete-code`) or set a new one (`POST /platform/tenants/:id/delete-code`).
+The same panel lists every login of a clinic (`GET /platform/tenants/:id/accounts`) and sets a new
+password on any of them (`.../accounts/:userId/password`, sessions revoked, audited). Passwords are
+never shown or stored reversibly — the owner asked for "see the password" and settled on "replace it",
+because a readable password store would expose every account of every clinic in one leak. Deleting a payment (`payments.delete`), a patient
 (`patients.delete`) or a service (`services.manage`) requires it — the permission says *who may press
 the button*, the code says *the owner agreed*. Five wrong codes lock the clinic for 15 minutes (in
 memory, one container). Every deletion writes an audit row with a snapshot and sends the owners a
@@ -484,8 +490,10 @@ a login derived from the clinic name once, and tells them in Telegram.
 **The platform admin chooses how a clinic is deleted.** `POST /platform/tenants/:id/delete` keeps
 everything (`deletedAt`, restorable); `POST /platform/tenants/:id/purge` removes the clinic and every
 row with its `clinic_id` (tables are discovered from `information_schema`, retried on FK errors, one SQL
-statement), plus online prescriptions, restrictions and uploaded files. It requires typing the clinic
-name and the admin's password and refuses the platform's own record.
+statement), plus online prescriptions, restrictions and uploaded files. Nothing is typed in the panel
+(a password field made the browser autofill the admin's email) — choosing the "delete completely" card
+is the confirmation; the client sends the clinic name, which the server still compares. It refuses the
+platform's own record.
 
 **Days off (`src/days-off/`, `DayOff`) block booking; they never move appointments on their own.**
 `doctorId` null means the whole clinic is closed (a holiday), otherwise one doctor is off. `create` and

@@ -1,13 +1,18 @@
-import { IsString, Matches, MaxLength } from 'class-validator'
+import { IsOptional, IsString, Matches, MaxLength } from 'class-validator'
 
 /** Kod: 4 dan 8 gacha raqam */
 export const DELETE_CODE = /^\d{4,8}$/
 
 export class SetDeleteCodeDto {
-  /** Egasining joriy paroli — kodni faqat u almashtira olsin */
+  /**
+   * Egasining joriy paroli — faqat MAVJUD kodni almashtirishda. Birinchi kod
+   * birinchi o'chirish paytida parolsiz yaratiladi (buni faqat egasi qila
+   * oladi — `settings.manage`).
+   */
+  @IsOptional()
   @IsString()
   @MaxLength(200)
-  password!: string
+  password?: string
 
   @Matches(DELETE_CODE, { message: 'Kod 4–8 ta raqamdan iborat bo‘lishi kerak' })
   code!: string

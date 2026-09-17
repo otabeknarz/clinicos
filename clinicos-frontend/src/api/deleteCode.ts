@@ -29,7 +29,8 @@ export async function getDeleteCodeStatus(): Promise<{ isSet: boolean }> {
 
 // POST /clinic/delete-code
 export async function setDeleteCode(input: {
-  password: string
+  /** Faqat mavjud kodni almashtirishda */
+  password?: string
   code: string
 }): Promise<{ isSet: boolean }> {
   if (!USE_MOCK) return request<{ isSet: boolean }>('POST', '/clinic/delete-code', { body: input })

@@ -13,6 +13,9 @@ import { Audit } from '../common/audit.interceptor'
 import { RequirePermission } from '../common/guards/permissions.guard'
 import { IdParamDto } from '../patients/patients.dto'
 import {
+  AccountParamDto,
+  AccountPasswordDto,
+  TenantDeleteCodeDto,
   ArchiveDto,
   PurgeTenantDto,
   BillingTermDto,
@@ -269,6 +272,49 @@ export class PlatformController {
     Audit jurnaliga yoziladi: bu kuchli amal — tiklagan odam
     o'sha parol bilan egasi nomidan kira oladi.
   */
+  /*
+    POST /platform/tenants/:id/reset-delete-code
+
+    Egasi o'chirish kodini unutdi. Kodning o'zi hech qayerda ochiq
+    saqlanmaydi, shuning uchun uni ko'rsatib bo'lmaydi — bekor qilinadi,
+    egasi keyingi o'chirishda yangisini yaratadi.
+  */
+  /*
+    GET /platform/tenants/:id/accounts
+
+    Klinikaning barcha loginlari va o'chirish kodi o'rnatilganmi.
+    PAROL QAYTMAYDI — u bazada xesh, ko'rsatib bo'lmaydi va ko'rsatilmasligi
+    ham kerak. Unutilgan parol almashtiriladi.
+  */
+  @Get('tenants/:id/accounts')
+  @RequirePermission('platform.manage')
+  accounts(@Param() params: IdParamDto) {
+    return this.platform.accounts(params.id)
+  }
+
+  // POST /platform/tenants/:id/accounts/:userId/password  { password }
+  @Post('tenants/:id/accounts/:userId/password')
+  @RequirePermission('platform.manage')
+  @Audit('set_password', 'User', 'userId')
+  setAccountPassword(@Param() params: AccountParamDto, @Body() dto: AccountPasswordDto) {
+    return this.platform.setAccountPassword(params.id, params.userId, dto.password)
+  }
+
+  // POST /platform/tenants/:id/delete-code  { code }  — yangi o'chirish kodi
+  @Post('tenants/:id/delete-code')
+  @RequirePermission('platform.manage')
+  @Audit('set_delete_code', 'Clinic')
+  setTenantDeleteCode(@Param() params: IdParamDto, @Body() dto: TenantDeleteCodeDto) {
+    return this.platform.setTenantDeleteCode(params.id, dto.code)
+  }
+
+  @Post('tenants/:id/reset-delete-code')
+  @RequirePermission('platform.manage')
+  @Audit('reset_delete_code', 'Clinic')
+  resetDeleteCode(@Param() params: IdParamDto) {
+    return this.platform.resetDeleteCode(params.id)
+  }
+
   @Post('tenants/:id/reset-owner-password')
   @RequirePermission('platform.manage')
   @Audit('reset_password', 'Clinic')

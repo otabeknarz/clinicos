@@ -34,11 +34,11 @@ export function DeleteCodeCard() {
   const mismatch = repeat.length > 0 && repeat !== code
 
   async function submit() {
-    if (!codeValid || repeat !== code || !password || pending) return
+    if (!codeValid || repeat !== code || (isSet && !password) || pending) return
     setPending(true)
     setError('')
     try {
-      await setDeleteCode({ code, password })
+      await setDeleteCode({ code, password: isSet ? password : undefined })
       toast.success(t('deleteCode.saved'))
       setEditing(false)
       setCode('')
@@ -98,23 +98,25 @@ export function DeleteCodeCard() {
                   onChange={(e) => setRepeat(e.target.value.replace(/\D/g, ''))}
                 />
               </div>
-              <TextInput
-                label={t('deleteCode.password')}
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                error={error || undefined}
-                hint={t('deleteCode.passwordHint')}
-                onChange={(e) => {
-                  setPassword(e.target.value)
-                  setError('')
-                }}
-              />
+              {isSet ? (
+                <TextInput
+                  label={t('deleteCode.password')}
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  hint={t('deleteCode.passwordHint')}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    setError('')
+                  }}
+                />
+              ) : null}
+              {error ? <p className="text-caption text-bad">{error}</p> : null}
               <div className="flex gap-2">
                 <Button
                   onClick={submit}
                   loading={pending}
-                  disabled={!codeValid || repeat !== code || !password}
+                  disabled={!codeValid || repeat !== code || (isSet && !password)}
                 >
                   {t('action.save')}
                 </Button>
