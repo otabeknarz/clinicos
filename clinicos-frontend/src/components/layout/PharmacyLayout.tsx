@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import {
   BarChart3,
   Boxes,
@@ -15,7 +15,9 @@ import {
   TruckIcon,
   Users,
 } from 'lucide-react'
+
 import type { LucideIcon } from 'lucide-react'
+import { TabBar } from './TabBar'
 
 import { BrandMark, BrandWordmark } from './BrandLogo'
 import { SideNav } from './SideNav'
@@ -293,49 +295,15 @@ export function PharmacyLayout() {
         />
 
         {/* --- Pastki panel (telefon) --- */}
-        <nav className="fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 md:hidden">
-          <ul
-            className={cn(
-              'material-thick mx-auto flex max-w-md items-center justify-between gap-1',
-              'rounded-full p-1.5',
-              'shadow-[0_6px_24px_-6px_rgb(16_31_56_/_0.22)]',
-              'ring-[0.5px] ring-separator',
-            )}
-          >
-            {items.map((item) => (
-              <li key={item.to} className="min-w-0 flex-1">
-                <NavLink
-                  to={item.to}
-                  end={item.end}
-                  aria-label={t(item.labelKey)}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex h-11 items-center justify-center gap-1.5 rounded-full px-2',
-                      'transition-colors duration-200 ease-apple',
-                      isActive ? 'bg-navy text-white' : 'text-label-secondary',
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <item.icon size={19} strokeWidth={isActive ? 2.2 : 1.9} />
-                      {/*
-                        Yozuv faqat faol bandda: to'rtta nom yonma-yon
-                        turganda har biri o'qib bo'lmas darajada
-                        kichrayib ketardi.
-                      */}
-                      {isActive ? (
-                        <span className="truncate text-footnote font-semibold">
-                          {t(item.labelKey)}
-                        </span>
-                      ) : null}
-                    </>
-                  )}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        <TabBar
+          className="md:hidden"
+          items={items.map((item) => ({
+            to: item.to,
+            end: item.end,
+            icon: item.icon,
+            label: t(item.labelKey),
+          }))}
+        />
       </div>
     </div>
   )

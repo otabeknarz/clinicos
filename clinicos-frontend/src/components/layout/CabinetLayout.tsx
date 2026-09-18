@@ -1,11 +1,11 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { ClipboardList, House, LogOut, Star, Wallet } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+
+import { TabBar } from './TabBar'
 
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { IconButton } from '@/components/ui/Button'
 import { ErrorState } from '@/components/ui/States'
-import { cn } from '@/lib/cn'
 import { useI18n } from '@/i18n'
 import { usePatient } from '@/store/patient-context'
 
@@ -68,66 +68,13 @@ function CabinetNav() {
   const { t } = useI18n()
 
   return (
-    <nav
-      className={cn(
-        'fixed inset-x-0 bottom-0 z-30',
-        'px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2',
-        'bg-gradient-to-t from-canvas via-canvas/90 to-transparent',
-      )}
-    >
-      <ul
-        className={cn(
-          'material-thick mx-auto flex max-w-xs items-center justify-between gap-1',
-          'rounded-full p-1.5',
-          'shadow-[0_6px_24px_-6px_rgb(16_31_56_/_0.22)]',
-          'ring-[0.5px] ring-separator',
-        )}
-      >
-        <Item to="/cabinet" end icon={House} label={t('cabinet.home')} />
-        <Item to="/cabinet/visits" icon={ClipboardList} label={t('cabinet.visits')} />
-        <Item to="/cabinet/debt" icon={Wallet} label={t('cabinet.debt')} />
-        <Item to="/cabinet/feedback" icon={Star} label={t('cabinet.feedbackTab')} />
-      </ul>
-    </nav>
-  )
-}
-
-function Item({
-  to,
-  end,
-  icon: Icon,
-  label,
-}: {
-  to: string
-  end?: boolean
-  icon: LucideIcon
-  label: string
-}) {
-  return (
-    <li className="min-w-0">
-      <NavLink
-        to={to}
-        end={end}
-        aria-label={label}
-        className={({ isActive }) =>
-          cn(
-            'flex h-11 min-w-11 items-center justify-center gap-2 rounded-full px-3',
-            'transition-[background-color,color,padding] duration-200 ease-apple',
-            isActive
-              ? 'bg-navy px-4 text-white'
-              : 'text-label-tertiary hover:text-label-secondary',
-          )
-        }
-      >
-        {({ isActive }) => (
-          <>
-            <Icon size={20} strokeWidth={isActive ? 2.2 : 1.9} className="shrink-0" />
-            {isActive ? (
-              <span className="truncate text-footnote font-semibold">{label}</span>
-            ) : null}
-          </>
-        )}
-      </NavLink>
-    </li>
+    <TabBar
+      items={[
+        { to: '/cabinet', end: true, icon: House, label: t('cabinet.home') },
+        { to: '/cabinet/visits', icon: ClipboardList, label: t('cabinet.visits') },
+        { to: '/cabinet/debt', icon: Wallet, label: t('cabinet.debt') },
+        { to: '/cabinet/feedback', icon: Star, label: t('cabinet.feedbackTab') },
+      ]}
+    />
   )
 }

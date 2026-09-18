@@ -5,7 +5,8 @@
       "name": "clinicos-frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "clinicos-frontend", "run", "dev"],
-      "port": 5173
+      "port": 5173,
+      "autoPort": true
     },
     {
       "name": "clinicos-frontend-api",

@@ -59,6 +59,9 @@ export function Sidebar({
       .filter((item) => {
         const isPlatform = item.permission.startsWith('platform.')
 
+        /* "Tez kunda" bo'limi — klinikaning hamma xodimiga, qulf bilan */
+        if (item.soon) return impersonating || can(item.permission)
+
         /* Yopiq bo'lim ko'rsatiladi — qulf bilan */
         if (moduleOf(item.permission) && restrictions.has(moduleOf(item.permission)!)) {
           return !impersonating
@@ -89,7 +92,11 @@ export function Sidebar({
           label: t(item.labelKey),
           icon: item.icon,
           badge: item.badge ? badges?.[item.badge] : undefined,
-          lockedLabel: locked ? t(`access.reason.${locked.reason}`) : undefined,
+          lockedLabel: item.soon
+            ? t('access.reason.soon')
+            : locked
+              ? t(`access.reason.${locked.reason}`)
+              : undefined,
         }
       }),
   })).filter((group) => group.items.length > 0)

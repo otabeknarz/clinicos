@@ -2153,4 +2153,6 @@ export const dict: Dict = {
   'platform.passwordChanged': 'Password changed and copied',
   'platform.newDeleteCode': 'New code',
   'platform.deleteCodeSaved': 'Deletion code updated',
+  'nav.crm': 'CRM',
+  'nav.dmed': 'DMED',
 }

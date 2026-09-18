@@ -2207,4 +2207,6 @@ export const dict: Dict = {
   'platform.passwordChanged': 'Parol almashtirildi va nusxa olindi',
   'platform.newDeleteCode': 'Yangi kod',
   'platform.deleteCodeSaved': 'O‘chirish kodi yangilandi',
+  'nav.crm': 'CRM',
+  'nav.dmed': 'DMED',
 }

@@ -14,7 +14,9 @@ import {
   Layers,
   Lock,
   Settings,
+  FileHeart,
   FileSpreadsheet,
+  Handshake,
   MessageCircle,
   MessagesSquare,
   MessageSquare,
@@ -75,6 +77,12 @@ export interface NavItem {
    * Ular qo'ng'iroqcha ostidagi ro'yxatda ko'rinib turadi.
    */
   badge?: string
+  /**
+   * TEZ KUNDA — bo'lim hali yo'q, lekin menyuda hammaga ko'rinadi (qulf va
+   * "Tez kunda" yozuvi bilan, havola emas). Mijoz nima kelayotganini
+   * ko'radi; tayyor bo'lganda bayroq olib tashlanadi va sahifa ulanadi.
+   */
+  soon?: boolean
 }
 
 export interface NavGroup {
@@ -231,6 +239,17 @@ export const NAVIGATION: NavGroup[] = [
         icon: Pill,
         permission: 'prescriptions.manage',
       },
+      /*
+        CRM — bemorlar bilan munosabat (qayta chaqirish, voronka). Hozircha
+        faqat e'lon: 3–4 oydan keyin ochiladi.
+      */
+      {
+        to: '/crm',
+        labelKey: 'nav.crm',
+        icon: Handshake,
+        permission: 'dashboard.view',
+        soon: true,
+      },
     ],
   },
   {
@@ -288,6 +307,14 @@ export const NAVIGATION: NavGroup[] = [
         labelKey: 'nav.services',
         icon: ClipboardList,
         permission: 'services.view',
+      },
+      /* DMED — davlat elektron tibbiy tizimi bilan ulanish. Tez kunda. */
+      {
+        to: '/dmed',
+        labelKey: 'nav.dmed',
+        icon: FileHeart,
+        permission: 'dashboard.view',
+        soon: true,
       },
     ],
   },

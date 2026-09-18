@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { X } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 
 import { NavDot } from './NavBadge'
 import { MOBILE_NAV, NAVIGATION, PLATFORM_MOBILE_NAV } from './navigation'
 import { Sidebar } from './Sidebar'
+import { TabBar } from './TabBar'
 import { getNavBadges } from '@/api/notifications'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ImpersonationBar } from './ImpersonationBar'
@@ -183,66 +183,6 @@ export function AppLayout() {
 /* Telefondagi pastki panel                                            */
 /* ------------------------------------------------------------------ */
 
-/*
-  Tabletka bandi. Faol bo'lsa to'q ko'k fon + yozuv, aks holda faqat
-  ikonka. Uch class'ga ajratilgan, chunki "Yana" tugmasi NavLink emas
-  — u varaq ochadi, ya'ni bir xil ko'rinishni takrorlash kerak.
-*/
-const PILL_BASE = [
-  'flex h-11 min-w-11 items-center justify-center gap-2 rounded-full px-3',
-  'transition-[background-color,color,padding] duration-200 ease-apple',
-].join(' ')
-
-const PILL_ACTIVE = 'bg-navy px-4 text-white'
-const PILL_IDLE = 'text-label-tertiary hover:text-label-secondary'
-
-function NavItem({
-  to,
-  end,
-  icon: Icon,
-  label,
-  badge,
-}: {
-  to: string
-  end?: boolean
-  icon: LucideIcon
-  label: string
-  /** Yangilik soni — bu yerda faqat NUQTA bo'lib ko'rinadi */
-  badge?: number
-}) {
-  return (
-    <li className="min-w-0">
-      <NavLink
-        to={to}
-        end={end}
-        aria-label={label}
-        className={({ isActive }) => cn(PILL_BASE, isActive ? PILL_ACTIVE : PILL_IDLE)}
-      >
-        {({ isActive }) => (
-          <>
-            {/*
-              Tabletkada son sig'maydi — yonma-yon turgan ikkita
-              ikkixonali son bandlarni siqib qo'yardi. Nuqta
-              "shu yerda yangilik bor" deyish uchun yetarli.
-            */}
-            <span className="relative shrink-0">
-              <Icon size={20} strokeWidth={isActive ? 2.2 : 1.9} className="shrink-0" />
-              <NavDot count={badge} />
-            </span>
-            {/*
-              Yozuv faqat faol bandda. `truncate` kerak emas — tabletka
-              matnga qarab kengayadi va qolganlari siqilib turaveradi.
-            */}
-            {isActive ? (
-              <span className="truncate text-footnote font-semibold">{label}</span>
-            ) : null}
-          </>
-        )}
-      </NavLink>
-    </li>
-  )
-}
-
 /**
  * Pastki panel — telefonda asosiy navigatsiya.
  *
@@ -302,52 +242,16 @@ function MobileNav({
 
   return (
     <>
-      {/*
-        SUZUVCHI TABLETKA.
-
-        Ilgari panel butun kenglikni egallab, ekranning pastki
-        chekkasiga yopishib turardi. Endi u chetlardan uzilgan: ostidagi
-        ro'yxat panel orqasidan o'tib ketayotgani ko'rinib turadi va
-        sahifa qayerda tugaganini odam o'zi biladi.
-
-        FAQAT FAOL BANDDA YOZUV BOR. Beshta yozuv yonma-yon turganda
-        har biri 11px ga tushib, "Ro'yxatdan o'tganlar" kabi so'z
-        qisqarib ketardi. Faol band esa kengayib, to'liq nomni
-        ko'rsatadi — odam qayerdaligini bir qarashda biladi, qolganlari
-        ikonka bo'lib turaveradi.
-      */}
-      <nav
-        className={cn(
-          'fixed inset-x-0 bottom-0 z-30 md:hidden',
-          'px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2',
-          /*
-            Panel ostidan chiqayotgan kontent to'satdan kesilmasin:
-            yupqa gradient uni asta yo'qqa chiqaradi.
-          */
-          'bg-gradient-to-t from-canvas via-canvas/90 to-transparent',
-        )}
-      >
-        <ul
-          className={cn(
-            'material-thick mx-auto flex max-w-md items-center justify-between gap-1',
-            'rounded-full p-1.5',
-            'shadow-[0_6px_24px_-6px_rgb(16_31_56_/_0.22)]',
-            'ring-[0.5px] ring-separator',
-          )}
-        >
-          {primary.map((item) => (
-            <NavItem
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              icon={item.icon}
-              label={t(item.labelKey)}
-              badge={item.badge ? badges?.[item.badge] : undefined}
-            />
-          ))}
-
-        </ul>
-      </nav>
+      <TabBar
+        className="md:hidden"
+        items={primary.map((item) => ({
+          to: item.to,
+          end: item.end,
+          icon: item.icon,
+          label: t(item.labelKey),
+          badge: item.badge ? badges?.[item.badge] : undefined,
+        }))}
+      />
 
       {/* --- "Yana" varag'i --- */}
       {moreOpen ? (
@@ -389,7 +293,23 @@ function MobileNav({
                     {t(group.labelKey)}
                   </p>
                   <ul className="grid grid-cols-3 gap-2">
-                    {group.items.map((item) => (
+                    {group.items.map((item) =>
+                      item.soon ? (
+                        <li key={item.to}>
+                          {/* Tez kunda — havola emas */}
+                          <span className="flex cursor-default flex-col items-center gap-1.5 rounded-[16px] px-1 py-2.5 opacity-60">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-fill-4 text-label-tertiary">
+                              <item.icon size={20} strokeWidth={1.7} />
+                            </span>
+                            <span className="text-center text-caption-2 font-medium leading-tight text-label-secondary">
+                              {t(item.labelKey)}
+                            </span>
+                            <span className="rounded-full bg-fill-4 px-1.5 py-0.5 text-[9.5px] font-medium text-label-tertiary">
+                              {t('access.reason.soon')}
+                            </span>
+                          </span>
+                        </li>
+                      ) : (
                       <li key={item.to}>
                         <NavLink
                           to={item.to}
@@ -437,7 +357,8 @@ function MobileNav({
                           )}
                         </NavLink>
                       </li>
-                    ))}
+                      ),
+                    )}
                   </ul>
                 </div>
               ))}
