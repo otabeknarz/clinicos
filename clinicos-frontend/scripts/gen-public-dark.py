@@ -62,6 +62,42 @@ def to_css(r, g, b, a):
     return "rgb(%d %d %d / %.2f)" % (round(r), round(g), round(b), a)
 
 
+# Qorong'i rejimdagi eng OCH yuza — kontrast shunga o'lchanadi.
+# Oddiy kartochka #15181f, lekin `.v3-side` kabi ko'k panellar ochroq;
+# eng yomon holatga o'lchansa, qolgan hamma joyda zaxira bilan yetadi.
+DARK_SURFACE = (0x12, 0x27, 0x45)
+TEXT_TARGET = 5.0   # shu darajagacha ko'tariladi
+TEXT_FLOOR = 4.8    # shundan yuqorisiga tegilmaydi
+
+
+def rel_lum(r, g, b):
+    out = []
+    for v in (r, g, b):
+        v = v / 255
+        out.append(v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * out[0] + 0.7152 * out[1] + 0.0722 * out[2]
+
+
+def contrast_on_dark(r, g, b):
+    a = rel_lum(r, g, b)
+    b2 = rel_lum(*DARK_SURFACE)
+    hi, lo = max(a, b2), min(a, b2)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def lift(h, l, s):
+    """Rangni ohangini saqlab, kerakli kontrastga yetguncha ochartiradi."""
+    lo, hi = l, 1.0
+    for _ in range(24):
+        mid = (lo + hi) / 2
+        r, g, b = colorsys.hls_to_rgb(h, mid, s)
+        if contrast_on_dark(r * 255, g * 255, b * 255) >= TEXT_TARGET:
+            hi = mid
+        else:
+            lo = mid
+    return hi
+
+
 def shift(token, role):
     parsed = parse_color(token)
     if parsed is None:
@@ -82,9 +118,16 @@ def shift(token, role):
         s2 = s * 0.35
     else:  # matn
         if l >= 0.5:
-            return token
-        l2 = 0.94 - l * 0.55
-        s2 = s * 0.4
+            # To'yingan ko'k va binafsha HLS bo'yicha "yorug'" ko'rinadi
+            # (#2864ee — l=0.55), lekin to'q fonda 3.6:1 — o'qib bo'lmaydi.
+            # Shuning uchun o'lchov HLS emas, haqiqiy kontrast.
+            if contrast_on_dark(r, g, b) >= TEXT_FLOOR:
+                return token
+            l2 = lift(h, l, s)
+            s2 = s
+        else:
+            l2 = 0.94 - l * 0.55
+            s2 = s * 0.4
 
     if s < 0.05:
         # Oq va kulrang — ilovaning qorong'i rejimi kabi yengil ko'k tusli
@@ -190,9 +233,15 @@ def main():
                 role = role_of(prop)
                 if not role:
                     continue
-                converted = convert_value(value, role)
-                if converted != value:
-                    decls.append("%s:%s" % (prop.strip(), converted.strip()))
+                # O'ZGARMAGANI HAM YOZILADI.
+                #
+                # Faqat o'zgarganini yozganda kaskad teskari bo'lib qolardi:
+                # `.v3-card-tag` uchun qoida yaratilib, yorug' rejimdagi
+                # aniqroq `.v3-telegram-card .v3-card-tag` esa yaratilmasdi.
+                # Prefiks og'irlik qo'shgani uchun umumiy qoida aniqrog'ini
+                # bosib ketar va ko'k kartochkadagi matn ko'rinmay qolardi.
+                # Hammasi ko'chirilganda qoidalar o'zaro nisbati saqlanadi.
+                decls.append("%s:%s" % (prop.strip(), convert_value(value, role).strip()))
             if not decls:
                 continue
             key = context
@@ -211,13 +260,6 @@ def main():
         # O'zgaruvchi orqali berilgan ranglar yuqoridagi qoidalarga ko'rinmaydi
         "html.dark .story-page,html.dark .auth-page{--ink:#e4e9f3;--muted:#9aa6bb}",
         # Til/rejim boshqaruvi
-        "html.dark .public-control{background:#161b26;border-color:#2b3445;color:#c3cde0}",
-        "html.dark .public-lang-list{background:#161b26;border-color:#2b3445}",
-        "html.dark .public-lang-option{color:#d5ddeb}",
-        "html.dark .public-lang-option:hover{background:#1f2738}",
-        # Telefon maydonidagi ichki input — shaffof qolsin (umumiy input qoidasi ustidan)
-        "html.dark .phone-field input{background:transparent!important;box-shadow:none!important}",
-        "html.dark .phone-field{background:#141925;border-color:#2b3445}",
     ]
     for key in order:
         rules = blocks[key]
@@ -229,6 +271,23 @@ def main():
             lines.append(closing)
         else:
             lines.extend(rules)
+
+    # Qo'lda yozilganlar OXIRIDA: avtomatik qoidalar bilan og'irligi teng,
+    # shuning uchun keyin turgani yutadi.
+    lines.extend([
+        "html.dark .public-control{background:#161b26;border-color:#2b3445;color:#c3cde0}",
+        "html.dark .public-lang-list{background:#161b26;border-color:#2b3445}",
+        "html.dark .public-lang-option{color:#d5ddeb}",
+        "html.dark .public-lang-option:hover{background:#1f2738}",
+        # Telefon maydonidagi ichki input — shaffof qolsin (umumiy input qoidasi ustidan)
+        "html.dark .phone-field input{background:transparent!important;box-shadow:none!important}",
+        "html.dark .phone-field{background:#141925;border-color:#2b3445}",
+        # Ko'k matn: #2563eb to'q fonda 3.4:1 — ilovaning qorong'i ko'ki
+        "html.dark :where(.auth-page,.story-page){--blue-ink:#0a84ff}",
+        # Rasmning foni oq — `multiply` uni to'q panelda yutib yuboradi
+        "html.dark :where(.auth-page,.story-page) .promo-art{mix-blend-mode:normal}",
+        "html.dark :where(.auth-page,.story-page) .promo-art img{mask-image:radial-gradient(ellipse 58% 56% at center,#000 28%,transparent 76%);-webkit-mask-image:radial-gradient(ellipse 58% 56% at center,#000 28%,transparent 76%);filter:brightness(.88) saturate(1.05)}",
+    ])
 
     OUT.write_text("\n".join(lines) + "\n", encoding="utf8")
     print("yozildi:", OUT.name, sum(len(v) for v in blocks.values()), "qoida")
